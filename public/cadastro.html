@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Criar conta</title>
+
+  <link rel="stylesheet" href="style/auth.css">
+  <script src="script/cadastro.js" defer></script>
+</head>
+
+<body>
+  <main class="auth-page">
+    <section class="auth-card">
+      <div class="auth-logo">Chat Amino</div>
+
+      <h1>Criar conta</h1>
+
+      <p class="auth-description">
+        Crie seu perfil para participar das salas.
+      </p>
+
+      <form id="cadastro-form">
+        <label for="username">Nome de usuário</label>
+
+        <input
+          type="text"
+          id="username"
+          name="username"
+          minlength="3"
+          maxlength="30"
+          autocomplete="username"
+          required
+        >
+
+        <label for="email">E-mail</label>
+
+        <input
+          type="email"
+          id="email"
+          name="email"
+          autocomplete="email"
+          required
+        >
+
+        <label for="password">Senha</label>
+
+        <input
+          type="password"
+          id="password"
+          name="password"
+          minlength="6"
+          autocomplete="new-password"
+          required
+        >
+
+        <button type="submit" id="submit-button">
+          Criar conta
+        </button>
+
+        <p id="form-message" class="form-message"></p>
+      </form>
+
+      <p class="auth-link">
+        Já possui uma conta?
+        <a href="/login.html">Entrar</a>
+      </p>
+    </section>
+  </main>
+</body>
+</html>

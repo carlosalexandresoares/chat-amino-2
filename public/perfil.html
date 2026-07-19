@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Meu perfil</title>
+
+  <link rel="stylesheet" href="style/profile.css">
+  <script src="script/perfil.js" defer></script>
+</head>
+
+<body>
+  <main class="profile-page">
+    <section class="profile-card">
+      <div class="profile-banner"></div>
+
+      <div class="profile-content">
+        <div class="profile-avatar" id="profile-avatar">
+          ?
+        </div>
+
+        <h1 id="profile-username">Carregando...</h1>
+
+        <div class="level-badge">
+          <span id="profile-level">LV 1</span>
+        </div>
+
+        <p id="profile-bio">
+          Este usuário ainda não adicionou uma biografia.
+        </p>
+
+        <div class="xp-area">
+          <div class="xp-header">
+            <span>Experiência</span>
+            <span id="profile-xp">0 XP</span>
+          </div>
+
+          <div class="xp-bar">
+            <div class="xp-progress" id="xp-progress"></div>
+          </div>
+        </div>
+
+        <p class="profile-email" id="profile-email"></p>
+
+        <div class="profile-actions">
+          <a href="/index.html?sala=geral">Entrar no chat</a>
+          <button id="logout-button">Sair</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
