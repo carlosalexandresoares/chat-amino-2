@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Editar perfil</title>
+
+  <link
+    rel="stylesheet"
+    href="/style/editar-perfil.css"
+  >
+</head>
+
+<body>
+  <main class="edit-profile-container">
+    <a
+      href="/perfil.html"
+      class="back-link"
+    >
+      ← Voltar ao perfil
+    </a>
+
+    <section class="edit-profile-card">
+      <h1>Editar perfil</h1>
+
+      <div class="profile-preview">
+        <div
+          id="bannerPreview"
+          class="banner-preview"
+        ></div>
+
+        <img
+          id="avatarPreview"
+          class="avatar-preview"
+          alt="Prévia do avatar"
+        >
+      </div>
+
+      <form id="editProfileForm">
+        <label for="avatar">
+          URL do avatar
+        </label>
+
+        <input
+          id="avatar"
+          name="avatar"
+          type="url"
+          placeholder="https://exemplo.com/avatar.jpg"
+        >
+
+        <label for="banner">
+          URL do banner
+        </label>
+
+        <input
+          id="banner"
+          name="banner"
+          type="url"
+          placeholder="https://exemplo.com/banner.jpg"
+        >
+
+        <label for="bio">
+          Bio
+        </label>
+
+        <textarea
+          id="bio"
+          name="bio"
+          maxlength="300"
+          placeholder="Conte um pouco sobre você..."
+        ></textarea>
+
+        <div class="bio-counter">
+          <span id="bioLength">0</span>/300
+        </div>
+
+        <p
+          id="formMessage"
+          class="form-message"
+        ></p>
+
+        <button type="submit">
+          Salvar alterações
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/script/editar-perfil.js"></script>
+</body>
+</html>

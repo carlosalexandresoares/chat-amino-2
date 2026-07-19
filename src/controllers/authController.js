@@ -202,8 +202,140 @@ async function me(req, res) {
   }
 }
 
+const updateProfile = async (req, res) => {
+  try {
+    const userId = req.userId;
+
+    const { bio, avatar, banner } = req.body;
+
+    if (
+      bio !== undefined &&
+      typeof bio !== "string"
+    ) {
+      return res.status(400).json({
+        message: "Bio inválida.",
+      });
+    }
+
+    if (
+      avatar !== undefined &&
+      typeof avatar !== "string"
+    ) {
+      return res.status(400).json({
+        message: "Avatar inválido.",
+      });
+    }
+
+    if (
+      banner !== undefined &&
+      typeof banner !== "string"
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Banner inválido.",
+      });
+    }
+
+    const normalizedBio =
+      typeof bio === "string"
+        ? bio.trim()
+        : undefined;
+
+    const normalizedAvatar =
+      typeof avatar === "string"
+        ? avatar.trim()
+        : undefined;
+
+    const normalizedBanner =
+      typeof banner === "string"
+        ? banner.trim()
+        : undefined;
+
+    if (
+      normalizedBio !== undefined &&
+      normalizedBio.length > 300
+    ) {
+      return res.status(400).json({
+        message:
+          "A bio pode ter no máximo 300 caracteres.",
+      });
+    }
+
+    if (
+      normalizedAvatar !== undefined &&
+      normalizedAvatar.length > 1000
+    ) {
+      return res.status(400).json({
+        message: "URL do avatar muito longa.",
+      });
+    }
+
+    if (
+      normalizedBanner !== undefined &&
+      normalizedBanner.length > 1000
+    ) {
+      return res.status(400).json({
+        message: "URL do banner muito longa.",
+      });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: {
+        id: userId,
+      },
+
+      data: {
+        bio:
+          normalizedBio === ""
+            ? null
+            : normalizedBio,
+
+        avatar:
+          normalizedAvatar === ""
+            ? null
+            : normalizedAvatar,
+
+        banner:
+          normalizedBanner === ""
+            ? null
+            : normalizedBanner,
+      },
+
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        avatar: true,
+        banner: true,
+        bio: true,
+        xp: true,
+        level: true,
+        createdAt: true,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Perfil atualizado com sucesso.",
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error(
+      "Erro ao atualizar perfil:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      message:
+        "Não foi possível atualizar o perfil.",
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
-  me
+  me,
+  updateProfile,
 };

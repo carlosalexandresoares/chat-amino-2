@@ -220,8 +220,28 @@ function addMessage(messageData) {
   messages.scrollTop = messages.scrollHeight;
 }
 
+socket.on("chat-history", (history) => {
+  if (!Array.isArray(history)) {
+    return;
+  }
+
+  messages.innerHTML = "";
+
+  history.forEach((messageData) => {
+    addMessage(messageData);
+  });
+});
+
 socket.on("chat-message", (messageData) => {
   addMessage(messageData);
+});
+
+socket.on("chat-error", (data) => {
+  const errorMessage =
+    data?.message || "Ocorreu um erro no chat.";
+
+  console.error("Erro do chat:", errorMessage);
+  alert(errorMessage);
 });
 
 /* ================= YOUTUBE ================= */
