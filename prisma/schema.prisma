@@ -8,17 +8,43 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique
-  email     String   @unique
-  password  String
+  id       String @id @default(cuid())
+  username String @unique
+  email    String @unique
+  password String
 
-  avatar    String?
-  banner    String?
-  bio       String?
+  avatar String?
+  banner String?
+  bio    String?
 
-  xp        Int      @default(0)
-  level     Int      @default(1)
+  xp    Int @default(0)
+  level Int @default(1)
 
   createdAt DateTime @default(now())
+
+  messages Message[]
+}
+
+model Room {
+  id          String   @id
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  messages Message[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  userId String
+  roomId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+  @@index([userId])
 }
