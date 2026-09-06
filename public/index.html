@@ -2,44 +2,461 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
   <title>Chat Amino 2</title>
 
-  <link rel="stylesheet" href="style/style.css" />
+  <link
+    rel="stylesheet"
+    href="style/style.css"
+  />
+
   <script src="/socket.io/socket.io.js"></script>
-  <script src="script/script.js" defer></script>
+
+  <script
+    type="module"
+    src="script/script.js"
+  ></script>
 </head>
 
 <body>
-  <h1>Chat Amino 2</h1>
+  <!-- =========================================
+       TELA DE SALAS PÚBLICAS
+  ========================================== -->
+  <section
+    class="rooms-screen"
+    id="rooms-screen"
+  >
+    <div class="rooms-container">
+      <header class="rooms-header">
+        <span class="rooms-header-label">
+          Chat Amino 2
+        </span>
 
-  <div class="container">
-    <div class="container-lateral">
-      <ul>
-        <li><img src="image/logo-yt.png" alt="YouTube" id="btn-youtube"></li>
-      </ul>
+        <h1>Salas públicas</h1>
+
+        <p>
+          Escolha uma comunidade para entrar,
+          conversar e assistir junto.
+        </p>
+      </header>
+
+      <div
+        class="public-rooms-grid"
+        id="public-rooms-grid"
+      >
+        <article
+          class="public-room-card"
+          data-room-id="geral"
+        >
+          <div class="public-room-icon">
+            🔥
+          </div>
+
+          <div class="public-room-information">
+            <h2>Geral</h2>
+
+            <p>
+              Converse sobre qualquer assunto.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="enter-room-button"
+            data-room-id="geral"
+          >
+            Entrar
+          </button>
+        </article>
+
+        <article
+          class="public-room-card"
+          data-room-id="games"
+        >
+          <div class="public-room-icon">
+            👾
+          </div>
+
+          <div class="public-room-information">
+            <h2>Games</h2>
+
+            <p>
+              Jogos, lançamentos e partidas.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="enter-room-button"
+            data-room-id="games"
+          >
+            Entrar
+          </button>
+        </article>
+
+        <article
+          class="public-room-card"
+          data-room-id="musica"
+        >
+          <div class="public-room-icon">
+            🎵
+          </div>
+
+          <div class="public-room-information">
+            <h2>Música</h2>
+
+            <p>
+              Artistas, músicas e playlists.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="enter-room-button"
+            data-room-id="musica"
+          >
+            Entrar
+          </button>
+        </article>
+
+        <article
+          class="public-room-card"
+          data-room-id="filmes"
+        >
+          <div class="public-room-icon">
+            🎬
+          </div>
+
+          <div class="public-room-information">
+            <h2>Filmes</h2>
+
+            <p>
+              Filmes, séries e sessões em grupo.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="enter-room-button"
+            data-room-id="filmes"
+          >
+            Entrar
+          </button>
+        </article>
+
+        <article
+          class="public-room-card"
+          data-room-id="programacao"
+        >
+          <div class="public-room-icon">
+            💻
+          </div>
+
+          <div class="public-room-information">
+            <h2>Programação</h2>
+
+            <p>
+              Código, projetos e tecnologia.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="enter-room-button"
+            data-room-id="programacao"
+          >
+            Entrar
+          </button>
+        </article>
+
+        <article
+          class="public-room-card"
+          data-room-id="anime"
+        >
+          <div class="public-room-icon">
+            🎌
+          </div>
+
+          <div class="public-room-information">
+            <h2>Anime</h2>
+
+            <p>
+              Animes, mangás e cultura japonesa.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="enter-room-button"
+            data-room-id="anime"
+          >
+            Entrar
+          </button>
+        </article>
+      </div>
     </div>
+  </section>
 
-    <div class="chat-area">
-      <div class="youtube-container" id="youtube-container">
-        <button class="close-yt" id="close-yt">✕</button>
+  <!-- =========================================
+       APLICAÇÃO / CHAT
+  ========================================== -->
+  <div
+    class="app-screen hidden"
+    id="app-screen"
+  >
+    <header class="app-header">
+      <div>
+        <span class="app-name">
+          Chat Amino 2
+        </span>
 
-        <div id="youtube-frame"></div>
-
-        <div class="video-controls">
-          <button id="playVideo">▶️ Play</button>
-          <button id="pauseVideo">⏸ Pause</button>
-        </div>
+        <h1 id="current-room-title">
+          Sala Geral
+        </h1>
       </div>
 
-      <div class="messages" id="messages"></div>
+      <button
+        type="button"
+        id="leave-room"
+        class="leave-room-button"
+      >
+        Trocar de sala
+      </button>
+    </header>
 
-      <div class="container-chat">
-        <input type="text" id="chat-dig" placeholder="Digite sua mensagem..." />
-        <button id="enviar">
-          <img src="image/button-enviar.jpg" alt="Enviar" />
-        </button>
-      </div>
+    <div class="container">
+      <aside class="container-lateral">
+        <ul>
+          <li>
+            <img
+              src="image/logo-yt.png"
+              alt="Mostrar ou ocultar o vídeo"
+              id="btn-youtube"
+            />
+          </li>
+        </ul>
+      </aside>
+
+      <main class="chat-area">
+        <section
+          class="live-panel"
+          id="live-panel"
+        >
+          <div class="live-header">
+            <div class="live-header-information">
+              <div class="live-title-row">
+                <span
+                  class="live-indicator"
+                  id="live-indicator"
+                ></span>
+
+                <h2 id="live-title">
+                  Nenhuma live ativa
+                </h2>
+              </div>
+
+              <p
+                class="live-description"
+                id="live-description"
+              >
+                Um administrador pode iniciar uma sessão para todos assistirem juntos.
+              </p>
+            </div>
+
+            <div class="live-header-actions">
+              <button
+                type="button"
+                id="toggle-live-details"
+                class="live-button hidden"
+                aria-expanded="false"
+              >
+                Gerenciar
+              </button>
+
+              <button
+                type="button"
+                id="toggle-player"
+                class="live-button hidden"
+              >
+                Ocultar vídeo
+              </button>
+
+              <button
+                type="button"
+                id="start-live"
+                class="live-button live-button-primary hidden"
+              >
+                Iniciar live
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="live-content"
+            class="live-content hidden"
+          >
+            <div class="live-host">
+              <div
+                class="live-host-avatar"
+                id="live-host-avatar"
+              >
+                ?
+              </div>
+
+              <div>
+                <span class="live-host-label">
+                  Apresentador
+                </span>
+
+                <strong id="live-host-name">
+                  —
+                </strong>
+              </div>
+            </div>
+
+            <div
+              id="host-controls"
+              class="host-controls hidden"
+            >
+              <label for="live-video-link">
+                Adicionar vídeo do YouTube
+              </label>
+
+              <div class="live-link-row">
+                <input
+                  type="text"
+                  id="live-video-link"
+                  placeholder="Cole o link do YouTube..."
+                  autocomplete="off"
+                />
+
+                <button
+                  type="button"
+                  id="add-to-playlist"
+                  class="live-button live-button-primary"
+                >
+                  Adicionar
+                </button>
+              </div>
+
+              <p
+                class="live-form-message"
+                id="live-form-message"
+              ></p>
+            </div>
+
+            <div class="playlist-section">
+              <div class="playlist-header">
+                <h3>Playlist</h3>
+
+                <span id="playlist-count">
+                  0 vídeos
+                </span>
+              </div>
+
+              <div
+                id="playlist-empty"
+                class="playlist-empty"
+              >
+                A playlist está vazia.
+              </div>
+
+              <ol
+                id="playlist"
+                class="playlist"
+              ></ol>
+            </div>
+
+            <div
+              id="live-actions"
+              class="live-actions hidden"
+            >
+              <button
+                type="button"
+                id="next-video"
+                class="live-button"
+              >
+                ⏭ Próximo
+              </button>
+
+              <button
+                type="button"
+                id="end-live"
+                class="live-button live-button-danger"
+              >
+                Encerrar live
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="youtube-container"
+          id="youtube-container"
+        >
+          <button
+            type="button"
+            class="close-yt"
+            id="close-yt"
+            aria-label="Fechar player"
+          >
+            ✕
+          </button>
+
+          <div id="youtube-frame"></div>
+
+          <div class="video-controls">
+            <button
+              type="button"
+              id="playVideo"
+            >
+              ▶️ Play
+            </button>
+
+            <button
+              type="button"
+              id="pauseVideo"
+            >
+              ⏸ Pause
+            </button>
+          </div>
+        </section>
+
+        <section
+          class="messages"
+          id="messages"
+          aria-live="polite"
+        ></section>
+
+        <form
+          class="container-chat"
+          id="chat-form"
+        >
+          <input
+            type="text"
+            id="chat-dig"
+            placeholder="Digite sua mensagem..."
+            autocomplete="off"
+            maxlength="1000"
+          />
+
+          <button
+            type="submit"
+            id="enviar"
+            aria-label="Enviar mensagem"
+          >
+            <img
+              src="image/button-enviar.jpg"
+              alt=""
+            />
+          </button>
+        </form>
+      </main>
     </div>
   </div>
 </body>

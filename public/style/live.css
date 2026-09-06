@@ -1,0 +1,475 @@
+/* =======================
+   PAINEL DA LIVE
+======================= */
+
+.live-panel {
+  flex-shrink: 0;
+
+  padding: 11px 16px;
+
+  background:
+    linear-gradient(
+      135deg,
+      #f8fafc 0%,
+      #eef2ff 100%
+    );
+
+  border-bottom:
+    1px solid var(--border);
+}
+
+.live-panel.active {
+  background:
+    linear-gradient(
+      135deg,
+      #fff1f2 0%,
+      #ffffff 55%,
+      #eef2ff 100%
+    );
+}
+
+.live-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.live-header-information {
+  min-width: 0;
+  flex: 1;
+}
+
+.live-header-actions {
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.live-title-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.live-title-row h2 {
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.live-indicator {
+  width: 11px;
+  height: 11px;
+
+  flex-shrink: 0;
+
+  background: #94a3b8;
+
+  border-radius: 50%;
+}
+
+.live-indicator.active {
+  background: #ef4444;
+
+  box-shadow:
+    0 0 0 5px
+    rgba(239, 68, 68, 0.15);
+
+  animation:
+    livePulse 1.5s infinite;
+}
+
+@keyframes livePulse {
+  0% {
+    box-shadow:
+      0 0 0 0
+      rgba(239, 68, 68, 0.35);
+  }
+
+  70% {
+    box-shadow:
+      0 0 0 8px
+      rgba(239, 68, 68, 0);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 0
+      rgba(239, 68, 68, 0);
+  }
+}
+
+.live-description {
+  margin-top: 5px;
+
+  max-width: 620px;
+
+  overflow: hidden;
+
+  color: var(--muted);
+
+  font-size: 12px;
+  line-height: 1.35;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-button {
+  min-height: 39px;
+
+  padding: 9px 14px;
+
+  color: var(--text);
+  background: #ffffff;
+
+  border:
+    1px solid
+    rgba(15, 23, 42, 0.14);
+
+  border-radius: 11px;
+
+  cursor: pointer;
+
+  font-size: 12px;
+  font-weight: 800;
+
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
+}
+
+.live-button:hover:not(:disabled) {
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    0 6px 16px
+    rgba(15, 23, 42, 0.1);
+}
+
+.live-button-primary {
+  color: #ffffff;
+
+  background:
+    linear-gradient(
+      180deg,
+      var(--primary) 0%,
+      var(--primary-2) 100%
+    );
+
+  border-color: transparent;
+}
+
+.live-button-danger {
+  color: #ffffff;
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+/* =======================
+   CONTEÚDO RECOLHÍVEL
+======================= */
+
+.live-content {
+  display: none;
+
+  margin-top: 12px;
+
+  gap: 13px;
+}
+
+.live-content.details-open {
+  display: grid;
+
+  max-height:
+    min(350px, 42vh);
+
+  padding-right: 4px;
+
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.live-content.details-open::-webkit-scrollbar {
+  width: 8px;
+}
+
+.live-content.details-open::-webkit-scrollbar-thumb {
+  background:
+    rgba(15, 23, 42, 0.15);
+
+  border-radius: 999px;
+}
+
+.live-content.details-open::-webkit-scrollbar-thumb:hover {
+  background:
+    rgba(15, 23, 42, 0.25);
+}
+
+/* =======================
+   APRESENTADOR
+======================= */
+
+.live-host {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.live-host-avatar {
+  width: 39px;
+  height: 39px;
+
+  flex-shrink: 0;
+
+  display: grid;
+  place-items: center;
+
+  overflow: hidden;
+
+  color: #ffffff;
+  background: #dc2626;
+
+  border-radius: 50%;
+
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.live-host-avatar img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+.live-host-label {
+  display: block;
+
+  margin-bottom: 2px;
+
+  color: var(--muted);
+
+  font-size: 10px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.live-host strong {
+  font-size: 14px;
+}
+
+/* =======================
+   CONTROLES DO HOST
+======================= */
+
+.host-controls {
+  display: grid;
+  gap: 7px;
+}
+
+.host-controls label {
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.live-link-row {
+  display: flex;
+  gap: 8px;
+}
+
+.live-link-row input {
+  flex: 1;
+
+  min-width: 0;
+
+  padding: 11px 12px;
+
+  color: var(--text);
+  background: #ffffff;
+
+  border:
+    1px solid
+    rgba(15, 23, 42, 0.14);
+
+  border-radius: 11px;
+
+  outline: none;
+}
+
+.live-link-row input:focus {
+  border-color:
+    rgba(11, 92, 255, 0.55);
+
+  box-shadow:
+    0 0 0 4px
+    rgba(11, 92, 255, 0.12);
+}
+
+.live-form-message {
+  min-height: 15px;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.live-form-message.success {
+  color: #15803d;
+}
+
+.live-form-message.error {
+  color: #dc2626;
+}
+
+/* =======================
+   PLAYLIST
+======================= */
+
+.playlist-section {
+  padding: 11px;
+
+  background:
+    rgba(255, 255, 255, 0.68);
+
+  border:
+    1px solid
+    rgba(15, 23, 42, 0.08);
+
+  border-radius: 12px;
+}
+
+.playlist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  margin-bottom: 9px;
+}
+
+.playlist-header h3 {
+  font-size: 13px;
+}
+
+.playlist-header span {
+  color: var(--muted);
+
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.playlist-empty {
+  padding: 10px 5px;
+
+  color: var(--muted);
+
+  font-size: 12px;
+  text-align: center;
+}
+
+.playlist {
+  max-height: 120px;
+
+  display: grid;
+  gap: 7px;
+
+  overflow-y: auto;
+
+  list-style: none;
+}
+
+.playlist::-webkit-scrollbar {
+  width: 7px;
+}
+
+.playlist::-webkit-scrollbar-thumb {
+  background:
+    rgba(15, 23, 42, 0.14);
+
+  border-radius: 999px;
+}
+
+.playlist-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  padding: 8px 9px;
+
+  background: #ffffff;
+
+  border:
+    1px solid
+    rgba(15, 23, 42, 0.08);
+
+  border-radius: 10px;
+}
+
+.playlist-item.playing {
+  background: #fff1f2;
+
+  border-color:
+    rgba(239, 68, 68, 0.35);
+}
+
+.playlist-item-status {
+  width: 27px;
+  height: 27px;
+
+  flex-shrink: 0;
+
+  display: grid;
+  place-items: center;
+
+  color: #ffffff;
+  background: #64748b;
+
+  border-radius: 8px;
+
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.playlist-item.playing
+.playlist-item-status {
+  background: #ef4444;
+}
+
+.playlist-item-info {
+  min-width: 0;
+
+  display: grid;
+  gap: 2px;
+}
+
+.playlist-item-info strong {
+  overflow: hidden;
+
+  font-size: 11px;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playlist-item-info span {
+  color: var(--muted);
+
+  font-size: 9px;
+}
+
+/* =======================
+   AÇÕES DA LIVE
+======================= */
+
+.live-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

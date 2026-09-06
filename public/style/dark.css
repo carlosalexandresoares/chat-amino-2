@@ -1,0 +1,270 @@
+/* =======================
+   DARK MODE GERAL
+======================= */
+
+body.dark {
+  --bg: #0b1020;
+  --card: #0f172a;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+
+  --bot:
+    rgba(255, 255, 255, 0.06);
+
+  --border:
+    rgba(255, 255, 255, 0.10);
+
+  background:
+    radial-gradient(
+      1200px 600px at 10% 10%,
+      rgba(59, 130, 246, 0.18) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      900px 500px at 90% 0%,
+      rgba(236, 72, 153, 0.14) 0%,
+      transparent 55%
+    ),
+    #070b16;
+}
+
+body.dark .container {
+  border-color:
+    rgba(255, 255, 255, 0.06);
+}
+
+/* =======================
+   CHAT NO DARK MODE
+======================= */
+
+body.dark .messages {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.04) 0%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
+}
+
+body.dark .messages::-webkit-scrollbar-thumb {
+  background:
+    rgba(255, 255, 255, 0.13);
+}
+
+body.dark .messages::-webkit-scrollbar-thumb:hover {
+  background:
+    rgba(255, 255, 255, 0.22);
+}
+
+body.dark .message.bot {
+  color: var(--text);
+
+  background:
+    rgba(255, 255, 255, 0.06);
+
+  border-color:
+    rgba(255, 255, 255, 0.06);
+}
+
+body.dark .container-chat {
+  background:
+    rgba(15, 23, 42, 0.75);
+
+  border-top-color:
+    rgba(255, 255, 255, 0.1);
+}
+
+body.dark .container-chat input {
+  color: var(--text);
+
+  background:
+    rgba(255, 255, 255, 0.06);
+
+  border-color:
+    rgba(255, 255, 255, 0.14);
+}
+
+body.dark .container-chat input::placeholder {
+  color:
+    rgba(229, 231, 235, 0.55);
+}
+
+body.dark .container-chat input:focus {
+  border-color:
+    rgba(42, 123, 255, 0.65);
+
+  box-shadow:
+    0 0 0 4px
+    rgba(42, 123, 255, 0.15);
+}
+
+body.dark #enviar {
+  background:
+    rgba(255, 255, 255, 0.06);
+
+  border-color:
+    rgba(255, 255, 255, 0.12);
+}
+
+/* =======================
+   LIVE NO DARK MODE
+======================= */
+
+body.dark .live-panel {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(30, 41, 59, 0.96),
+      rgba(15, 23, 42, 0.96)
+    );
+
+  border-bottom-color:
+    rgba(255, 255, 255, 0.09);
+}
+
+body.dark .live-panel.active {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(69, 10, 10, 0.65),
+      rgba(15, 23, 42, 0.96)
+    );
+}
+
+body.dark .live-content.details-open::-webkit-scrollbar-thumb {
+  background:
+    rgba(255, 255, 255, 0.14);
+}
+
+body.dark .live-content.details-open::-webkit-scrollbar-thumb:hover {
+  background:
+    rgba(255, 255, 255, 0.24);
+}
+
+body.dark .playlist-section {
+  background:
+    rgba(255, 255, 255, 0.04);
+
+  border-color:
+    rgba(255, 255, 255, 0.09);
+}
+
+body.dark .playlist::-webkit-scrollbar-thumb {
+  background:
+    rgba(255, 255, 255, 0.14);
+}
+
+body.dark .playlist-item {
+  background:
+    rgba(255, 255, 255, 0.05);
+
+  border-color:
+    rgba(255, 255, 255, 0.08);
+}
+
+body.dark .playlist-item.playing {
+  background:
+    rgba(239, 68, 68, 0.12);
+
+  border-color:
+    rgba(239, 68, 68, 0.35);
+}
+
+body.dark .live-link-row input {
+  color: var(--text);
+
+  background:
+    rgba(255, 255, 255, 0.06);
+
+  border-color:
+    rgba(255, 255, 255, 0.14);
+}
+
+body.dark .live-link-row input::placeholder {
+  color:
+    rgba(229, 231, 235, 0.55);
+}
+
+body.dark .live-link-row input:focus {
+  border-color:
+    rgba(42, 123, 255, 0.65);
+
+  box-shadow:
+    0 0 0 4px
+    rgba(42, 123, 255, 0.14);
+}
+
+body.dark .live-button {
+  color: var(--text);
+
+  background:
+    rgba(255, 255, 255, 0.07);
+
+  border-color:
+    rgba(255, 255, 255, 0.12);
+}
+
+body.dark .live-button:hover:not(:disabled) {
+  background:
+    rgba(255, 255, 255, 0.11);
+
+  box-shadow:
+    0 6px 16px
+    rgba(0, 0, 0, 0.22);
+}
+
+body.dark .live-button-primary {
+  color: #ffffff;
+
+  background:
+    linear-gradient(
+      180deg,
+      var(--primary),
+      var(--primary-2)
+    );
+
+  border-color: transparent;
+}
+
+body.dark .live-button-danger {
+  color: #ffffff;
+
+  background: #dc2626;
+
+  border-color: #dc2626;
+}
+
+body.dark .live-form-message.success {
+  color: #4ade80;
+}
+
+body.dark .live-form-message.error {
+  color: #f87171;
+}
+
+/* =======================
+   PLAYER NO DARK MODE
+======================= */
+
+body.dark .video-controls {
+  background:
+    rgba(0, 0, 0, 0.94);
+
+  border-top-color:
+    rgba(255, 255, 255, 0.08);
+}
+
+body.dark .video-controls button {
+  color: #ffffff;
+
+  background:
+    rgba(255, 255, 255, 0.07);
+
+  border-color:
+    rgba(255, 255, 255, 0.13);
+}
+
+body.dark .video-controls button:hover:not(:disabled) {
+  background:
+    rgba(255, 255, 255, 0.13);
+}

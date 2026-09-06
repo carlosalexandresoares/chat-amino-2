@@ -1,0 +1,176 @@
+@media (max-width: 768px) {
+  body {
+    padding: 6px;
+  }
+
+  h1 {
+    margin: 2px 4px 7px;
+    font-size: 22px;
+  }
+
+  .container {
+    height:
+      calc(100dvh - 55px);
+
+    min-height: 0;
+
+    flex-direction: column;
+
+    border-radius: 13px;
+  }
+
+  .container-lateral {
+    width: 100%;
+    height: 54px;
+
+    order: 2;
+
+    padding: 6px 10px;
+  }
+
+  .container-lateral ul {
+    flex-direction: row;
+    justify-content: center;
+  }
+
+  .container-lateral img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .chat-area {
+    order: 1;
+  }
+
+  .live-panel {
+    padding: 9px 10px;
+  }
+
+  .live-header {
+    align-items: center;
+    gap: 7px;
+  }
+
+  .live-title-row h2 {
+    font-size: 14px;
+  }
+
+  .live-description {
+    max-width: 190px;
+
+    margin-top: 2px;
+
+    font-size: 10px;
+  }
+
+  .live-header-actions {
+    gap: 5px;
+  }
+
+  .live-header-actions
+  .live-button {
+    min-height: 33px;
+
+    padding: 7px 9px;
+
+    font-size: 10px;
+  }
+
+  .live-content.details-open {
+    max-height: 35vh;
+
+    margin-top: 8px;
+
+    overflow-y: auto;
+  }
+
+  .live-link-row {
+    display: grid;
+
+    grid-template-columns:
+      minmax(0, 1fr) auto;
+
+    gap: 5px;
+  }
+
+  .live-link-row input {
+    padding: 9px 10px;
+
+    font-size: 12px;
+  }
+
+  .live-actions {
+    display: grid;
+
+    grid-template-columns:
+      1fr 1fr;
+
+    gap: 6px;
+  }
+
+  .playlist {
+    max-height: 90px;
+  }
+
+  .youtube-container.active {
+    height:
+      clamp(160px, 25vh, 210px);
+  }
+
+  .video-controls {
+    padding: 5px 7px;
+  }
+
+  .video-controls button {
+    padding: 7px 9px;
+
+    font-size: 10px;
+  }
+
+  .video-controls.locked::after {
+    display: none;
+  }
+
+  .messages {
+    min-height: 125px;
+
+    padding: 10px 8px;
+    gap: 7px;
+  }
+
+  .message {
+    max-width: 92%;
+  }
+
+  .container-chat {
+    padding: 7px;
+    gap: 6px;
+  }
+
+  .container-chat input {
+    padding: 10px 11px;
+  }
+
+  #enviar {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+@media (max-width: 420px) {
+  .live-description {
+    display: none;
+  }
+
+  #toggle-player {
+    display: none;
+  }
+
+  .youtube-container.active {
+    height: 175px;
+  }
+
+  .live-content.details-open {
+    max-height: 32vh;
+  }
+}

@@ -36,23 +36,582 @@ const io = new Server(server, {
   },
 });
 
-// Estado das salas compartilhado por todas as conexões
-const rooms = {};
+/*
+  Regras de XP
+*/
+const XP_PER_MESSAGE = 2;
+const XP_DAILY_LOGIN = 10;
+const XP_CREATE_ROOM = 50;
+const XP_PER_LEVEL = 100;
 
-// Autenticação do Socket.IO
+/*
+  Estado temporário das lives.
+
+  O banco mantém os dados permanentes.
+  Este objeto mantém a sincronização rápida
+  enquanto o servidor está ligado.
+*/
+const liveStates = {};
+
+/**
+ * Calcula o nível usando o XP total.
+ *
+ * 0 até 99 XP = nível 1
+ * 100 até 199 XP = nível 2
+ * 200 até 299 XP = nível 3
+ */
+function calculateLevel(xp) {
+  const normalizedXp = Math.max(
+    0,
+    Number(xp) || 0
+  );
+
+  return (
+    Math.floor(
+      normalizedXp / XP_PER_LEVEL
+    ) + 1
+  );
+}
+
+/**
+ * Retorna o início do dia atual em UTC.
+ *
+ * Esse valor é usado para impedir que o
+ * bônus diário seja recebido mais de uma
+ * vez no mesmo dia.
+ */
+function getStartOfCurrentUtcDay() {
+  const now = new Date();
+
+  return new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      0,
+      0,
+      0,
+      0
+    )
+  );
+}
+
+/**
+ * Concede uma quantidade de XP ao usuário.
+ *
+ * Pode receber o Prisma normal ou o cliente
+ * de uma transação.
+ */
+async function grantXp(
+  databaseClient,
+  userId,
+  amount
+) {
+  const normalizedAmount = Math.max(
+    0,
+    Number(amount) || 0
+  );
+
+  if (!normalizedAmount) {
+    const user =
+      await databaseClient.user.findUnique({
+        where: {
+          id: userId,
+        },
+        select: {
+          id: true,
+          username: true,
+          avatar: true,
+          xp: true,
+          level: true,
+        },
+      });
+
+    return {
+      user,
+      gainedXp: 0,
+      previousLevel:
+        user?.level || 1,
+      leveledUp: false,
+    };
+  }
+
+  /*
+    O increment evita perder XP caso duas
+    ações aconteçam quase ao mesmo tempo.
+  */
+  const userWithNewXp =
+    await databaseClient.user.update({
+      where: {
+        id: userId,
+      },
+      data: {
+        xp: {
+          increment: normalizedAmount,
+        },
+      },
+      select: {
+        id: true,
+        username: true,
+        avatar: true,
+        xp: true,
+        level: true,
+      },
+    });
+
+  const previousLevel =
+    userWithNewXp.level;
+
+  const newLevel = calculateLevel(
+    userWithNewXp.xp
+  );
+
+  let updatedUser = userWithNewXp;
+
+  if (
+    newLevel !== userWithNewXp.level
+  ) {
+    updatedUser =
+      await databaseClient.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          level: newLevel,
+        },
+        select: {
+          id: true,
+          username: true,
+          avatar: true,
+          xp: true,
+          level: true,
+        },
+      });
+  }
+
+  return {
+    user: updatedUser,
+    gainedXp: normalizedAmount,
+    previousLevel,
+    leveledUp:
+      updatedUser.level > previousLevel,
+  };
+}
+
+/**
+ * Tenta conceder o bônus diário.
+ *
+ * O updateMany garante que somente uma
+ * conexão por dia consiga alterar o XP.
+ */
+async function claimDailyXp(userId) {
+  const now = new Date();
+
+  const startOfToday =
+    getStartOfCurrentUtcDay();
+
+  const dailyUpdate =
+    await prisma.user.updateMany({
+      where: {
+        id: userId,
+        OR: [
+          {
+            lastDailyXpAt: null,
+          },
+          {
+            lastDailyXpAt: {
+              lt: startOfToday,
+            },
+          },
+        ],
+      },
+      data: {
+        xp: {
+          increment: XP_DAILY_LOGIN,
+        },
+        lastDailyXpAt: now,
+      },
+    });
+
+  const userAfterDailyXp =
+    await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+      select: {
+        id: true,
+        username: true,
+        avatar: true,
+        xp: true,
+        level: true,
+        lastDailyXpAt: true,
+      },
+    });
+
+  if (!userAfterDailyXp) {
+    return {
+      user: null,
+      gainedXp: 0,
+      previousLevel: 1,
+      leveledUp: false,
+      granted: false,
+    };
+  }
+
+  const previousLevel =
+    userAfterDailyXp.level;
+
+  const calculatedLevel =
+    calculateLevel(
+      userAfterDailyXp.xp
+    );
+
+  let updatedUser =
+    userAfterDailyXp;
+
+  if (
+    calculatedLevel !==
+    userAfterDailyXp.level
+  ) {
+    updatedUser =
+      await prisma.user.update({
+        where: {
+          id: userId,
+        },
+        data: {
+          level: calculatedLevel,
+        },
+        select: {
+          id: true,
+          username: true,
+          avatar: true,
+          xp: true,
+          level: true,
+          lastDailyXpAt: true,
+        },
+      });
+  }
+
+  const granted =
+    dailyUpdate.count === 1;
+
+  return {
+    user: updatedUser,
+    gainedXp:
+      granted
+        ? XP_DAILY_LOGIN
+        : 0,
+    previousLevel,
+    leveledUp:
+      granted &&
+      updatedUser.level >
+        previousLevel,
+    granted,
+  };
+}
+
+/**
+ * Envia as informações de XP somente
+ * para o usuário que recebeu a recompensa.
+ */
+function emitXpResult(
+  socket,
+  xpResult,
+  reason
+) {
+  if (
+    !xpResult?.user ||
+    !xpResult.gainedXp
+  ) {
+    return;
+  }
+
+  socket.emit("xp-updated", {
+    reason,
+    gainedXp:
+      xpResult.gainedXp,
+    xp: xpResult.user.xp,
+    level:
+      xpResult.user.level,
+    nextLevelXp:
+      xpResult.user.level *
+      XP_PER_LEVEL,
+  });
+
+  if (xpResult.leveledUp) {
+    socket.emit("level-up", {
+      previousLevel:
+        xpResult.previousLevel,
+      level:
+        xpResult.user.level,
+      xp:
+        xpResult.user.xp,
+    });
+  }
+}
+
+/**
+ * Atualiza os dados guardados no Socket.IO
+ * depois que o usuário recebe XP.
+ */
+function updateSocketUser(
+  socket,
+  user
+) {
+  if (!user) {
+    return;
+  }
+
+  socket.user = {
+    ...socket.user,
+    id: user.id,
+    username: user.username,
+    avatar: user.avatar,
+    xp: user.xp,
+    level: user.level,
+  };
+}
+
+/**
+ * Normaliza o ID de uma sala.
+ */
+function normalizeRoomId(roomId) {
+  if (typeof roomId !== "string") {
+    return "";
+  }
+
+  return roomId
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Confirma se o usuário é quem iniciou a live.
+ */
+function isLiveHost(
+  roomId,
+  userId
+) {
+  const liveState =
+    liveStates[roomId];
+
+  return Boolean(
+    liveState &&
+      liveState.active &&
+      liveState.hostId === userId
+  );
+}
+
+/**
+ * Carrega a playlist atualizada do banco.
+ */
+async function loadLivePlaylist(
+  liveId
+) {
+  return prisma.playlistItem.findMany({
+    where: {
+      liveId,
+      status: {
+        in: ["WAITING", "PLAYING"],
+      },
+    },
+    orderBy: {
+      position: "asc",
+    },
+  });
+}
+
+/**
+ * Envia a playlist atualizada para todos da sala.
+ */
+async function emitUpdatedPlaylist(
+  roomId
+) {
+  const liveState =
+    liveStates[roomId];
+
+  if (!liveState?.active) {
+    return;
+  }
+
+  const playlist =
+    await loadLivePlaylist(
+      liveState.liveId
+    );
+
+  liveState.playlist =
+    playlist;
+
+  io.to(roomId).emit(
+    "playlist-updated",
+    playlist
+  );
+}
+
+/**
+ * Passa para o próximo vídeo da playlist.
+ */
+async function playNextVideo(
+  roomId
+) {
+  const liveState =
+    liveStates[roomId];
+
+  if (!liveState?.active) {
+    return {
+      success: false,
+      message:
+        "Não existe uma live ativa.",
+    };
+  }
+
+  const nextItem =
+    await prisma.playlistItem.findFirst({
+      where: {
+        liveId:
+          liveState.liveId,
+        status: "WAITING",
+      },
+      orderBy: {
+        position: "asc",
+      },
+    });
+
+  if (!nextItem) {
+    await prisma.$transaction([
+      prisma.playlistItem.updateMany({
+        where: {
+          liveId:
+            liveState.liveId,
+          status: "PLAYING",
+        },
+        data: {
+          status: "PLAYED",
+        },
+      }),
+
+      prisma.liveSession.update({
+        where: {
+          id: liveState.liveId,
+        },
+        data: {
+          currentVideoId: null,
+          currentTime: 0,
+          isPlaying: false,
+        },
+      }),
+    ]);
+
+    liveState.currentVideoId =
+      null;
+
+    liveState.currentTime = 0;
+    liveState.isPlaying = false;
+
+    await emitUpdatedPlaylist(
+      roomId
+    );
+
+    io.to(roomId).emit(
+      "playlist-finished"
+    );
+
+    return {
+      success: true,
+      finished: true,
+    };
+  }
+
+  await prisma.$transaction([
+    prisma.playlistItem.updateMany({
+      where: {
+        liveId:
+          liveState.liveId,
+        status: "PLAYING",
+      },
+      data: {
+        status: "PLAYED",
+      },
+    }),
+
+    prisma.playlistItem.update({
+      where: {
+        id: nextItem.id,
+      },
+      data: {
+        status: "PLAYING",
+      },
+    }),
+
+    prisma.liveSession.update({
+      where: {
+        id: liveState.liveId,
+      },
+      data: {
+        currentVideoId:
+          nextItem.videoId,
+        currentTime: 0,
+        isPlaying: true,
+      },
+    }),
+  ]);
+
+  liveState.currentVideoId =
+    nextItem.videoId;
+
+  liveState.currentTime = 0;
+  liveState.isPlaying = true;
+
+  await emitUpdatedPlaylist(
+    roomId
+  );
+
+  io.to(roomId).emit(
+    "live-video-changed",
+    {
+      playlistItemId:
+        nextItem.id,
+      videoId:
+        nextItem.videoId,
+      title:
+        nextItem.title,
+      currentTime: 0,
+      isPlaying: true,
+    }
+  );
+
+  return {
+    success: true,
+    finished: false,
+    item: nextItem,
+  };
+}
+
+/*
+  Autenticação do Socket.IO
+*/
 io.use(async (socket, next) => {
   try {
-    const token = socket.handshake.auth?.token;
+    const token =
+      socket.handshake.auth?.token;
 
     if (!token) {
-      return next(new Error("Token não informado."));
+      return next(
+        new Error(
+          "Token não informado."
+        )
+      );
     }
 
     if (!process.env.JWT_SECRET) {
-      console.error("JWT_SECRET não está configurado.");
+      console.error(
+        "JWT_SECRET não está configurado."
+      );
 
       return next(
-        new Error("Erro na configuração do servidor.")
+        new Error(
+          "Erro na configuração do servidor."
+        )
       );
     }
 
@@ -61,26 +620,47 @@ io.use(async (socket, next) => {
       process.env.JWT_SECRET
     );
 
-    const user = await prisma.user.findUnique({
-      where: {
-        id: decoded.sub,
-      },
-      select: {
-        id: true,
-        username: true,
-        avatar: true,
-        level: true,
-        xp: true,
-      },
-    });
+    const existingUser =
+      await prisma.user.findUnique({
+        where: {
+          id: decoded.sub,
+        },
+        select: {
+          id: true,
+        },
+      });
 
-    if (!user) {
+    if (!existingUser) {
       return next(
-        new Error("Usuário não encontrado.")
+        new Error(
+          "Usuário não encontrado."
+        )
       );
     }
 
-    socket.user = user;
+    /*
+      Tenta aplicar o bônus diário.
+      Se o usuário já recebeu hoje,
+      nenhum XP adicional será concedido.
+    */
+    const dailyXpResult =
+      await claimDailyXp(
+        existingUser.id
+      );
+
+    if (!dailyXpResult.user) {
+      return next(
+        new Error(
+          "Usuário não encontrado."
+        )
+      );
+    }
+
+    socket.user =
+      dailyXpResult.user;
+
+    socket.dailyXpResult =
+      dailyXpResult;
 
     return next();
   } catch (error) {
@@ -90,7 +670,9 @@ io.use(async (socket, next) => {
     );
 
     return next(
-      new Error("Token inválido ou expirado.")
+      new Error(
+        "Token inválido ou expirado."
+      )
     );
   }
 });
@@ -100,163 +682,171 @@ io.on("connection", (socket) => {
     `Usuário conectado: ${socket.user.username} (${socket.id})`
   );
 
-  socket.on("join-room", async (roomId) => {
-    try {
-      if (
-        typeof roomId !== "string" ||
-        !roomId.trim() ||
-        roomId.length > 50
-      ) {
-        return;
-      }
+  /*
+    Informa o bônus diário depois que
+    a conexão do socket foi concluída.
+  */
+  if (
+    socket.dailyXpResult?.granted
+  ) {
+    emitXpResult(
+      socket,
+      socket.dailyXpResult,
+      "DAILY_LOGIN"
+    );
+  }
 
-      const normalizedRoomId = roomId
-        .trim()
-        .toLowerCase();
-
-      await prisma.room.upsert({
-        where: {
-          id: normalizedRoomId,
-        },
-        update: {},
-        create: {
-          id: normalizedRoomId,
-          name:
-            normalizedRoomId === "geral"
-              ? "Sala Geral"
-              : normalizedRoomId,
-        },
-      });
-
-      socket.join(normalizedRoomId);
-
-      if (!rooms[normalizedRoomId]) {
-        rooms[normalizedRoomId] = {
-          videoId: null,
-          isPlaying: false,
-          currentTime: 0,
-        };
-      }
-
-      const history =
-        await prisma.message.findMany({
-          where: {
-            roomId: normalizedRoomId,
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
-          take: 100,
-          select: {
-            id: true,
-            content: true,
-            createdAt: true,
-            user: {
-              select: {
-                id: true,
-                username: true,
-                avatar: true,
-                level: true,
-              },
-            },
-          },
-        });
-
-      const formattedHistory = history
-        .reverse()
-        .map((message) => ({
-          id: message.id,
-          user: {
-            id: message.user.id,
-            username: message.user.username,
-            avatar: message.user.avatar,
-            level: message.user.level,
-          },
-          message: message.content,
-          createdAt:
-            message.createdAt.toISOString(),
-        }));
-
-      socket.emit(
-        "chat-history",
-        formattedHistory
-      );
-
-      socket.emit(
-        "sync-state",
-        rooms[normalizedRoomId]
-      );
-
-      console.log(
-        `${socket.user.username} entrou na sala ${normalizedRoomId}`
-      );
-    } catch (error) {
-      console.error(
-        "Erro ao entrar na sala:",
-        error
-      );
-
-      socket.emit("chat-error", {
-        message:
-          "Não foi possível entrar na sala.",
-      });
-    }
-  });
-
+  /*
+    Entrar na sala
+  */
   socket.on(
-    "chat-message",
-    async ({ roomId, message }) => {
+    "join-room",
+    async (roomId) => {
       try {
-        if (
-          typeof roomId !== "string" ||
-          typeof message !== "string"
-        ) {
-          return;
-        }
-
-        const normalizedRoomId = roomId
-          .trim()
-          .toLowerCase();
-
-        const normalizedMessage =
-          message.trim();
+        const normalizedRoomId =
+          normalizeRoomId(roomId);
 
         if (
           !normalizedRoomId ||
-          !normalizedMessage
+          normalizedRoomId.length > 50
         ) {
           return;
         }
 
-        if (normalizedMessage.length > 1000) {
-          socket.emit("chat-error", {
-            message:
-              "A mensagem pode ter no máximo 1000 caracteres.",
-          });
-
-          return;
-        }
-
-        if (
-          !socket.rooms.has(
-            normalizedRoomId
-          )
-        ) {
-          socket.emit("chat-error", {
-            message:
-              "Você não está conectado a esta sala.",
-          });
-
-          return;
-        }
-
-        const savedMessage =
-          await prisma.message.create({
-            data: {
-              content: normalizedMessage,
-              roomId: normalizedRoomId,
-              userId: socket.user.id,
+        /*
+          Verifica se a sala já existia
+          antes do upsert.
+        */
+        const existingRoom =
+          await prisma.room.findUnique({
+            where: {
+              id: normalizedRoomId,
             },
+            select: {
+              id: true,
+            },
+          });
+
+        const roomWasCreated =
+          !existingRoom;
+
+        await prisma.room.upsert({
+          where: {
+            id: normalizedRoomId,
+          },
+          update: {},
+          create: {
+            id: normalizedRoomId,
+            name:
+              normalizedRoomId ===
+              "geral"
+                ? "Sala Geral"
+                : normalizedRoomId,
+          },
+        });
+
+        /*
+          O primeiro membro da sala vira OWNER.
+          Os próximos viram MEMBER.
+        */
+        let membership =
+          await prisma.roomMember.findUnique({
+            where: {
+              userId_roomId: {
+                userId:
+                  socket.user.id,
+                roomId:
+                  normalizedRoomId,
+              },
+            },
+          });
+
+        if (!membership) {
+          const memberCount =
+            await prisma.roomMember.count({
+              where: {
+                roomId:
+                  normalizedRoomId,
+              },
+            });
+
+          membership =
+            await prisma.roomMember.create({
+              data: {
+                userId:
+                  socket.user.id,
+                roomId:
+                  normalizedRoomId,
+                role:
+                  memberCount === 0
+                    ? "OWNER"
+                    : "MEMBER",
+              },
+            });
+        }
+
+        /*
+          Dá +50 XP somente quando o usuário
+          realmente cria uma nova sala.
+
+          A Sala Geral não concede XP.
+        */
+        if (
+          roomWasCreated &&
+          normalizedRoomId !== "geral" &&
+          membership.role === "OWNER"
+        ) {
+          const roomXpResult =
+            await grantXp(
+              prisma,
+              socket.user.id,
+              XP_CREATE_ROOM
+            );
+
+          updateSocketUser(
+            socket,
+            roomXpResult.user
+          );
+
+          emitXpResult(
+            socket,
+            roomXpResult,
+            "ROOM_CREATED"
+          );
+        }
+
+        socket.join(
+          normalizedRoomId
+        );
+
+        socket.emit(
+          "room-permissions",
+          {
+            roomId:
+              normalizedRoomId,
+            role:
+              membership.role,
+            canStartLive:
+              membership.role ===
+                "OWNER" ||
+              membership.role ===
+                "CO_ADMIN",
+          }
+        );
+
+        /*
+          Carregar últimas 100 mensagens
+        */
+        const history =
+          await prisma.message.findMany({
+            where: {
+              roomId:
+                normalizedRoomId,
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+            take: 100,
             select: {
               id: true,
               content: true,
@@ -272,24 +862,276 @@ io.on("connection", (socket) => {
             },
           });
 
+        const formattedHistory =
+          history
+            .reverse()
+            .map((message) => ({
+              id: message.id,
+              user: {
+                id:
+                  message.user.id,
+                username:
+                  message.user.username,
+                avatar:
+                  message.user.avatar,
+                level:
+                  message.user.level,
+              },
+              message:
+                message.content,
+              createdAt:
+                message.createdAt.toISOString(),
+            }));
+
+        socket.emit(
+          "chat-history",
+          formattedHistory
+        );
+
+        /*
+          Verificar se já existe live ativa
+        */
+        const activeLive =
+          await prisma.liveSession.findFirst({
+            where: {
+              roomId:
+                normalizedRoomId,
+              status: "ACTIVE",
+            },
+            orderBy: {
+              startedAt: "desc",
+            },
+            include: {
+              host: {
+                select: {
+                  id: true,
+                  username: true,
+                  avatar: true,
+                },
+              },
+              playlist: {
+                where: {
+                  status: {
+                    in: [
+                      "WAITING",
+                      "PLAYING",
+                    ],
+                  },
+                },
+                orderBy: {
+                  position: "asc",
+                },
+              },
+            },
+          });
+
+        if (activeLive) {
+          liveStates[
+            normalizedRoomId
+          ] = {
+            liveId:
+              activeLive.id,
+            active: true,
+            hostId:
+              activeLive.hostId,
+            currentVideoId:
+              activeLive.currentVideoId,
+            currentTime:
+              activeLive.currentTime,
+            isPlaying:
+              activeLive.isPlaying,
+            playlist:
+              activeLive.playlist,
+          };
+
+          socket.emit(
+            "live-state",
+            {
+              id:
+                activeLive.id,
+              active: true,
+              host:
+                activeLive.host,
+              currentVideoId:
+                activeLive.currentVideoId,
+              currentTime:
+                activeLive.currentTime,
+              isPlaying:
+                activeLive.isPlaying,
+              playlist:
+                activeLive.playlist,
+              isHost:
+                activeLive.hostId ===
+                socket.user.id,
+            }
+          );
+        } else {
+          socket.emit(
+            "live-state",
+            {
+              active: false,
+            }
+          );
+        }
+
+        console.log(
+          `${socket.user.username} entrou na sala ${normalizedRoomId} como ${membership.role}`
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao entrar na sala:",
+          error
+        );
+
+        socket.emit(
+          "chat-error",
+          {
+            message:
+              "Não foi possível entrar na sala.",
+          }
+        );
+      }
+    }
+  );
+
+  /*
+    Enviar mensagem
+  */
+  socket.on(
+    "chat-message",
+    async (
+      { roomId, message }
+    ) => {
+      try {
+        const normalizedRoomId =
+          normalizeRoomId(roomId);
+
+        if (
+          !normalizedRoomId ||
+          typeof message !==
+            "string"
+        ) {
+          return;
+        }
+
+        const normalizedMessage =
+          message.trim();
+
+        if (!normalizedMessage) {
+          return;
+        }
+
+        if (
+          normalizedMessage.length >
+          1000
+        ) {
+          socket.emit(
+            "chat-error",
+            {
+              message:
+                "A mensagem pode ter no máximo 1000 caracteres.",
+            }
+          );
+
+          return;
+        }
+
+        if (
+          !socket.rooms.has(
+            normalizedRoomId
+          )
+        ) {
+          socket.emit(
+            "chat-error",
+            {
+              message:
+                "Você não está conectado a esta sala.",
+            }
+          );
+
+          return;
+        }
+
+        /*
+          Salva a mensagem e concede XP
+          dentro da mesma transação.
+        */
+        const result =
+          await prisma.$transaction(
+            async (transaction) => {
+              const savedMessage =
+                await transaction.message.create({
+                  data: {
+                    content:
+                      normalizedMessage,
+                    roomId:
+                      normalizedRoomId,
+                    userId:
+                      socket.user.id,
+                  },
+                  select: {
+                    id: true,
+                    content: true,
+                    createdAt: true,
+                    user: {
+                      select: {
+                        id: true,
+                        username: true,
+                        avatar: true,
+                      },
+                    },
+                  },
+                });
+
+              const xpResult =
+                await grantXp(
+                  transaction,
+                  socket.user.id,
+                  XP_PER_MESSAGE
+                );
+
+              return {
+                savedMessage,
+                xpResult,
+              };
+            }
+          );
+
+        updateSocketUser(
+          socket,
+          result.xpResult.user
+        );
+
+        emitXpResult(
+          socket,
+          result.xpResult,
+          "MESSAGE_SENT"
+        );
+
         const messageData = {
-          id: savedMessage.id,
+          id:
+            result.savedMessage.id,
           user: {
-            id: savedMessage.user.id,
+            id:
+              result.savedMessage.user.id,
             username:
-              savedMessage.user.username,
+              result.savedMessage.user
+                .username,
             avatar:
-              savedMessage.user.avatar,
+              result.savedMessage.user
+                .avatar,
             level:
-              savedMessage.user.level,
+              result.xpResult.user.level,
           },
           message:
-            savedMessage.content,
+            result.savedMessage.content,
           createdAt:
-            savedMessage.createdAt.toISOString(),
+            result.savedMessage.createdAt.toISOString(),
         };
 
-        io.to(normalizedRoomId).emit(
+        io.to(
+          normalizedRoomId
+        ).emit(
           "chat-message",
           messageData
         );
@@ -299,135 +1141,701 @@ io.on("connection", (socket) => {
           error
         );
 
-        socket.emit("chat-error", {
+        socket.emit(
+          "chat-error",
+          {
+            message:
+              "Não foi possível enviar a mensagem.",
+          }
+        );
+      }
+    }
+  );
+
+  /*
+    Iniciar live
+  */
+  socket.on(
+    "live-start",
+    async (
+      { roomId },
+      callback
+    ) => {
+      try {
+        const normalizedRoomId =
+          normalizeRoomId(roomId);
+
+        if (!normalizedRoomId) {
+          return callback?.({
+            success: false,
+            message:
+              "Sala inválida.",
+          });
+        }
+
+        if (
+          !socket.rooms.has(
+            normalizedRoomId
+          )
+        ) {
+          return callback?.({
+            success: false,
+            message:
+              "Você não está conectado a esta sala.",
+          });
+        }
+
+        const membership =
+          await prisma.roomMember.findUnique({
+            where: {
+              userId_roomId: {
+                userId:
+                  socket.user.id,
+                roomId:
+                  normalizedRoomId,
+              },
+            },
+          });
+
+        const canStartLive =
+          membership?.role ===
+            "OWNER" ||
+          membership?.role ===
+            "CO_ADMIN";
+
+        if (!canStartLive) {
+          return callback?.({
+            success: false,
+            message:
+              "Somente administradores podem iniciar uma live.",
+          });
+        }
+
+        const existingLive =
+          await prisma.liveSession.findFirst({
+            where: {
+              roomId:
+                normalizedRoomId,
+              status: "ACTIVE",
+            },
+          });
+
+        if (existingLive) {
+          return callback?.({
+            success: false,
+            message:
+              "Já existe uma live ativa nesta sala.",
+          });
+        }
+
+        const live =
+          await prisma.liveSession.create({
+            data: {
+              roomId:
+                normalizedRoomId,
+              hostId:
+                socket.user.id,
+            },
+            select: {
+              id: true,
+              roomId: true,
+              hostId: true,
+              startedAt: true,
+            },
+          });
+
+        liveStates[
+          normalizedRoomId
+        ] = {
+          liveId: live.id,
+          active: true,
+          hostId:
+            socket.user.id,
+          currentVideoId: null,
+          currentTime: 0,
+          isPlaying: false,
+          playlist: [],
+        };
+
+        const liveData = {
+          id: live.id,
+          active: true,
+          host: {
+            id: socket.user.id,
+            username:
+              socket.user.username,
+            avatar:
+              socket.user.avatar,
+          },
+          currentVideoId: null,
+          currentTime: 0,
+          isPlaying: false,
+          playlist: [],
+          startedAt:
+            live.startedAt.toISOString(),
+        };
+
+        io.to(
+          normalizedRoomId
+        ).emit(
+          "live-started",
+          liveData
+        );
+
+        return callback?.({
+          success: true,
+          liveId: live.id,
+        });
+      } catch (error) {
+        console.error(
+          "Erro ao iniciar live:",
+          error
+        );
+
+        return callback?.({
+          success: false,
           message:
-            "Não foi possível enviar a mensagem.",
+            "Não foi possível iniciar a live.",
+        });
+      }
+    }
+  );
+
+  /*
+    Adicionar vídeo à playlist
+  */
+  socket.on(
+    "playlist-add",
+    async (
+      {
+        roomId,
+        videoId,
+        title,
+      },
+      callback
+    ) => {
+      try {
+        const normalizedRoomId =
+          normalizeRoomId(roomId);
+
+        const normalizedVideoId =
+          typeof videoId ===
+          "string"
+            ? videoId.trim()
+            : "";
+
+        if (
+          !normalizedRoomId ||
+          !normalizedVideoId
+        ) {
+          return callback?.({
+            success: false,
+            message:
+              "Vídeo inválido.",
+          });
+        }
+
+        if (
+          !isLiveHost(
+            normalizedRoomId,
+            socket.user.id
+          )
+        ) {
+          return callback?.({
+            success: false,
+            message:
+              "Somente quem iniciou a live pode adicionar vídeos.",
+          });
+        }
+
+        const liveState =
+          liveStates[
+            normalizedRoomId
+          ];
+
+        const existingVideo =
+          await prisma.playlistItem.findFirst({
+            where: {
+              liveId:
+                liveState.liveId,
+              videoId:
+                normalizedVideoId,
+              status: {
+                in: [
+                  "WAITING",
+                  "PLAYING",
+                ],
+              },
+            },
+          });
+
+        if (existingVideo) {
+          return callback?.({
+            success: false,
+            message:
+              "Esse vídeo já está na playlist.",
+          });
+        }
+
+        const lastItem =
+          await prisma.playlistItem.findFirst({
+            where: {
+              liveId:
+                liveState.liveId,
+            },
+            orderBy: {
+              position: "desc",
+            },
+          });
+
+        const nextPosition =
+          lastItem
+            ? lastItem.position + 1
+            : 1;
+
+        const playlistItem =
+          await prisma.playlistItem.create({
+            data: {
+              liveId:
+                liveState.liveId,
+              addedById:
+                socket.user.id,
+              videoId:
+                normalizedVideoId,
+              title:
+                typeof title ===
+                "string"
+                  ? title
+                      .trim()
+                      .slice(
+                        0,
+                        200
+                      ) || null
+                  : null,
+              position:
+                nextPosition,
+            },
+          });
+
+        await emitUpdatedPlaylist(
+          normalizedRoomId
+        );
+
+        if (
+          !liveState.currentVideoId
+        ) {
+          await playNextVideo(
+            normalizedRoomId
+          );
+        }
+
+        return callback?.({
+          success: true,
+          item:
+            playlistItem,
+        });
+      } catch (error) {
+        console.error(
+          "Erro ao adicionar vídeo:",
+          error
+        );
+
+        return callback?.({
+          success: false,
+          message:
+            "Não foi possível adicionar o vídeo.",
+        });
+      }
+    }
+  );
+
+  /*
+    Avançar manualmente
+  */
+  socket.on(
+    "playlist-next",
+    async (
+      { roomId },
+      callback
+    ) => {
+      try {
+        const normalizedRoomId =
+          normalizeRoomId(roomId);
+
+        if (
+          !isLiveHost(
+            normalizedRoomId,
+            socket.user.id
+          )
+        ) {
+          return callback?.({
+            success: false,
+            message:
+              "Você não controla esta live.",
+          });
+        }
+
+        const result =
+          await playNextVideo(
+            normalizedRoomId
+          );
+
+        return callback?.(
+          result
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao avançar vídeo:",
+          error
+        );
+
+        return callback?.({
+          success: false,
+          message:
+            "Não foi possível avançar o vídeo.",
+        });
+      }
+    }
+  );
+
+  /*
+    O player informa que o vídeo acabou.
+  */
+  socket.on(
+    "video-ended",
+    async (
+      { roomId },
+      callback
+    ) => {
+      try {
+        const normalizedRoomId =
+          normalizeRoomId(roomId);
+
+        if (
+          !isLiveHost(
+            normalizedRoomId,
+            socket.user.id
+          )
+        ) {
+          return callback?.({
+            success: false,
+            message:
+              "Você não controla esta live.",
+          });
+        }
+
+        const result =
+          await playNextVideo(
+            normalizedRoomId
+          );
+
+        return callback?.(
+          result
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao finalizar vídeo:",
+          error
+        );
+
+        return callback?.({
+          success: false,
+          message:
+            "Não foi possível carregar o próximo vídeo.",
+        });
+      }
+    }
+  );
+
+  /*
+    Play controlado pelo host
+  */
+  socket.on(
+    "video-play",
+    async ({
+      roomId,
+      currentTime,
+    }) => {
+      try {
+        const normalizedRoomId =
+          normalizeRoomId(roomId);
+
+        if (
+          !isLiveHost(
+            normalizedRoomId,
+            socket.user.id
+          )
+        ) {
+          return;
+        }
+
+        const liveState =
+          liveStates[
+            normalizedRoomId
+          ];
+
+        if (
+          !liveState.currentVideoId
+        ) {
+          return;
+        }
+
+        liveState.isPlaying = true;
+
+        liveState.currentTime =
+          Number(currentTime) || 0;
+
+        await prisma.liveSession.update({
+          where: {
+            id:
+              liveState.liveId,
+          },
+          data: {
+            isPlaying: true,
+            currentTime:
+              liveState.currentTime,
+          },
+        });
+
+        io.to(
+          normalizedRoomId
+        ).emit(
+          "video-play",
+          liveState.currentTime
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao reproduzir vídeo:",
+          error
+        );
+      }
+    }
+  );
+
+  /*
+    Pause controlado pelo host
+  */
+  socket.on(
+    "video-pause",
+    async ({
+      roomId,
+      currentTime,
+    }) => {
+      try {
+        const normalizedRoomId =
+          normalizeRoomId(roomId);
+
+        if (
+          !isLiveHost(
+            normalizedRoomId,
+            socket.user.id
+          )
+        ) {
+          return;
+        }
+
+        const liveState =
+          liveStates[
+            normalizedRoomId
+          ];
+
+        if (
+          !liveState.currentVideoId
+        ) {
+          return;
+        }
+
+        liveState.isPlaying =
+          false;
+
+        liveState.currentTime =
+          Number(currentTime) || 0;
+
+        await prisma.liveSession.update({
+          where: {
+            id:
+              liveState.liveId,
+          },
+          data: {
+            isPlaying: false,
+            currentTime:
+              liveState.currentTime,
+          },
+        });
+
+        io.to(
+          normalizedRoomId
+        ).emit(
+          "video-pause",
+          liveState.currentTime
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao pausar vídeo:",
+          error
+        );
+      }
+    }
+  );
+
+  /*
+    Atualização de tempo.
+    Somente o host atualiza o estado.
+  */
+  socket.on(
+    "video-time-update",
+    async ({
+      roomId,
+      currentTime,
+    }) => {
+      try {
+        const normalizedRoomId =
+          normalizeRoomId(roomId);
+
+        if (
+          !isLiveHost(
+            normalizedRoomId,
+            socket.user.id
+          )
+        ) {
+          return;
+        }
+
+        const liveState =
+          liveStates[
+            normalizedRoomId
+          ];
+
+        const normalizedTime =
+          Number(currentTime) || 0;
+
+        liveState.currentTime =
+          normalizedTime;
+
+        /*
+          Salva apenas no estado em memória.
+          Evita muitas gravações no Neon.
+        */
+      } catch (error) {
+        console.error(
+          "Erro ao atualizar tempo:",
+          error
+        );
+      }
+    }
+  );
+
+  /*
+    Encerrar live
+  */
+  socket.on(
+    "live-end",
+    async (
+      { roomId },
+      callback
+    ) => {
+      try {
+        const normalizedRoomId =
+          normalizeRoomId(roomId);
+
+        if (
+          !isLiveHost(
+            normalizedRoomId,
+            socket.user.id
+          )
+        ) {
+          return callback?.({
+            success: false,
+            message:
+              "Você não controla esta live.",
+          });
+        }
+
+        const liveState =
+          liveStates[
+            normalizedRoomId
+          ];
+
+        await prisma.$transaction([
+          prisma.liveSession.update({
+            where: {
+              id:
+                liveState.liveId,
+            },
+            data: {
+              status: "ENDED",
+              endedAt:
+                new Date(),
+              isPlaying: false,
+              currentTime:
+                liveState.currentTime,
+            },
+          }),
+
+          prisma.playlistItem.updateMany({
+            where: {
+              liveId:
+                liveState.liveId,
+              status: {
+                in: [
+                  "WAITING",
+                  "PLAYING",
+                ],
+              },
+            },
+            data: {
+              status: "REMOVED",
+            },
+          }),
+        ]);
+
+        delete liveStates[
+          normalizedRoomId
+        ];
+
+        io.to(
+          normalizedRoomId
+        ).emit(
+          "live-ended"
+        );
+
+        return callback?.({
+          success: true,
+        });
+      } catch (error) {
+        console.error(
+          "Erro ao encerrar live:",
+          error
+        );
+
+        return callback?.({
+          success: false,
+          message:
+            "Não foi possível encerrar a live.",
         });
       }
     }
   );
 
   socket.on(
-    "open-video",
-    ({ roomId, videoId }) => {
-      if (
-        typeof roomId !== "string" ||
-        typeof videoId !== "string"
-      ) {
-        return;
-      }
-
-      const normalizedRoomId = roomId
-        .trim()
-        .toLowerCase();
-
-      if (!rooms[normalizedRoomId]) {
-        return;
-      }
-
-      rooms[normalizedRoomId].videoId =
-        videoId;
-
-      rooms[normalizedRoomId].isPlaying =
-        true;
-
-      rooms[normalizedRoomId].currentTime =
-        0;
-
-      io.to(normalizedRoomId).emit(
-        "open-video",
-        videoId
+    "disconnect",
+    () => {
+      console.log(
+        `Usuário desconectado: ${socket.user.username} (${socket.id})`
       );
     }
   );
+});
 
-  socket.on(
-    "video-play",
-    ({ roomId, currentTime }) => {
-      if (typeof roomId !== "string") {
-        return;
-      }
+const PORT =
+  process.env.PORT || 3000;
 
-      const normalizedRoomId = roomId
-        .trim()
-        .toLowerCase();
-
-      if (!rooms[normalizedRoomId]) {
-        return;
-      }
-
-      rooms[normalizedRoomId].isPlaying =
-        true;
-
-      rooms[normalizedRoomId].currentTime =
-        Number(currentTime) || 0;
-
-      io.to(normalizedRoomId).emit(
-        "video-play",
-        rooms[normalizedRoomId].currentTime
-      );
-    }
-  );
-
-  socket.on(
-    "video-pause",
-    ({ roomId, currentTime }) => {
-      if (typeof roomId !== "string") {
-        return;
-      }
-
-      const normalizedRoomId = roomId
-        .trim()
-        .toLowerCase();
-
-      if (!rooms[normalizedRoomId]) {
-        return;
-      }
-
-      rooms[normalizedRoomId].isPlaying =
-        false;
-
-      rooms[normalizedRoomId].currentTime =
-        Number(currentTime) || 0;
-
-      io.to(normalizedRoomId).emit(
-        "video-pause",
-        rooms[normalizedRoomId].currentTime
-      );
-    }
-  );
-
-  socket.on(
-    "video-time-update",
-    ({ roomId, currentTime }) => {
-      if (typeof roomId !== "string") {
-        return;
-      }
-
-      const normalizedRoomId = roomId
-        .trim()
-        .toLowerCase();
-
-      if (!rooms[normalizedRoomId]) {
-        return;
-      }
-
-      rooms[normalizedRoomId].currentTime =
-        Number(currentTime) || 0;
-    }
-  );
-
-  socket.on("disconnect", () => {
+server.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
     console.log(
-      `Usuário desconectado: ${socket.user.username} (${socket.id})`
+      `🔥 Servidor rodando na porta ${PORT}`
     );
-  });
-});
-
-const PORT = process.env.PORT || 3000;
-
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(
-    `🔥 Servidor rodando na porta ${PORT}`
-  );
-});
+  }
+);

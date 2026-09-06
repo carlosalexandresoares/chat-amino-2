@@ -7,6 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum RoomRole {
+  OWNER
+  CO_ADMIN
+  MEMBER
+}
+
+enum LiveStatus {
+  ACTIVE
+  ENDED
+}
+
+enum PlaylistItemStatus {
+  WAITING
+  PLAYING
+  PLAYED
+  REMOVED
+}
+
 model User {
   id       String @id @default(cuid())
   username String @unique
@@ -20,18 +38,59 @@ model User {
   xp    Int @default(0)
   level Int @default(1)
 
+  lastDailyXpAt DateTime?
+
   createdAt DateTime @default(now())
 
-  messages Message[]
+  messages        Message[]
+  roomMemberships RoomMember[]
+  ownedRooms      Room[]         @relation("RoomOwner")
+  startedLives    LiveSession[]  @relation("LiveHost")
+  playlistItems   PlaylistItem[] @relation("PlaylistAddedBy")
 }
 
 model Room {
-  id          String   @id
+  id String @id @default(cuid())
+
   name        String
+  slug        String? @unique
   description String?
-  createdAt   DateTime @default(now())
+  category    String?
+  avatar      String?
+  banner      String?
+
+  ownerId String?
+
+  owner User? @relation("RoomOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   messages Message[]
+  members  RoomMember[]
+  lives    LiveSession[]
+
+  @@index([ownerId])
+  @@index([category])
+  @@index([createdAt])
+}
+
+model RoomMember {
+  id String @id @default(cuid())
+
+  role RoomRole @default(MEMBER)
+
+  userId String
+  roomId String
+
+  joinedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roomId])
+  @@index([roomId, role])
+  @@index([userId])
 }
 
 model Message {
@@ -47,4 +106,50 @@ model Message {
 
   @@index([roomId, createdAt])
   @@index([userId])
+}
+
+model LiveSession {
+  id String @id @default(cuid())
+
+  status LiveStatus @default(ACTIVE)
+
+  currentVideoId String?
+  currentTime    Float   @default(0)
+  isPlaying      Boolean @default(false)
+
+  roomId String
+  hostId String
+
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  host User @relation("LiveHost", fields: [hostId], references: [id], onDelete: Cascade)
+
+  playlist PlaylistItem[]
+
+  @@index([roomId, status])
+  @@index([hostId])
+}
+
+model PlaylistItem {
+  id String @id @default(cuid())
+
+  videoId String
+  title   String?
+
+  position Int
+
+  status PlaylistItemStatus @default(WAITING)
+
+  liveId    String
+  addedById String
+
+  createdAt DateTime @default(now())
+
+  live    LiveSession @relation(fields: [liveId], references: [id], onDelete: Cascade)
+  addedBy User        @relation("PlaylistAddedBy", fields: [addedById], references: [id], onDelete: Cascade)
+
+  @@unique([liveId, position])
+  @@index([liveId, status, position])
 }

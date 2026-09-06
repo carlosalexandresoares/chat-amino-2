@@ -1,524 +1,272 @@
-let isSyncing = false;
+import state, {
+  publicRooms,
+  normalizePublicRoomId,
+} from "./state.js";
 
-/* ================= AUTENTICAÇÃO ================= */
+import {
+  loadAuthenticatedUser,
+} from "./auth.js";
 
-const token = localStorage.getItem("authToken");
+import {
+  initializeChat,
+} from "./chat.js";
 
-if (!token) {
-  window.location.href = "/login.html";
-}
+import {
+  initializeYouTube,
+  stopTimeUpdater,
+} from "./youtube.js";
 
-let currentUser = null;
+import {
+  initializeLive,
+} from "./live.js";
 
-const socket = io({
-  autoConnect: false,
-
-  auth: {
-    token,
-  },
-});
-
-async function loadAuthenticatedUser() {
-  try {
-    const response = await fetch("/api/auth/me", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const data = await response.json();
-
-    console.log("Resposta /api/auth/me:", response.status, data);
-
-    if (response.status === 401 || response.status === 403) {
-      localStorage.removeItem("authToken");
-      window.location.href = "/login.html";
-      return;
-    }
-
-    if (!response.ok) {
-      throw new Error(
-        data.message || "Não foi possível carregar o usuário."
-      );
-    }
-
-    currentUser = data.user;
-
-    console.log("Usuário autenticado:", currentUser);
-
-    socket.connect();
-  } catch (error) {
-    console.error("Erro ao carregar usuário:", error);
-
-    alert(
-      "Não foi possível entrar no chat. Abra o console do navegador para verificar o erro."
-    );
-  }
-}
-
-socket.on("connect_error", (error) => {
-  console.error("Erro na conexão Socket.IO:", error.message);
-
-  alert(`Erro ao conectar ao chat: ${error.message}`);
-});
-
-/* ================= SALA ================= */
-
-const params = new URLSearchParams(window.location.search);
-let roomId = params.get("sala");
-
-if (!roomId) {
-  roomId = "geral";
-
-  const currentUrl = new URL(window.location.href);
-  currentUrl.searchParams.set("sala", roomId);
-
-  window.history.replaceState(
-    {},
-    "",
-    `${currentUrl.pathname}${currentUrl.search}`
+/*
+  Elementos da navegação entre
+  a lista de salas e o chat.
+*/
+const roomsScreen =
+  document.getElementById(
+    "rooms-screen"
   );
+
+const appScreen =
+  document.getElementById(
+    "app-screen"
+  );
+
+const currentRoomTitle =
+  document.getElementById(
+    "current-room-title"
+  );
+
+const leaveRoomButton =
+  document.getElementById(
+    "leave-room"
+  );
+
+const enterRoomButtons =
+  document.querySelectorAll(
+    ".enter-room-button"
+  );
+
+/**
+ * Abre a tela de seleção de salas.
+ */
+function showRoomsScreen() {
+  roomsScreen?.classList.remove(
+    "hidden"
+  );
+
+  appScreen?.classList.add(
+    "hidden"
+  );
+
+  document.title =
+    "Salas públicas | Chat Amino 2";
 }
 
-socket.on("connect", () => {
-  console.log("Socket conectado:", socket.id);
+/**
+ * Abre a interface do chat.
+ */
+function showChatScreen(roomId) {
+  const room =
+    publicRooms[roomId];
 
-  socket.emit("join-room", roomId);
-});
-
-socket.on("disconnect", (reason) => {
-  console.log("Socket desconectado:", reason);
-});
-
-/* ================= ELEMENTOS ================= */
-
-const input = document.getElementById("chat-dig");
-const btnEnviar = document.getElementById("enviar");
-const messages = document.getElementById("messages");
-
-const youtubeContainer = document.getElementById("youtube-container");
-const closeYT = document.getElementById("close-yt");
-const btnYoutube = document.getElementById("btn-youtube");
-
-const btnPlay = document.getElementById("playVideo");
-const btnPause = document.getElementById("pauseVideo");
-
-/* ================= CHAT ================= */
-
-btnEnviar.addEventListener("click", (event) => {
-  event.preventDefault();
-  sendMessage();
-});
-
-input.addEventListener("keydown", (event) => {
-  if (event.key === "Enter" && !event.shiftKey) {
-    event.preventDefault();
-    sendMessage();
-  }
-});
-
-function sendMessage() {
-  const text = input.value.trim();
-
-  if (!text || !socket.connected) {
+  if (!room) {
+    showRoomsScreen();
     return;
   }
 
-  socket.emit("chat-message", {
-    roomId,
-    message: text,
-  });
+  roomsScreen?.classList.add(
+    "hidden"
+  );
+
+  appScreen?.classList.remove(
+    "hidden"
+  );
+
+  if (currentRoomTitle) {
+    currentRoomTitle.textContent =
+      `${room.icon} ${room.name}`;
+  }
+
+  document.title =
+    `${room.name} | Chat Amino 2`;
+}
+
+/**
+ * Navega para uma sala pública.
+ *
+ * A URL ainda guarda internamente o ID,
+ * mas o usuário escolhe pela interface.
+ */
+function enterRoom(roomId) {
+  const validRoomId =
+    normalizePublicRoomId(roomId);
+
+  if (!validRoomId) {
+    console.error(
+      "Sala pública inválida:",
+      roomId
+    );
+
+    return;
+  }
+
+  const currentUrl =
+    new URL(
+      window.location.href
+    );
+
+  currentUrl.searchParams.set(
+    "sala",
+    validRoomId
+  );
 
   /*
-    Apenas quem enviou verifica o link.
-
-    Quando encontrar um vídeo, o evento open-video será enviado
-    para toda a sala. Isso evita vários usuários disparando o
-    mesmo evento ao receberem a mensagem.
+    Recarregar a página é importante
+    porque limpa corretamente:
+    - sala anterior;
+    - live anterior;
+    - playlist anterior;
+    - conexão anterior do Socket.IO.
   */
-  checkYouTubeLink(text);
-
-  input.value = "";
-  input.focus();
+  window.location.href =
+    `${currentUrl.pathname}${currentUrl.search}`;
 }
 
-function addMessage(messageData) {
-  if (!messageData?.user || !messageData?.message) {
-    return;
+/**
+ * Volta à seleção de salas.
+ */
+function leaveCurrentRoom() {
+  stopTimeUpdater();
+
+  if (state.socket.connected) {
+    state.socket.disconnect();
   }
 
-  const isCurrentUser =
-    currentUser && messageData.user.id === currentUser.id;
+  const currentUrl =
+    new URL(
+      window.location.href
+    );
 
-  const messageElement = document.createElement("div");
-
-  messageElement.classList.add(
-    "message",
-    isCurrentUser ? "user" : "bot"
+  currentUrl.searchParams.delete(
+    "sala"
   );
 
-  messageElement.dataset.messageId = messageData.id;
-
-  const headerElement = document.createElement("div");
-  headerElement.classList.add("message-header");
-
-  const avatarElement = document.createElement("div");
-  avatarElement.classList.add("message-avatar");
-
-  if (messageData.user.avatar) {
-    const avatarImage = document.createElement("img");
-
-    avatarImage.src = messageData.user.avatar;
-    avatarImage.alt = `Avatar de ${messageData.user.username}`;
-
-    avatarElement.appendChild(avatarImage);
-  } else {
-    avatarElement.textContent = messageData.user.username
-      .charAt(0)
-      .toUpperCase();
-  }
-
-  const userInfoElement = document.createElement("div");
-  userInfoElement.classList.add("message-user-info");
-
-  const usernameElement = document.createElement("span");
-  usernameElement.classList.add("message-username");
-  usernameElement.textContent = messageData.user.username;
-
-  const levelElement = document.createElement("span");
-  levelElement.classList.add("message-level");
-  levelElement.textContent = `LV ${messageData.user.level}`;
-
-  userInfoElement.appendChild(usernameElement);
-  userInfoElement.appendChild(levelElement);
-
-  const textElement = document.createElement("div");
-  textElement.classList.add("message-text");
-  textElement.textContent = messageData.message;
-
-  const timeElement = document.createElement("time");
-  timeElement.classList.add("message-time");
-
-  const createdAt = new Date(messageData.createdAt);
-
-  timeElement.dateTime = messageData.createdAt;
-  timeElement.textContent = Number.isNaN(createdAt.getTime())
-    ? ""
-    : createdAt.toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-
-  headerElement.appendChild(avatarElement);
-  headerElement.appendChild(userInfoElement);
-  headerElement.appendChild(timeElement);
-
-  messageElement.appendChild(headerElement);
-  messageElement.appendChild(textElement);
-
-  messages.appendChild(messageElement);
-  messages.scrollTop = messages.scrollHeight;
+  window.location.href =
+    currentUrl.pathname;
 }
 
-socket.on("chat-history", (history) => {
-  if (!Array.isArray(history)) {
-    return;
+/*
+  Botões "Entrar".
+*/
+enterRoomButtons.forEach(
+  (button) => {
+    button.addEventListener(
+      "click",
+      () => {
+        const roomId =
+          button.dataset.roomId;
+
+        enterRoom(roomId);
+      }
+    );
   }
+);
 
-  messages.innerHTML = "";
+/*
+  Botão "Trocar de sala".
+*/
+leaveRoomButton?.addEventListener(
+  "click",
+  leaveCurrentRoom
+);
 
-  history.forEach((messageData) => {
-    addMessage(messageData);
-  });
-});
+/*
+  Inicializa os módulos que controlam
+  os elementos da aplicação.
+*/
+initializeChat();
+initializeYouTube();
+initializeLive();
 
-socket.on("chat-message", (messageData) => {
-  addMessage(messageData);
-});
+/*
+  Quando o Socket.IO conectar, entra
+  somente na sala pública selecionada.
+*/
+state.socket.on(
+  "connect",
+  () => {
+    console.log(
+      "Socket conectado:",
+      state.socket.id
+    );
 
-socket.on("chat-error", (data) => {
-  const errorMessage =
-    data?.message || "Ocorreu um erro no chat.";
+    if (!state.roomId) {
+      console.warn(
+        "Conexão sem sala selecionada."
+      );
 
-  console.error("Erro do chat:", errorMessage);
-  alert(errorMessage);
-});
-
-/* ================= YOUTUBE ================= */
-
-let player = null;
-let playerReady = false;
-let pendingVideoId = null;
-
-function loadYouTubeAPI() {
-  return new Promise((resolve) => {
-    if (window.YT && window.YT.Player) {
-      resolve();
+      state.socket.disconnect();
       return;
     }
 
-    const oldCallback = window.onYouTubeIframeAPIReady;
+    state.socket.emit(
+      "join-room",
+      state.roomId
+    );
+  }
+);
 
-    window.onYouTubeIframeAPIReady = () => {
-      if (typeof oldCallback === "function") {
-        oldCallback();
-      }
-
-      resolve();
-    };
-
-    const existingScript = document.querySelector(
-      'script[src="https://www.youtube.com/iframe_api"]'
+state.socket.on(
+  "disconnect",
+  (reason) => {
+    console.log(
+      "Socket desconectado:",
+      reason
     );
 
-    if (!existingScript) {
-      const tag = document.createElement("script");
-
-      tag.src = "https://www.youtube.com/iframe_api";
-
-      document.head.appendChild(tag);
-    }
-  });
-}
-
-async function ensurePlayer() {
-  if (player && playerReady) {
-    return;
+    stopTimeUpdater();
   }
+);
 
-  await loadYouTubeAPI();
-
-  player = new YT.Player("youtube-frame", {
-    width: "100%",
-    height: "100%",
-
-    playerVars: {
-      autoplay: 1,
-      controls: 1,
-      mute: 1,
-      playsinline: 1,
-      origin: window.location.origin,
-    },
-
-    events: {
-      onReady: () => {
-        playerReady = true;
-
-        if (pendingVideoId) {
-          const videoId = pendingVideoId;
-
-          pendingVideoId = null;
-
-          loadVideo(videoId);
-        }
-      },
-
-      onStateChange: onPlayerStateChange,
-
-      onError: (event) => {
-        console.log("Erro YouTube:", event.data);
-      },
-    },
-  });
-}
-
-async function loadVideo(videoId) {
-  youtubeContainer.classList.add("active");
-
-  await ensurePlayer();
-
-  if (!playerReady) {
-    pendingVideoId = videoId;
-    return;
-  }
-
-  isSyncing = true;
-
-  player.loadVideoById(videoId);
-
-  setTimeout(() => {
-    try {
-      player.playVideo();
-    } catch (error) {
-      console.error("Não foi possível iniciar o vídeo:", error);
-    }
-
-    isSyncing = false;
-  }, 600);
-}
-
-function openYouTube(videoId) {
-  socket.emit("open-video", {
-    roomId,
-    videoId,
-  });
-}
-
-function extractYouTubeId(text) {
-  const regex =
-    /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{6,})/;
-
-  const match = text.match(regex);
-
-  return match ? match[1] : null;
-}
-
-function checkYouTubeLink(text) {
-  const videoId = extractYouTubeId(text);
-
-  if (videoId) {
-    openYouTube(videoId);
-  }
-}
-
-/* ================= EVENTOS DO PLAYER ================= */
-
-function onPlayerStateChange(event) {
-  if (!playerReady || !player || isSyncing) {
-    return;
-  }
-
-  if (event.data === YT.PlayerState.PLAYING) {
-    socket.emit("video-play", {
-      roomId,
-      currentTime: player.getCurrentTime(),
-    });
-  }
-
-  if (event.data === YT.PlayerState.PAUSED) {
-    socket.emit("video-pause", {
-      roomId,
-      currentTime: player.getCurrentTime(),
-    });
-  }
-}
-
-/* ================= SOCKET DO VÍDEO ================= */
-
-socket.on("open-video", (videoId) => {
-  loadVideo(videoId);
-});
-
-socket.on("video-play", (time) => {
-  if (!playerReady || !player) {
-    return;
-  }
-
-  isSyncing = true;
-
-  try {
-    const difference = Math.abs(
-      player.getCurrentTime() - time
+state.socket.on(
+  "connect_error",
+  (error) => {
+    console.error(
+      "Erro no Socket.IO:",
+      error.message
     );
 
-    if (difference > 1) {
-      player.seekTo(time, true);
+    /*
+      Só mostra erro quando o usuário
+      realmente está dentro de uma sala.
+    */
+    if (state.roomId) {
+      alert(
+        `Erro ao conectar ao chat: ${error.message}`
+      );
     }
-
-    player.playVideo();
-  } catch (error) {
-    console.error("Erro ao sincronizar reprodução:", error);
   }
+);
 
-  setTimeout(() => {
-    isSyncing = false;
-  }, 500);
-});
+/*
+  Decide qual tela será mostrada.
+*/
+if (state.roomId) {
+  showChatScreen(
+    state.roomId
+  );
+} else {
+  showRoomsScreen();
+}
 
-socket.on("video-pause", (time) => {
-  if (!playerReady || !player) {
-    return;
-  }
+/*
+  Mantém a autenticação existente.
 
-  isSyncing = true;
-
-  try {
-    player.seekTo(time, true);
-    player.pauseVideo();
-  } catch (error) {
-    console.error("Erro ao sincronizar pausa:", error);
-  }
-
-  setTimeout(() => {
-    isSyncing = false;
-  }, 500);
-});
-
-socket.on("sync-state", (state) => {
-  if (!state.videoId) {
-    return;
-  }
-
-  loadVideo(state.videoId);
-
-  const waitForPlayer = setInterval(() => {
-    if (!playerReady || !player) {
-      return;
-    }
-
-    clearInterval(waitForPlayer);
-
-    isSyncing = true;
-
-    try {
-      player.seekTo(state.currentTime || 0, true);
-
-      if (state.isPlaying) {
-        player.playVideo();
-      } else {
-        player.pauseVideo();
-      }
-    } catch (error) {
-      console.error("Erro ao aplicar estado do vídeo:", error);
-    }
-
-    setTimeout(() => {
-      isSyncing = false;
-    }, 700);
-  }, 200);
-});
-
-/* ================= CONTROLES ================= */
-
-btnPlay.addEventListener("click", () => {
-  if (!playerReady || !player) {
-    return;
-  }
-
-  player.unMute();
-  player.playVideo();
-
-  socket.emit("video-play", {
-    roomId,
-    currentTime: player.getCurrentTime(),
-  });
-});
-
-btnPause.addEventListener("click", () => {
-  if (!playerReady || !player) {
-    return;
-  }
-
-  player.pauseVideo();
-
-  socket.emit("video-pause", {
-    roomId,
-    currentTime: player.getCurrentTime(),
-  });
-});
-
-closeYT.addEventListener("click", () => {
-  youtubeContainer.classList.remove("active");
-
-  if (playerReady && player) {
-    player.stopVideo();
-  }
-});
-
-btnYoutube.addEventListener("click", () => {
-  youtubeContainer.classList.toggle("active");
-});
-
-/* ================= INICIALIZAÇÃO ================= */
-
+  O auth.js continuará responsável por
+  carregar o usuário e iniciar o socket,
+  como já acontecia anteriormente.
+*/
 loadAuthenticatedUser();

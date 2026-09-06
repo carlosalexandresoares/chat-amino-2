@@ -1,0 +1,113 @@
+.youtube-container {
+  position: relative;
+
+  width: 100%;
+  height: 0;
+
+  flex-shrink: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  overflow: hidden;
+
+  background: #000000;
+
+  border-bottom:
+    1px solid
+    rgba(255, 255, 255, 0.06);
+
+  transition:
+    height 0.25s ease;
+}
+
+.youtube-container.active {
+  height:
+    clamp(210px, 34vh, 340px);
+}
+
+#youtube-frame {
+  flex: 1;
+
+  min-height: 0;
+}
+
+.youtube-container iframe {
+  width: 100%;
+  height: 100%;
+}
+
+.close-yt {
+  position: absolute;
+
+  top: 10px;
+  right: 10px;
+
+  z-index: 10;
+
+  width: 34px;
+  height: 34px;
+
+  display: grid;
+  place-items: center;
+
+  cursor: pointer;
+
+  color: #ffffff;
+  background:
+    rgba(0, 0, 0, 0.55);
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.14);
+
+  border-radius: 50%;
+}
+
+.video-controls {
+  display: flex;
+  gap: 10px;
+
+  padding: 7px 10px;
+
+  background:
+    rgba(10, 10, 10, 0.92);
+
+  border-top:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+}
+
+.video-controls button {
+  padding: 8px 12px;
+
+  cursor: pointer;
+
+  color: #ffffff;
+  background:
+    rgba(255, 255, 255, 0.06);
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.12);
+
+  border-radius: 12px;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.video-controls.locked::after {
+  content:
+    "Somente o apresentador controla";
+
+  margin-left: auto;
+
+  align-self: center;
+
+  color:
+    rgba(255, 255, 255, 0.65);
+
+  font-size: 10px;
+  font-weight: 700;
+}
