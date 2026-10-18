@@ -533,6 +533,7 @@ export function initializeLive() {
     "live-state",
     async (liveState) => {
       if (!liveState?.active) {
+        stopPlayer();
         resetLiveState();
         return;
       }

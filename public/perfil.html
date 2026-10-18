@@ -11,13 +11,17 @@
 
   <title>Meu perfil</title>
 
-  <link rel="stylesheet" href="/style/profile.css">
-  <script src="/script/perfil.js" defer></script>
+  <link rel="stylesheet" href="/style/profile.css?v=3">
+  <script src="/script/perfil.js?v=3" defer></script>
 </head>
 
 <body>
   <main class="profile-page">
     <section class="profile-card">
+      <nav class="profile-nav" aria-label="Navegação do perfil">
+        <a href="/index.html">← Voltar aos chats</a>
+        <span>✳ CHAT AMINO 2</span>
+      </nav>
 
       <div
         class="profile-banner"
@@ -33,26 +37,29 @@
           ?
         </div>
 
+        <span class="profile-eyebrow">PERFIL DA COMUNIDADE</span>
         <h1 id="profile-username">
           Carregando...
         </h1>
 
-        <div class="level-badge">
-          <span id="profile-level">
-            LV 1
-          </span>
+        <div class="profile-quick-actions">
+          <div class="level-badge">
+            <span id="profile-level">LV 1</span>
+          </div>
+          <a href="/editar-perfil.html" class="edit-profile-button" id="edit-profile-button">Editar perfil</a>
+          <button type="button" id="follow-button" class="follow-button hidden">Seguir</button>
         </div>
 
-        <a
-          href="/editar-perfil.html"
-          class="edit-profile-button"
-        >
-          Editar perfil
-        </a>
+        <div class="profile-stats">
+          <div><strong id="profile-posts-count">0</strong><span>Posts</span></div>
+          <button type="button" id="profile-following-button" aria-label="Ver pessoas que está seguindo"><strong id="profile-following-count">0</strong><span>Seguindo</span></button>
+          <button type="button" id="profile-followers-button" aria-label="Ver seguidores"><strong id="profile-followers-count">0</strong><span>Seguidores</span></button>
+        </div>
 
-        <p id="profile-bio">
-          Este usuário ainda não adicionou uma biografia.
-        </p>
+        <div class="profile-bio-card">
+          <span class="profile-section-label">SOBRE MIM</span>
+          <p id="profile-bio">Este usuário ainda não adicionou uma biografia.</p>
+        </div>
 
         <div class="xp-area">
           <div class="xp-header">
@@ -76,9 +83,19 @@
           id="profile-email"
         ></p>
 
+        <section class="profile-posts">
+          <div class="profile-post-heading"><span class="profile-section-label">ATIVIDADE</span><h2>Posts</h2></div>
+          <form id="new-post-form" class="hidden">
+            <textarea id="new-post-content" maxlength="1000" required placeholder="Compartilhe algo com a comunidade..."></textarea>
+            <button type="submit">Publicar</button>
+          </form>
+          <p id="profile-message" role="alert"></p>
+          <div id="profile-post-list"></div>
+        </section>
+
         <div class="profile-actions">
-          <a href="/index.html?sala=geral">
-            Entrar no chat
+          <a href="/index.html">
+            Ver chats
           </a>
 
           <button
@@ -91,6 +108,12 @@
 
       </div>
     </section>
+    <dialog id="connections-dialog" class="connections-dialog" aria-labelledby="connections-title">
+      <div class="connections-heading"><div><span class="profile-section-label">PESSOAS</span><h2 id="connections-title">Seguidores</h2></div><button type="button" id="close-connections" aria-label="Fechar lista">✕</button></div>
+      <p id="connections-message" role="status"></p>
+      <div id="connections-list" class="connections-list"></div>
+      <button type="button" id="load-more-connections" class="load-more-connections hidden">Carregar mais</button>
+    </dialog>
   </main>
 </body>
 

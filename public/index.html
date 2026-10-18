@@ -12,193 +12,63 @@
 
   <link
     rel="stylesheet"
-    href="style/style.css"
+    href="style/style.css?v=7"
   />
 
   <script src="/socket.io/socket.io.js"></script>
 
+
   <script
     type="module"
-    src="script/script.js"
+    src="script/script.js?v=6"
   ></script>
 </head>
 
-<body>
+<body class="rooms-mode">
   <!-- =========================================
        TELA DE SALAS PÚBLICAS
   ========================================== -->
-  <section
-    class="rooms-screen"
-    id="rooms-screen"
-  >
+  <section class="rooms-screen" id="rooms-screen">
     <div class="rooms-container">
+      <nav class="rooms-topbar" aria-label="Navegação principal">
+        <a class="rooms-brand" href="/index.html"><span class="brand-mark">✳</span> Chat Amino <span class="brand-version">2</span></a>
+        <a class="rooms-profile-link" href="/perfil.html">Meu perfil <span aria-hidden="true">↗</span></a>
+      </nav>
+
       <header class="rooms-header">
-        <span class="rooms-header-label">
-          Chat Amino 2
-        </span>
-
-        <h1>Salas públicas</h1>
-
-        <p>
-          Escolha uma comunidade para entrar,
-          conversar e assistir junto.
-        </p>
+        <div class="rooms-hero-copy">
+          <span class="rooms-kicker"><span class="status-dot"></span> SUA COMUNIDADE COMEÇA AQUI</span>
+          <h1>Encontre sua próxima <em>conversa.</em></h1>
+          <p>Entre no chat principal ou crie um espaço com a sua cara. Convide pessoas, compartilhe ideias e viva o momento.</p>
+          <div class="hero-actions">
+            <button type="button" id="show-create-room" class="create-room-button"><span aria-hidden="true">＋</span> Criar meu chat</button>
+            <span class="hero-note">Grátis, público e feito por você</span>
+          </div>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <span class="hero-orbit hero-orbit-one"></span>
+          <span class="hero-orbit hero-orbit-two"></span>
+          <span class="hero-bubble hero-bubble-one">💬</span>
+          <span class="hero-bubble hero-bubble-two">✨</span>
+          <span class="hero-bubble hero-bubble-three">🔥</span>
+          <div class="hero-art-caption"><span class="status-dot"></span> Conversas acontecendo agora</div>
+        </div>
       </header>
 
-      <div
-        class="public-rooms-grid"
-        id="public-rooms-grid"
-      >
-        <article
-          class="public-room-card"
-          data-room-id="geral"
-        >
-          <div class="public-room-icon">
-            🔥
-          </div>
+      <form id="create-room-form" class="create-room-form hidden">
+        <div class="form-heading"><div><span class="form-kicker">SEU ESPAÇO</span><h2>Criar novo chat</h2></div><button type="button" id="cancel-create-room" class="form-close" aria-label="Fechar">✕</button></div>
+        <label for="room-name">Nome do chat</label>
+        <input id="room-name" name="name" required minlength="3" maxlength="50" placeholder="Ex.: Clube dos criativos" />
+        <label for="room-description">Descrição</label>
+        <textarea id="room-description" name="description" maxlength="200" placeholder="Qual é a ideia deste espaço?"></textarea>
+        <label for="room-banner">Imagem de capa <span class="optional">(opcional)</span></label>
+        <input id="room-banner" name="banner" type="url" placeholder="https://..." />
+        <p id="create-room-error" role="alert"></p>
+        <div class="create-room-actions"><button type="submit">Criar chat <span aria-hidden="true">↗</span></button></div>
+      </form>
 
-          <div class="public-room-information">
-            <h2>Geral</h2>
-
-            <p>
-              Converse sobre qualquer assunto.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            class="enter-room-button"
-            data-room-id="geral"
-          >
-            Entrar
-          </button>
-        </article>
-
-        <article
-          class="public-room-card"
-          data-room-id="games"
-        >
-          <div class="public-room-icon">
-            👾
-          </div>
-
-          <div class="public-room-information">
-            <h2>Games</h2>
-
-            <p>
-              Jogos, lançamentos e partidas.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            class="enter-room-button"
-            data-room-id="games"
-          >
-            Entrar
-          </button>
-        </article>
-
-        <article
-          class="public-room-card"
-          data-room-id="musica"
-        >
-          <div class="public-room-icon">
-            🎵
-          </div>
-
-          <div class="public-room-information">
-            <h2>Música</h2>
-
-            <p>
-              Artistas, músicas e playlists.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            class="enter-room-button"
-            data-room-id="musica"
-          >
-            Entrar
-          </button>
-        </article>
-
-        <article
-          class="public-room-card"
-          data-room-id="filmes"
-        >
-          <div class="public-room-icon">
-            🎬
-          </div>
-
-          <div class="public-room-information">
-            <h2>Filmes</h2>
-
-            <p>
-              Filmes, séries e sessões em grupo.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            class="enter-room-button"
-            data-room-id="filmes"
-          >
-            Entrar
-          </button>
-        </article>
-
-        <article
-          class="public-room-card"
-          data-room-id="programacao"
-        >
-          <div class="public-room-icon">
-            💻
-          </div>
-
-          <div class="public-room-information">
-            <h2>Programação</h2>
-
-            <p>
-              Código, projetos e tecnologia.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            class="enter-room-button"
-            data-room-id="programacao"
-          >
-            Entrar
-          </button>
-        </article>
-
-        <article
-          class="public-room-card"
-          data-room-id="anime"
-        >
-          <div class="public-room-icon">
-            🎌
-          </div>
-
-          <div class="public-room-information">
-            <h2>Anime</h2>
-
-            <p>
-              Animes, mangás e cultura japonesa.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            class="enter-room-button"
-            data-room-id="anime"
-          >
-            Entrar
-          </button>
-        </article>
-      </div>
+      <div class="rooms-section-title"><div><span class="section-kicker">EXPLORE</span><h2>Chats públicos</h2></div><p id="rooms-total">Carregando...</p></div>
+      <div class="public-rooms-grid" id="public-rooms-grid"><p class="rooms-loading">Carregando chats...</p></div>
     </div>
   </section>
 
@@ -218,16 +88,26 @@
         <h1 id="current-room-title">
           Sala Geral
         </h1>
+        <p class="room-stats"><span id="room-members-count">0 participantes</span> · <span id="room-online-count">0 online agora</span></p>
       </div>
 
-      <button
-        type="button"
-        id="leave-room"
-        class="leave-room-button"
-      >
-        Trocar de sala
-      </button>
+      <div class="chat-header-actions">
+        <button type="button" id="manage-room" class="manage-room-button hidden">⚙ Gerenciar chat</button>
+        <button type="button" id="leave-room" class="leave-room-button">Todos os chats</button>
+      </div>
     </header>
+
+    <section class="manage-room-panel hidden" id="manage-room-panel" aria-label="Administração do chat">
+      <div class="manage-room-heading"><div><span class="section-kicker">ADMINISTRAÇÃO</span><h2>Seu chat, suas regras.</h2></div><button type="button" id="close-manage-room" aria-label="Fechar administração">✕</button></div>
+      <form id="manage-room-form" class="manage-room-form">
+        <label for="manage-room-name">Nome do chat</label><input id="manage-room-name" name="name" minlength="3" maxlength="50" required />
+        <label for="manage-room-description">Descrição</label><textarea id="manage-room-description" name="description" maxlength="200"></textarea>
+        <label for="manage-room-banner">URL da capa</label><input id="manage-room-banner" name="banner" type="url" placeholder="https://..." />
+        <button type="submit">Salvar alterações</button>
+      </form>
+      <div id="manage-members-section"><h3>Participantes e equipe</h3><p class="manage-help">O administrador principal escolhe coadmins. Administradores e coadmins podem remover membros; só o administrador principal pode remover coadmins.</p><div id="manage-room-members"></div></div>
+      <p id="manage-room-message" role="status"></p>
+    </section>
 
     <div class="container">
       <aside class="container-lateral">
@@ -408,22 +288,11 @@
             ✕
           </button>
 
-          <div id="youtube-frame"></div>
-
-          <div class="video-controls">
-            <button
-              type="button"
-              id="playVideo"
-            >
-              ▶️ Play
-            </button>
-
-            <button
-              type="button"
-              id="pauseVideo"
-            >
-              ⏸ Pause
-            </button>
+          <div class="youtube-stage">
+            <div id="youtube-frame"></div>
+            <div id="viewer-overlay" class="viewer-overlay hidden" aria-label="Vídeo sincronizado pelo apresentador">
+              <button type="button" id="viewer-sound">Ativar som</button>
+            </div>
           </div>
         </section>
 

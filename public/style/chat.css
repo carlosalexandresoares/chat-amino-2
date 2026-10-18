@@ -532,3 +532,9 @@
     animation: none;
   }
 }
+
+.message-username { color: inherit; text-decoration: none; }
+.message-username:hover { text-decoration: underline; }
+.messages { background: linear-gradient(155deg, #66727b, #444f58); }
+.message.bot { background: #ffffff; }
+.message.user { background: #2563eb; }

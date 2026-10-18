@@ -34,20 +34,14 @@ const dom = {
       "btn-youtube"
     ),
 
-  btnPlay:
-    document.getElementById(
-      "playVideo"
-    ),
+  viewerOverlay:
+    document.getElementById("viewer-overlay"),
 
-  btnPause:
-    document.getElementById(
-      "pauseVideo"
-    ),
+  viewerSound:
+    document.getElementById("viewer-sound"),
 
-  videoControls:
-    document.querySelector(
-      ".video-controls"
-    ),
+  youtubeStage:
+    document.querySelector(".youtube-stage"),
 
   livePanel:
     document.getElementById(

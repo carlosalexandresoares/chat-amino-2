@@ -1,513 +1,201 @@
 import state from "./state.js";
 import dom from "./dom.js";
 
+let apiPromise;
+let playerPromise;
+let playerHostMode = null;
+let loadedVideoId = null;
+let syncReleaseTimer;
+let latestSnapshot = null;
+
 function loadYouTubeAPI() {
-  return new Promise((resolve) => {
-    if (
-      window.YT &&
-      window.YT.Player
-    ) {
-      resolve();
-      return;
+  if (window.YT?.Player) return Promise.resolve();
+  if (apiPromise) return apiPromise;
+  apiPromise = new Promise((resolve) => {
+    const previous = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { previous?.(); resolve(); };
+    if (!document.querySelector('script[src="https://www.youtube.com/iframe_api"]')) {
+      const script = document.createElement("script");
+      script.src = "https://www.youtube.com/iframe_api";
+      document.head.append(script);
     }
-
-    const previousCallback =
-      window.onYouTubeIframeAPIReady;
-
-    window.onYouTubeIframeAPIReady =
-      () => {
-        if (
-          typeof previousCallback ===
-          "function"
-        ) {
-          previousCallback();
-        }
-
-        resolve();
-      };
-
-    const existingScript =
-      document.querySelector(
-        'script[src="https://www.youtube.com/iframe_api"]'
-      );
-
-    if (existingScript) {
-      return;
-    }
-
-    const tag =
-      document.createElement(
-        "script"
-      );
-
-    tag.src =
-      "https://www.youtube.com/iframe_api";
-
-    document.head.appendChild(tag);
   });
+  return apiPromise;
+}
+
+function holdSync() {
+  state.isSyncing = true;
+  window.clearTimeout(syncReleaseTimer);
+  syncReleaseTimer = window.setTimeout(() => { state.isSyncing = false; }, 900);
+}
+
+function playerVisible() {
+  return dom.youtubeContainer.classList.contains("active");
 }
 
 async function ensurePlayer() {
-  if (
-    state.player &&
-    state.playerReady
-  ) {
-    return;
-  }
-
   await loadYouTubeAPI();
-
-  state.player =
-    new YT.Player(
-      "youtube-frame",
-      {
-        width: "100%",
-        height: "100%",
-
-        playerVars: {
-          autoplay: 1,
-          controls: 1,
-          mute: 1,
-          playsinline: 1,
-          origin:
-            window.location.origin,
-        },
-
-        events: {
-          onReady: () => {
-            state.playerReady = true;
-
-            if (
-              state.pendingVideoState
-            ) {
-              const pending =
-                state.pendingVideoState;
-
-              state.pendingVideoState =
-                null;
-
-              applyVideoState(
-                pending
-              );
-            }
-          },
-
-          onStateChange:
-            handlePlayerStateChange,
-
-          onError: (event) => {
-            console.error(
-              "Erro do YouTube:",
-              event.data
-            );
-          },
-        },
-      }
-    );
-}
-
-function handlePlayerStateChange(
-  event
-) {
-  if (
-    !state.playerReady ||
-    !state.player ||
-    state.isSyncing ||
-    !state.isLiveHost
-  ) {
-    return;
-  }
-
-  if (
-    event.data ===
-    YT.PlayerState.PLAYING
-  ) {
-    state.socket.emit(
-      "video-play",
-      {
-        roomId: state.roomId,
-        currentTime:
-          state.player.getCurrentTime(),
-      }
-    );
-
-    startTimeUpdater();
-  }
-
-  if (
-    event.data ===
-    YT.PlayerState.PAUSED
-  ) {
-    state.socket.emit(
-      "video-pause",
-      {
-        roomId: state.roomId,
-        currentTime:
-          state.player.getCurrentTime(),
-      }
-    );
-
+  const hostMode = Boolean(state.isLiveHost);
+  if (state.player && playerHostMode !== hostMode) {
     stopTimeUpdater();
+    state.player.destroy();
+    state.player = null;
+    state.playerReady = false;
+    loadedVideoId = null;
+    playerPromise = null;
+    const frame = document.createElement("div");
+    frame.id = "youtube-frame";
+    dom.youtubeStage.prepend(frame);
   }
-
-  if (
-    event.data ===
-    YT.PlayerState.ENDED
-  ) {
-    stopTimeUpdater();
-
-    state.socket.emit(
-      "video-ended",
-      {
-        roomId: state.roomId,
-      }
-    );
-  }
-}
-
-export async function loadVideo(
-  videoId,
-  options = {}
-) {
-  if (!videoId) {
-    return;
-  }
-
-  const currentTime =
-    Number(
-      options.currentTime
-    ) || 0;
-
-  const shouldPlay =
-    options.isPlaying !== false;
-
-  dom.youtubeContainer.classList.add(
-    "active"
-  );
-
-  updatePlayerButton();
-
-  await ensurePlayer();
-
-  if (!state.playerReady) {
-    state.pendingVideoState = {
-      videoId,
-      currentTime,
-      isPlaying: shouldPlay,
-    };
-
-    return;
-  }
-
-  state.isSyncing = true;
-
-  try {
-    state.player.loadVideoById({
-      videoId,
-      startSeconds: currentTime,
+  if (state.playerReady && state.player) return;
+  if (playerPromise) return playerPromise;
+  playerHostMode = hostMode;
+  playerPromise = new Promise((resolve) => {
+    state.player = new YT.Player("youtube-frame", {
+      width: "100%", height: "100%",
+      playerVars: {
+        autoplay: 0, controls: hostMode ? 1 : 0,
+        disablekb: hostMode ? 0 : 1, fs: hostMode ? 1 : 0,
+        mute: 1, playsinline: 1, origin: window.location.origin,
+      },
+      events: {
+        onReady: () => { state.playerReady = true; resolve(); },
+        onStateChange: handlePlayerStateChange,
+        onError: (event) => console.error("Erro do YouTube:", event.data),
+      },
     });
+  });
+  return playerPromise;
+}
 
-    window.setTimeout(() => {
-      try {
-        state.player.seekTo(
-          currentTime,
-          true
-        );
-
-        if (shouldPlay) {
-          state.player.playVideo();
-        } else {
-          state.player.pauseVideo();
-        }
-      } catch (error) {
-        console.error(
-          "Erro ao carregar vídeo:",
-          error
-        );
-      }
-
-      window.setTimeout(() => {
-        state.isSyncing = false;
-      }, 500);
-    }, 700);
-  } catch (error) {
-    state.isSyncing = false;
-
-    console.error(
-      "Não foi possível iniciar o vídeo:",
-      error
-    );
+function handlePlayerStateChange(event) {
+  if (!state.playerReady || !state.player || !state.isLiveHost ||
+      !state.liveActive || !state.socket.connected || !playerVisible() || state.isSyncing) return;
+  if (event.data === YT.PlayerState.PLAYING) {
+    state.socket.emit("video-play", { roomId: state.roomId, currentTime: state.player.getCurrentTime() });
+    startTimeUpdater();
+  } else if (event.data === YT.PlayerState.PAUSED) {
+    stopTimeUpdater();
+    state.socket.emit("video-pause", { roomId: state.roomId, currentTime: state.player.getCurrentTime() });
+  } else if (event.data === YT.PlayerState.ENDED) {
+    stopTimeUpdater();
+    state.socket.emit("video-ended", { roomId: state.roomId });
   }
 }
 
-export async function applyVideoState(
-  videoState
-) {
-  if (!videoState?.videoId) {
-    return;
-  }
-
-  await loadVideo(
-    videoState.videoId,
-    {
-      currentTime:
-        videoState.currentTime || 0,
-
-      isPlaying:
-        Boolean(
-          videoState.isPlaying
-        ),
+export async function loadVideo(videoId, options = {}) {
+  if (!videoId || !state.liveActive) return;
+  const currentTime = Math.max(0, Number(options.currentTime) || 0);
+  const isPlaying = options.isPlaying !== false;
+  state.pendingVideoState = { videoId, currentTime, isPlaying };
+  latestSnapshot = state.pendingVideoState;
+  dom.youtubeContainer.classList.add("active");
+  updatePlayerButton();
+  await ensurePlayer();
+  if (!state.liveActive || !state.playerReady) return;
+  const pending = state.pendingVideoState;
+  if (!pending) return;
+  state.pendingVideoState = null;
+  holdSync();
+  try {
+    loadedVideoId = pending.videoId;
+    if (pending.isPlaying) {
+      state.player.loadVideoById({ videoId: pending.videoId, startSeconds: pending.currentTime });
+      if (state.isLiveHost) startTimeUpdater();
+    } else {
+      stopTimeUpdater();
+      state.player.cueVideoById({ videoId: pending.videoId, startSeconds: pending.currentTime });
     }
-  );
+  } catch (error) { console.error("Não foi possível iniciar o vídeo:", error); }
+}
+
+export function applyVideoState(videoState) {
+  if (!videoState?.videoId || !state.liveActive) return;
+  latestSnapshot = videoState;
+  if (!state.playerReady || loadedVideoId !== videoState.videoId || playerHostMode !== Boolean(state.isLiveHost)) {
+    return loadVideo(videoState.videoId, videoState);
+  }
+  if (!playerVisible()) return;
+  if (state.isLiveHost && !videoState.force) return;
+  try {
+    const target = Math.max(0, Number(videoState.currentTime) || 0);
+    const difference = Math.abs(state.player.getCurrentTime() - target);
+    const playing = state.player.getPlayerState() === YT.PlayerState.PLAYING;
+    if (difference > 1.5 || playing !== Boolean(videoState.isPlaying)) holdSync();
+    if (difference > 1.5) state.player.seekTo(target, true);
+    if (videoState.isPlaying && !playing) state.player.playVideo();
+    if (!videoState.isPlaying && playing) state.player.pauseVideo();
+    if (state.isLiveHost && videoState.force && videoState.isPlaying) startTimeUpdater();
+  } catch (error) { console.error("Erro ao sincronizar vídeo:", error); }
 }
 
 export function startTimeUpdater() {
   stopTimeUpdater();
-
-  if (!state.isLiveHost) {
-    return;
-  }
-
-  state.timeUpdateInterval =
-    window.setInterval(() => {
-      if (
-        !state.playerReady ||
-        !state.player ||
-        !state.liveActive
-      ) {
-        return;
-      }
-
-      state.socket.emit(
-        "video-time-update",
-        {
-          roomId: state.roomId,
-          currentTime:
-            state.player.getCurrentTime(),
-        }
-      );
-    }, 3000);
+  if (!state.isLiveHost) return;
+  state.timeUpdateInterval = window.setInterval(() => {
+    if (!state.playerReady || !state.player || !state.liveActive ||
+        !state.socket.connected || !playerVisible() || state.isSyncing ||
+        state.player.getPlayerState() !== YT.PlayerState.PLAYING) return;
+    state.socket.emit("video-time-update", {
+      roomId: state.roomId, currentTime: state.player.getCurrentTime(),
+    });
+  }, 1500);
 }
 
 export function stopTimeUpdater() {
-  if (!state.timeUpdateInterval) {
-    return;
-  }
-
-  window.clearInterval(
-    state.timeUpdateInterval
-  );
-
+  if (state.timeUpdateInterval) window.clearInterval(state.timeUpdateInterval);
   state.timeUpdateInterval = null;
 }
 
-export function setVideoControlAccess(
-  allowed
-) {
-  dom.btnPlay.disabled = !allowed;
-  dom.btnPause.disabled = !allowed;
-
-  dom.btnPlay.title = allowed
-    ? "Reproduzir vídeo"
-    : "Somente o apresentador pode controlar";
-
-  dom.btnPause.title = allowed
-    ? "Pausar vídeo"
-    : "Somente o apresentador pode controlar";
-
-  dom.videoControls.classList.toggle(
-    "locked",
-    !allowed
-  );
+export function setVideoControlAccess(allowed) {
+  dom.viewerOverlay.classList.toggle("hidden", allowed);
+  if (!allowed) dom.viewerSound.textContent = state.playerReady && !state.player?.isMuted() ? "Silenciar" : "Ativar som";
 }
 
 export function updatePlayerButton() {
-  if (!state.liveActive) {
-    dom.togglePlayerButton.classList.add(
-      "hidden"
-    );
-
-    return;
-  }
-
-  dom.togglePlayerButton.classList.remove(
-    "hidden"
-  );
-
-  const playerVisible =
-    dom.youtubeContainer.classList.contains(
-      "active"
-    );
-
-  dom.togglePlayerButton.textContent =
-    playerVisible
-      ? "Ocultar vídeo"
-      : "Mostrar vídeo";
+  dom.togglePlayerButton.classList.toggle("hidden", !state.liveActive);
+  if (state.liveActive) dom.togglePlayerButton.textContent = playerVisible() ? "Ocultar vídeo" : "Mostrar vídeo";
 }
 
 export function stopPlayer() {
   stopTimeUpdater();
+  state.pendingVideoState = null;
+  loadedVideoId = null;
+  latestSnapshot = null;
+  if (!state.playerReady || !state.player) return;
+  holdSync();
+  try { state.player.stopVideo(); } catch (error) { console.error("Erro ao parar vídeo:", error); }
+}
 
-  if (
-    !state.playerReady ||
-    !state.player
-  ) {
-    return;
-  }
+function requestCurrentVideo() {
+  if (!state.liveActive || !state.socket.connected) return;
+  state.socket.emit("video-sync-request", { roomId: state.roomId }, (response) => {
+    if (response?.success && response.videoId) applyVideoState({ ...response, force: true });
+  });
+}
 
-  state.isSyncing = true;
-
-  try {
-    state.player.stopVideo();
-  } catch (error) {
-    console.error(
-      "Erro ao parar vídeo:",
-      error
-    );
-  }
-
-  window.setTimeout(() => {
-    state.isSyncing = false;
-  }, 300);
+function togglePlayer(visible) {
+  if (!state.liveActive) return;
+  dom.youtubeContainer.classList.toggle("active", visible);
+  updatePlayerButton();
+  if (visible) requestCurrentVideo();
+  else stopTimeUpdater();
 }
 
 export function initializeYouTube() {
-  dom.btnPlay.addEventListener(
-    "click",
-    () => {
-      if (
-        !state.isLiveHost ||
-        !state.playerReady ||
-        !state.player
-      ) {
-        return;
-      }
-
-      state.player.unMute();
-      state.player.playVideo();
-    }
-  );
-
-  dom.btnPause.addEventListener(
-    "click",
-    () => {
-      if (
-        !state.isLiveHost ||
-        !state.playerReady ||
-        !state.player
-      ) {
-        return;
-      }
-
-      state.player.pauseVideo();
-    }
-  );
-
-  dom.closeYT.addEventListener(
-    "click",
-    () => {
-      dom.youtubeContainer.classList.remove(
-        "active"
-      );
-
-      updatePlayerButton();
-    }
-  );
-
-  dom.btnYoutube.addEventListener(
-    "click",
-    () => {
-      dom.youtubeContainer.classList.toggle(
-        "active"
-      );
-
-      updatePlayerButton();
-    }
-  );
-
-  dom.togglePlayerButton.addEventListener(
-    "click",
-    () => {
-      dom.youtubeContainer.classList.toggle(
-        "active"
-      );
-
-      updatePlayerButton();
-    }
-  );
-
-  state.socket.on(
-    "video-play",
-    (time) => {
-      if (
-        !state.playerReady ||
-        !state.player
-      ) {
-        return;
-      }
-
-      state.isSyncing = true;
-
-      try {
-        const normalizedTime =
-          Number(time) || 0;
-
-        const difference =
-          Math.abs(
-            state.player.getCurrentTime() -
-              normalizedTime
-          );
-
-        if (difference > 1.5) {
-          state.player.seekTo(
-            normalizedTime,
-            true
-          );
-        }
-
-        state.player.playVideo();
-      } catch (error) {
-        console.error(
-          "Erro ao sincronizar reprodução:",
-          error
-        );
-      }
-
-      window.setTimeout(() => {
-        state.isSyncing = false;
-      }, 500);
-    }
-  );
-
-  state.socket.on(
-    "video-pause",
-    (time) => {
-      if (
-        !state.playerReady ||
-        !state.player
-      ) {
-        return;
-      }
-
-      state.isSyncing = true;
-
-      try {
-        state.player.seekTo(
-          Number(time) || 0,
-          true
-        );
-
-        state.player.pauseVideo();
-      } catch (error) {
-        console.error(
-          "Erro ao sincronizar pausa:",
-          error
-        );
-      }
-
-      window.setTimeout(() => {
-        state.isSyncing = false;
-      }, 500);
-    }
-  );
+  dom.closeYT.addEventListener("click", () => togglePlayer(false));
+  dom.btnYoutube.addEventListener("click", () => togglePlayer(!playerVisible()));
+  dom.togglePlayerButton.addEventListener("click", () => togglePlayer(!playerVisible()));
+  dom.viewerSound.addEventListener("click", () => {
+    if (!state.playerReady || !state.player || state.isLiveHost) return;
+    if (state.player.isMuted()) state.player.unMute();
+    else state.player.mute();
+    if (latestSnapshot?.isPlaying && state.player.getPlayerState() !== YT.PlayerState.PLAYING) state.player.playVideo();
+    dom.viewerSound.textContent = state.player.isMuted() ? "Ativar som" : "Silenciar";
+  });
+  window.addEventListener("pagehide", () => { state.liveActive = false; stopTimeUpdater(); });
+  state.socket.on("video-sync", (snapshot) => {
+    if (!state.liveActive || !snapshot?.videoId || !playerVisible()) return;
+    if (!state.isLiveHost) applyVideoState(snapshot);
+  });
 }

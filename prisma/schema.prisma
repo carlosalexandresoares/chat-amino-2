@@ -47,6 +47,31 @@ model User {
   ownedRooms      Room[]         @relation("RoomOwner")
   startedLives    LiveSession[]  @relation("LiveHost")
   playlistItems   PlaylistItem[] @relation("PlaylistAddedBy")
+  followers       Follow[] @relation("FollowedUser")
+  following       Follow[] @relation("FollowingUser")
+  posts           Post[]
+}
+
+model Follow {
+  followerId String
+  followedId String
+  createdAt DateTime @default(now())
+
+  follower User @relation("FollowingUser", fields: [followerId], references: [id], onDelete: Cascade)
+  followed User @relation("FollowedUser", fields: [followedId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followedId])
+  @@index([followedId])
+}
+
+model Post {
+  id String @id @default(cuid())
+  content String
+  createdAt DateTime @default(now())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
 
 model Room {

@@ -422,7 +422,7 @@ function addMessage(messageData) {
   );
 
   const usernameElement =
-    document.createElement("span");
+    document.createElement("a");
 
   usernameElement.classList.add(
     "message-username"
@@ -430,6 +430,8 @@ function addMessage(messageData) {
 
   usernameElement.textContent =
     messageData.user.username;
+  usernameElement.href =
+    `/perfil.html?id=${encodeURIComponent(messageData.user.id)}`;
 
   const levelElement =
     document.createElement("span");

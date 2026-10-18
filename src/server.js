@@ -8,6 +8,8 @@ const { Server } = require("socket.io");
 const cors = require("cors");
 const path = require("path");
 const authRoutes = require("./routes/authRoutes");
+const roomRoutes = require("./routes/roomRoutes");
+const socialRoutes = require("./routes/socialRoutes");
 
 const app = express();
 
@@ -19,6 +21,8 @@ app.use(express.static(path.join(__dirname, "../public")));
 
 // Rotas de autenticação
 app.use("/api/auth", authRoutes);
+app.use("/api/rooms", roomRoutes);
+app.use("/api", socialRoutes);
 
 // Health check do Render
 app.get("/healthz", (req, res) => {
@@ -35,13 +39,22 @@ const io = new Server(server, {
     methods: ["GET", "POST"],
   },
 });
+app.set("io", io);
+
+function emitRoomPresence(roomId) {
+  const users = new Set();
+  for (const socketId of io.sockets.adapter.rooms.get(roomId) || []) {
+    const userId = io.sockets.sockets.get(socketId)?.user?.id;
+    if (userId) users.add(userId);
+  }
+  io.to(roomId).emit("room-presence", { roomId, onlineCount: users.size });
+}
 
 /*
   Regras de XP
 */
 const XP_PER_MESSAGE = 2;
 const XP_DAILY_LOGIN = 10;
-const XP_CREATE_ROOM = 50;
 const XP_PER_LEVEL = 100;
 
 /*
@@ -52,6 +65,78 @@ const XP_PER_LEVEL = 100;
   enquanto o servidor está ligado.
 */
 const liveStates = {};
+const closingRooms = new Map();
+
+function currentLiveTime(liveState) {
+  if (!liveState) return 0;
+  const elapsed = liveState.isPlaying && liveState.timeUpdatedAt
+    ? (Date.now() - liveState.timeUpdatedAt) / 1000 : 0;
+  return Math.max(0, liveState.currentTime + elapsed);
+}
+
+function setLiveClock(liveState, currentTime, isPlaying = liveState.isPlaying) {
+  const time = Number(currentTime);
+  liveState.currentTime = Number.isFinite(time) ? Math.max(0, time) : 0;
+  liveState.isPlaying = isPlaying;
+  liveState.timeUpdatedAt = Date.now();
+}
+
+function liveSyncSnapshot(liveState) {
+  return {
+    videoId: liveState.currentVideoId,
+    currentTime: currentLiveTime(liveState),
+    isPlaying: liveState.isPlaying,
+  };
+}
+
+const liveSyncTimer = setInterval(() => {
+  for (const [roomId, liveState] of Object.entries(liveStates)) {
+    if (liveState.active && liveState.currentVideoId && io.sockets.adapter.rooms.get(roomId)?.size) {
+      io.to(roomId).emit("video-sync", liveSyncSnapshot(liveState));
+    }
+  }
+}, 2000);
+liveSyncTimer.unref?.();
+
+async function endLiveSession(roomId) {
+  const live = await prisma.liveSession.findFirst({
+    where: { roomId, status: "ACTIVE" },
+    orderBy: { startedAt: "desc" },
+    select: { id: true, currentTime: true },
+  });
+  if (!live) {
+    delete liveStates[roomId];
+    return false;
+  }
+
+  await prisma.$transaction([
+    prisma.liveSession.update({
+      where: { id: live.id },
+      data: {
+        status: "ENDED",
+        endedAt: new Date(),
+        isPlaying: false,
+        currentTime: liveStates[roomId] ? currentLiveTime(liveStates[roomId]) : live.currentTime,
+      },
+    }),
+    prisma.playlistItem.updateMany({
+      where: { liveId: live.id, status: { in: ["WAITING", "PLAYING"] } },
+      data: { status: "REMOVED" },
+    }),
+  ]);
+  delete liveStates[roomId];
+  io.to(roomId).emit("live-ended");
+  return true;
+}
+app.set("endLiveSession", endLiveSession);
+
+function endLiveWhenRoomEmpty(roomId) {
+  if (io.sockets.adapter.rooms.get(roomId)?.size || closingRooms.has(roomId)) return;
+  const closing = endLiveSession(roomId)
+    .catch((error) => console.error("Erro ao encerrar live de sala vazia:", error))
+    .finally(() => closingRooms.delete(roomId));
+  closingRooms.set(roomId, closing);
+}
 
 /**
  * Calcula o nível usando o XP total.
@@ -505,8 +590,7 @@ async function playNextVideo(
     liveState.currentVideoId =
       null;
 
-    liveState.currentTime = 0;
-    liveState.isPlaying = false;
+    setLiveClock(liveState, 0, false);
 
     await emitUpdatedPlaylist(
       roomId
@@ -559,8 +643,7 @@ async function playNextVideo(
   liveState.currentVideoId =
     nextItem.videoId;
 
-  liveState.currentTime = 0;
-  liveState.isPlaying = true;
+  setLiveClock(liveState, 0, true);
 
   await emitUpdatedPlaylist(
     roomId
@@ -713,10 +796,6 @@ io.on("connection", (socket) => {
           return;
         }
 
-        /*
-          Verifica se a sala já existia
-          antes do upsert.
-        */
         const existingRoom =
           await prisma.room.findUnique({
             where: {
@@ -724,30 +803,18 @@ io.on("connection", (socket) => {
             },
             select: {
               id: true,
+              ownerId: true,
             },
           });
 
-        const roomWasCreated =
-          !existingRoom;
-
-        await prisma.room.upsert({
-          where: {
-            id: normalizedRoomId,
-          },
-          update: {},
-          create: {
-            id: normalizedRoomId,
-            name:
-              normalizedRoomId ===
-              "geral"
-                ? "Sala Geral"
-                : normalizedRoomId,
-          },
-        });
+        if (!existingRoom || (normalizedRoomId !== "geral" && !existingRoom.ownerId)) {
+          socket.emit("chat-error", { message: "Esta sala não existe mais." });
+          return;
+        }
 
         /*
-          O primeiro membro da sala vira OWNER.
-          Os próximos viram MEMBER.
+          O criador já é OWNER na criação do chat.
+          Novos participantes sempre entram como MEMBER.
         */
         let membership =
           await prisma.roomMember.findUnique({
@@ -762,14 +829,6 @@ io.on("connection", (socket) => {
           });
 
         if (!membership) {
-          const memberCount =
-            await prisma.roomMember.count({
-              where: {
-                roomId:
-                  normalizedRoomId,
-              },
-            });
-
           membership =
             await prisma.roomMember.create({
               data: {
@@ -777,47 +836,22 @@ io.on("connection", (socket) => {
                   socket.user.id,
                 roomId:
                   normalizedRoomId,
-                role:
-                  memberCount === 0
-                    ? "OWNER"
-                    : "MEMBER",
+                role: "MEMBER",
               },
             });
-        }
-
-        /*
-          Dá +50 XP somente quando o usuário
-          realmente cria uma nova sala.
-
-          A Sala Geral não concede XP.
-        */
-        if (
-          roomWasCreated &&
-          normalizedRoomId !== "geral" &&
-          membership.role === "OWNER"
-        ) {
-          const roomXpResult =
-            await grantXp(
-              prisma,
-              socket.user.id,
-              XP_CREATE_ROOM
-            );
-
-          updateSocketUser(
-            socket,
-            roomXpResult.user
-          );
-
-          emitXpResult(
-            socket,
-            roomXpResult,
-            "ROOM_CREATED"
-          );
         }
 
         socket.join(
           normalizedRoomId
         );
+        await closingRooms.get(normalizedRoomId);
+        if (!liveStates[normalizedRoomId]) {
+          // Uma live persistida sem estado em memória veio de uma execução anterior.
+          await endLiveSession(normalizedRoomId);
+        }
+        emitRoomPresence(normalizedRoomId);
+        const joinedCount = await prisma.roomMember.count({ where: { roomId: normalizedRoomId } });
+        io.to(normalizedRoomId).emit("room-members-count", { roomId: normalizedRoomId, membersCount: joinedCount });
 
         socket.emit(
           "room-permissions",
@@ -926,23 +960,9 @@ io.on("connection", (socket) => {
           });
 
         if (activeLive) {
-          liveStates[
-            normalizedRoomId
-          ] = {
-            liveId:
-              activeLive.id,
-            active: true,
-            hostId:
-              activeLive.hostId,
-            currentVideoId:
-              activeLive.currentVideoId,
-            currentTime:
-              activeLive.currentTime,
-            isPlaying:
-              activeLive.isPlaying,
-            playlist:
-              activeLive.playlist,
-          };
+          // O banco guarda apenas o ultimo marco; o relogio em memoria
+          // continua avancando enquanto a live permanece ativa.
+          const liveState = liveStates[normalizedRoomId];
 
           socket.emit(
             "live-state",
@@ -952,12 +972,9 @@ io.on("connection", (socket) => {
               active: true,
               host:
                 activeLive.host,
-              currentVideoId:
-                activeLive.currentVideoId,
-              currentTime:
-                activeLive.currentTime,
-              isPlaying:
-                activeLive.isPlaying,
+              currentVideoId: liveState.currentVideoId,
+              currentTime: currentLiveTime(liveState),
+              isPlaying: liveState.isPlaying,
               playlist:
                 activeLive.playlist,
               isHost:
@@ -1254,6 +1271,7 @@ io.on("connection", (socket) => {
           currentVideoId: null,
           currentTime: 0,
           isPlaying: false,
+          timeUpdatedAt: Date.now(),
           playlist: [],
         };
 
@@ -1336,7 +1354,7 @@ io.on("connection", (socket) => {
         }
 
         if (
-          !isLiveHost(
+          !socket.rooms.has(normalizedRoomId) || !isLiveHost(
             normalizedRoomId,
             socket.user.id
           )
@@ -1561,7 +1579,7 @@ io.on("connection", (socket) => {
           normalizeRoomId(roomId);
 
         if (
-          !isLiveHost(
+          !socket.rooms.has(normalizedRoomId) || !isLiveHost(
             normalizedRoomId,
             socket.user.id
           )
@@ -1580,10 +1598,7 @@ io.on("connection", (socket) => {
           return;
         }
 
-        liveState.isPlaying = true;
-
-        liveState.currentTime =
-          Number(currentTime) || 0;
+        setLiveClock(liveState, currentTime, true);
 
         await prisma.liveSession.update({
           where: {
@@ -1597,12 +1612,7 @@ io.on("connection", (socket) => {
           },
         });
 
-        io.to(
-          normalizedRoomId
-        ).emit(
-          "video-play",
-          liveState.currentTime
-        );
+        io.to(normalizedRoomId).emit("video-sync", liveSyncSnapshot(liveState));
       } catch (error) {
         console.error(
           "Erro ao reproduzir vídeo:",
@@ -1626,7 +1636,7 @@ io.on("connection", (socket) => {
           normalizeRoomId(roomId);
 
         if (
-          !isLiveHost(
+          !socket.rooms.has(normalizedRoomId) || !isLiveHost(
             normalizedRoomId,
             socket.user.id
           )
@@ -1645,11 +1655,7 @@ io.on("connection", (socket) => {
           return;
         }
 
-        liveState.isPlaying =
-          false;
-
-        liveState.currentTime =
-          Number(currentTime) || 0;
+        setLiveClock(liveState, currentTime, false);
 
         await prisma.liveSession.update({
           where: {
@@ -1663,12 +1669,7 @@ io.on("connection", (socket) => {
           },
         });
 
-        io.to(
-          normalizedRoomId
-        ).emit(
-          "video-pause",
-          liveState.currentTime
-        );
+        io.to(normalizedRoomId).emit("video-sync", liveSyncSnapshot(liveState));
       } catch (error) {
         console.error(
           "Erro ao pausar vídeo:",
@@ -1693,7 +1694,7 @@ io.on("connection", (socket) => {
           normalizeRoomId(roomId);
 
         if (
-          !isLiveHost(
+          !socket.rooms.has(normalizedRoomId) || !isLiveHost(
             normalizedRoomId,
             socket.user.id
           )
@@ -1706,11 +1707,10 @@ io.on("connection", (socket) => {
             normalizedRoomId
           ];
 
-        const normalizedTime =
-          Number(currentTime) || 0;
-
-        liveState.currentTime =
-          normalizedTime;
+        const normalizedTime = Number(currentTime);
+        if (!liveState?.currentVideoId || !liveState.isPlaying || !Number.isFinite(normalizedTime)) return;
+        setLiveClock(liveState, normalizedTime, true);
+        io.to(normalizedRoomId).emit("video-sync", liveSyncSnapshot(liveState));
 
         /*
           Salva apenas no estado em memória.
@@ -1724,6 +1724,15 @@ io.on("connection", (socket) => {
       }
     }
   );
+
+  socket.on("video-sync-request", ({ roomId }, callback) => {
+    const normalizedRoomId = normalizeRoomId(roomId);
+    const liveState = liveStates[normalizedRoomId];
+    if (!socket.rooms.has(normalizedRoomId) || !liveState?.active) {
+      return callback?.({ success: false });
+    }
+    callback?.({ success: true, ...liveSyncSnapshot(liveState) });
+  });
 
   /*
     Encerrar live
@@ -1751,53 +1760,7 @@ io.on("connection", (socket) => {
           });
         }
 
-        const liveState =
-          liveStates[
-            normalizedRoomId
-          ];
-
-        await prisma.$transaction([
-          prisma.liveSession.update({
-            where: {
-              id:
-                liveState.liveId,
-            },
-            data: {
-              status: "ENDED",
-              endedAt:
-                new Date(),
-              isPlaying: false,
-              currentTime:
-                liveState.currentTime,
-            },
-          }),
-
-          prisma.playlistItem.updateMany({
-            where: {
-              liveId:
-                liveState.liveId,
-              status: {
-                in: [
-                  "WAITING",
-                  "PLAYING",
-                ],
-              },
-            },
-            data: {
-              status: "REMOVED",
-            },
-          }),
-        ]);
-
-        delete liveStates[
-          normalizedRoomId
-        ];
-
-        io.to(
-          normalizedRoomId
-        ).emit(
-          "live-ended"
-        );
+        await endLiveSession(normalizedRoomId);
 
         return callback?.({
           success: true,
@@ -1814,6 +1777,17 @@ io.on("connection", (socket) => {
             "Não foi possível encerrar a live.",
         });
       }
+    }
+  );
+
+  socket.on(
+    "disconnecting",
+    () => {
+      const roomIds = [...socket.rooms].filter((roomId) => roomId !== socket.id);
+      setImmediate(() => roomIds.forEach((roomId) => {
+        emitRoomPresence(roomId);
+        endLiveWhenRoomEmpty(roomId);
+      }));
     }
   );
 

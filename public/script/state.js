@@ -1,51 +1,6 @@
-/*
-  Salas públicas disponíveis.
-
-  A chave é o ID usado no banco,
-  na URL e no Socket.IO.
-*/
-export const publicRooms = {
-  geral: {
-    id: "geral",
-    name: "Geral",
-    icon: "🔥",
-  },
-
-  games: {
-    id: "games",
-    name: "Games",
-    icon: "👾",
-  },
-
-  musica: {
-    id: "musica",
-    name: "Música",
-    icon: "🎵",
-  },
-
-  filmes: {
-    id: "filmes",
-    name: "Filmes",
-    icon: "🎬",
-  },
-
-  programacao: {
-    id: "programacao",
-    name: "Programação",
-    icon: "💻",
-  },
-
-  anime: {
-    id: "anime",
-    name: "Anime",
-    icon: "🎌",
-  },
-};
-
 /**
- * Normaliza e valida o ID de uma sala pública.
- *
- * Retorna null quando a sala não existe.
+ * Valida o formato do ID de sala recebido pela URL.
+ * A existência é confirmada pela API de salas.
  */
 export function normalizePublicRoomId(
   roomId
@@ -58,7 +13,7 @@ export function normalizePublicRoomId(
     .trim()
     .toLowerCase();
 
-  if (!publicRooms[normalizedRoomId]) {
+  if (!/^[a-z0-9_-]{1,50}$/.test(normalizedRoomId)) {
     return null;
   }
 

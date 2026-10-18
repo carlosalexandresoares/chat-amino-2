@@ -117,20 +117,6 @@
       clamp(160px, 25vh, 210px);
   }
 
-  .video-controls {
-    padding: 5px 7px;
-  }
-
-  .video-controls button {
-    padding: 7px 9px;
-
-    font-size: 10px;
-  }
-
-  .video-controls.locked::after {
-    display: none;
-  }
-
   .messages {
     min-height: 125px;
 
