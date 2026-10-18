@@ -12,7 +12,7 @@
 
   <link
     rel="stylesheet"
-    href="style/style.css?v=7"
+    href="style/style.css?v=9"
   />
 
   <script src="/socket.io/socket.io.js"></script>
@@ -20,7 +20,7 @@
 
   <script
     type="module"
-    src="script/script.js?v=6"
+    src="script/script.js?v=8"
   ></script>
 </head>
 
@@ -149,6 +149,7 @@
             </div>
 
             <div class="live-header-actions">
+              <button type="button" id="projection-reports-button" class="live-button">Meus relatórios</button>
               <button
                 type="button"
                 id="toggle-live-details"
@@ -197,6 +198,17 @@
                   —
                 </strong>
               </div>
+            </div>
+
+            <div id="host-rep-widget" class="host-rep-widget hidden">
+              <div id="host-rep-orb" class="host-rep-orb"><strong id="host-rep-progress">0</strong><small>/ 25 REP</small></div>
+              <div class="host-rep-copy"><strong>REP de apresentador</strong><span id="host-rep-today">0 / 250 REP hoje</span><small id="host-rep-pending">0 REP pendente</small></div>
+              <button type="button" id="host-rep-collect" class="live-button live-button-primary" disabled>Coletar REP</button>
+            </div>
+
+            <div id="viewer-rep-widget" class="viewer-rep-widget hidden">
+              <div><strong>REP por acompanhar</strong><p id="viewer-rep-message">Confirme sua presença para ganhar 1 REP a cada 5 minutos de projeção válida.</p></div>
+              <button type="button" id="viewer-rep-confirm" class="live-button">Estou assistindo</button>
             </div>
 
             <div
@@ -293,8 +305,22 @@
             <div id="viewer-overlay" class="viewer-overlay hidden" aria-label="Vídeo sincronizado pelo apresentador">
               <button type="button" id="viewer-sound">Ativar som</button>
             </div>
+
           </div>
         </section>
+
+        <dialog id="projection-report-dialog" class="projection-dialog" aria-labelledby="projection-report-title">
+          <div class="projection-dialog-header"><div><span>PROJEÇÃO FINALIZADA</span><h2 id="projection-report-title">Resumo da Projeção</h2></div><button type="button" id="projection-report-close" aria-label="Fechar">×</button></div>
+          <p id="projection-report-meta"></p>
+          <div id="projection-report-stats" class="projection-stats"></div>
+          <section id="projection-host-section" class="projection-host-section hidden"><h3>Sua reputação como Host</h3><p id="projection-host-values"></p><button type="button" id="projection-report-collect" class="live-button live-button-primary">Coletar REP</button><p id="projection-collect-message" role="status"></p></section>
+        </dialog>
+
+        <dialog id="projection-list-dialog" class="projection-dialog" aria-labelledby="projection-list-title">
+          <div class="projection-dialog-header"><div><span>HISTÓRICO</span><h2 id="projection-list-title">Minhas projeções</h2></div><button type="button" id="projection-list-close" aria-label="Fechar">×</button></div>
+          <div id="projection-list" class="projection-list"></div>
+          <button type="button" id="projection-list-more" class="live-button hidden">Carregar mais</button>
+        </dialog>
 
         <section
           class="messages"

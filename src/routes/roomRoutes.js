@@ -1,6 +1,7 @@
 const express = require("express");
 const prisma = require("../database/prisma");
 const auth = require("../middleware/authMiddleware");
+const projectionRep = require('../services/projectionRep');
 
 const router = express.Router();
 router.use(auth);
@@ -72,12 +73,6 @@ router.post("/", async (req, res) => {
         },
         select: { id: true },
       });
-      const user = await tx.user.update({
-        where: { id: req.userId }, data: { xp: { increment: 50 } },
-        select: { xp: true, level: true },
-      });
-      const level = Math.floor(user.xp / 100) + 1;
-      if (level !== user.level) await tx.user.update({ where: { id: req.userId }, data: { level } });
       return created;
     });
     res.status(201).json({ room });
@@ -208,6 +203,7 @@ router.delete("/:id/members/:userId", async (req, res) => {
     if (!deleted.count) return res.status(409).json({ message: "A permissão do participante mudou. Atualize a lista." });
 
     const io = req.app.get("io");
+    await req.app.get('settleProjection')(access.room.id);
     for (const socket of io.sockets.sockets.values()) {
       if (socket.user?.id === req.params.userId && socket.rooms.has(access.room.id)) {
         socket.emit("room-removed", { roomId: access.room.id, message: "Você foi removido deste chat." });
@@ -218,6 +214,10 @@ router.delete("/:id/members/:userId", async (req, res) => {
     for (const socketId of io.sockets.adapter.rooms.get(access.room.id) || []) {
       const userId = io.sockets.sockets.get(socketId)?.user?.id;
       if (userId) onlineUsers.add(userId);
+    }
+    const projection = await prisma.liveSession.findFirst({ where: { roomId: access.room.id, status: 'ACTIVE' }, select: { id: true, hostId: true } });
+    if (projection && projection.hostId !== req.params.userId && !onlineUsers.has(req.params.userId)) {
+      await projectionRep.recordLeave(projection.id, req.params.userId);
     }
     io.to(access.room.id).emit("room-presence", { roomId: access.room.id, onlineCount: onlineUsers.size });
     const membersCount = await prisma.roomMember.count({ where: { roomId: access.room.id } });

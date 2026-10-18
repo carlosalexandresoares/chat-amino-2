@@ -266,6 +266,50 @@
   font-size: 14px;
 }
 
+.host-rep-widget, .viewer-rep-widget {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid #a48ad2;
+  border-radius: 14px;
+  background: linear-gradient(110deg, #2f244a, #292f53);
+  color: #fff;
+}
+.host-rep-orb { display: grid; place-items: center; flex: none; width: 64px; height: 64px; border: 4px solid #ffaf66; border-radius: 50%; background: #513263; box-shadow: 0 0 18px #ef8d6470; }
+.host-rep-orb strong { align-self: end; font-size: 23px; line-height: 1; }
+.host-rep-orb small { align-self: start; font-size: 9px; }
+.host-rep-copy { display: grid; gap: 3px; flex: 1; min-width: 0; }
+.host-rep-copy strong, .viewer-rep-widget strong { font-size: 13px; }
+.host-rep-copy span, .host-rep-copy small, .viewer-rep-widget p { color: #d4c6e9; font-size: 11px; }
+.viewer-rep-widget p { margin: 3px 0 0; }
+.host-rep-widget .live-button, .viewer-rep-widget .live-button { flex: none; }
+
+.projection-dialog { width: min(640px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; padding: 24px; border: 1px solid #78669b; border-radius: 20px; background: #1c2238; color: #f7f5ff; box-shadow: 0 25px 75px #0009; }
+.projection-dialog::backdrop { background: #070a17b8; backdrop-filter: blur(4px); }
+.projection-dialog-header { display: flex; justify-content: space-between; align-items: start; gap: 15px; }
+.projection-dialog-header span { color: #ffb773; font-size: 10px; font-weight: 900; letter-spacing: 1.5px; }
+.projection-dialog-header h2 { margin: 4px 0 12px; font-size: 24px; }
+.projection-dialog-header button { width: 32px; height: 32px; border: 1px solid #76698e; border-radius: 8px; background: #313450; color: #fff; cursor: pointer; }
+#projection-report-meta { margin: 0 0 16px; color: #bbc5dd; font-size: 12px; line-height: 1.5; }
+.projection-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.projection-stat { padding: 14px; border: 1px solid #42475f; border-radius: 12px; background: #282e48; }
+.projection-stat strong { display: block; color: #fff; font-size: 22px; }
+.projection-stat span { color: #bec8dd; font-size: 11px; }
+.projection-host-section { margin-top: 18px; padding: 16px; border: 1px solid #a67a56; border-radius: 12px; background: #34283d; }
+.projection-host-section h3 { margin: 0 0 10px; color: #ffd1a1; font-size: 16px; }
+.projection-host-section p { margin: 6px 0; color: #eee3f2; font-size: 13px; line-height: 1.6; }
+.projection-list { display: grid; gap: 8px; }
+.projection-list button { display: grid; width: 100%; gap: 4px; padding: 12px; border: 1px solid #4d5370; border-radius: 10px; background: #2a3049; color: #fff; text-align: left; cursor: pointer; }
+.projection-list button:hover { border-color: #c6a4ff; }
+.projection-list small { color: #c5cee0; }
+#projection-list-more { margin-top: 12px; }
+@media (max-width: 600px) {
+  .host-rep-widget, .viewer-rep-widget { flex-wrap: wrap; }
+  .host-rep-widget .live-button, .viewer-rep-widget .live-button { width: 100%; }
+  .projection-dialog { padding: 18px; }
+}
+
 /* =======================
    CONTROLES DO HOST
 ======================= */

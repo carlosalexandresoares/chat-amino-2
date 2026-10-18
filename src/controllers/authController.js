@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const prisma = require("../database/prisma");
+const { imageMime, imageUrl, validExternalUrl, MAX_AVATAR_BYTES, MAX_BANNER_BYTES } = require('../services/profileImage');
 
 async function register(req, res) {
   try {
@@ -205,114 +206,58 @@ async function me(req, res) {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.userId;
+    const body = req.body || {};
+    const files = { avatar: req.files?.avatarFile?.[0], banner: req.files?.bannerFile?.[0] };
+    for (const key of ['bio', 'avatar', 'banner']) {
+      if (body[key] !== undefined && typeof body[key] !== 'string') {
+        return res.status(400).json({ message: `${key} inválido.` });
+      }
+    }
+    const bio = body.bio?.trim();
+    if (bio !== undefined && bio.length > 300) return res.status(400).json({ message: 'A bio pode ter no máximo 300 caracteres.' });
 
-    const { bio, avatar, banner } = req.body;
-
-    if (
-      bio !== undefined &&
-      typeof bio !== "string"
-    ) {
-      return res.status(400).json({
-        message: "Bio inválida.",
-      });
+    const updates = { ...(bio !== undefined ? { bio: bio || null } : {}) };
+    const validatedFiles = {};
+    for (const kind of ['avatar', 'banner']) {
+      const file = files[kind];
+      const link = body[kind]?.trim();
+      if (file) {
+        const maxSize = kind === 'avatar' ? MAX_AVATAR_BYTES : MAX_BANNER_BYTES;
+        const mimeType = imageMime(file.buffer);
+        if (file.size > maxSize || !mimeType) {
+          return res.status(400).json({ message: `${kind === 'avatar' ? 'Avatar' : 'Banner'}: use JPG, PNG, WebP ou GIF com até ${maxSize / 1048576} MB.` });
+        }
+        validatedFiles[kind] = { data: file.buffer, mimeType };
+        updates[kind] = imageUrl(userId, kind);
+      } else if (link !== undefined) {
+        if (link.length > 1000 || (link && !validExternalUrl(link))) {
+          return res.status(400).json({ message: `Informe um link http ou https válido para ${kind}.` });
+        }
+        updates[kind] = link || null;
+      }
     }
 
-    if (
-      avatar !== undefined &&
-      typeof avatar !== "string"
-    ) {
-      return res.status(400).json({
-        message: "Avatar inválido.",
-      });
-    }
-
-    if (
-      banner !== undefined &&
-      typeof banner !== "string"
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Banner inválido.",
-      });
-    }
-
-    const normalizedBio =
-      typeof bio === "string"
-        ? bio.trim()
-        : undefined;
-
-    const normalizedAvatar =
-      typeof avatar === "string"
-        ? avatar.trim()
-        : undefined;
-
-    const normalizedBanner =
-      typeof banner === "string"
-        ? banner.trim()
-        : undefined;
-
-    if (
-      normalizedBio !== undefined &&
-      normalizedBio.length > 300
-    ) {
-      return res.status(400).json({
-        message:
-          "A bio pode ter no máximo 300 caracteres.",
-      });
-    }
-
-    if (
-      normalizedAvatar !== undefined &&
-      normalizedAvatar.length > 1000
-    ) {
-      return res.status(400).json({
-        message: "URL do avatar muito longa.",
-      });
-    }
-
-    if (
-      normalizedBanner !== undefined &&
-      normalizedBanner.length > 1000
-    ) {
-      return res.status(400).json({
-        message: "URL do banner muito longa.",
-      });
-    }
-
-    const updatedUser = await prisma.user.update({
-      where: {
-        id: userId,
-      },
-
-      data: {
-        bio:
-          normalizedBio === ""
-            ? null
-            : normalizedBio,
-
-        avatar:
-          normalizedAvatar === ""
-            ? null
-            : normalizedAvatar,
-
-        banner:
-          normalizedBanner === ""
-            ? null
-            : normalizedBanner,
-      },
-
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        avatar: true,
-        banner: true,
-        bio: true,
-        xp: true,
-        level: true,
-        createdAt: true,
-      },
+    const updatedUser = await prisma.$transaction(async tx => {
+      for (const kind of ['avatar', 'banner']) {
+        const image = validatedFiles[kind];
+        if (image) {
+          await tx.userImage.upsert({
+            where: { userId_kind: { userId, kind } },
+            create: { userId, kind, ...image }, update: image,
+          });
+        } else if (body[kind] !== undefined) {
+          await tx.userImage.deleteMany({ where: { userId, kind } });
+        }
+      }
+      return tx.user.update({ where: { id: userId }, data: updates,
+        select: { id: true, username: true, email: true, avatar: true, banner: true,
+          bio: true, xp: true, level: true, createdAt: true } });
     });
+
+    const io = req.app.get('io');
+    if (io) for (const socket of io.sockets.sockets.values()) {
+      if (socket.user?.id === userId) socket.user = { ...socket.user, avatar: updatedUser.avatar };
+    }
 
     return res.status(200).json({
       success: true,

@@ -142,7 +142,11 @@
 
   font-size: 9px;
   font-weight: 800;
+  text-decoration: none;
 }
+.message-level[data-tier="2"] { background: #7840ae; }
+.message-level[data-tier="3"] { background: #bb5b25; }
+.message-level[data-tier="4"] { background: #a02839; }
 
 .message-time {
   margin-left: auto;

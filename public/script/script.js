@@ -1,8 +1,8 @@
 import state from "./state.js";
 import { loadAuthenticatedUser } from "./auth.js";
-import { initializeChat } from "./chat.js";
+import { initializeChat } from "./chat.js?v=3";
 import { initializeYouTube, stopTimeUpdater } from "./youtube.js";
-import { initializeLive } from "./live.js";
+import { initializeLive } from "./live.js?v=2";
 
 const roomsScreen = document.getElementById("rooms-screen");
 const appScreen = document.getElementById("app-screen");

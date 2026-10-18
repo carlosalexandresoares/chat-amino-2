@@ -56,11 +56,13 @@ function getXpReasonText(reason) {
     MESSAGE_SENT:
       "Mensagem enviada",
 
-    DAILY_LOGIN:
-      "Bônus diário",
-
-    ROOM_CREATED:
-      "Sala criada",
+    CHECKIN: "Check-in diário",
+    CHAT_PRESENCE: "Participação no chat",
+    POST_CREATED: "Publicação criada",
+    POST_LIKED: "Curtida recebida",
+    POST_FEATURED: "Publicação destacada",
+    LIVE_HOST: "REP de apresentador",
+    LIVE_VIEWER: "REP por acompanhar projeção",
   };
 
   return (
@@ -79,6 +81,8 @@ function showXpNotification({
   level = 1,
   xp = 0,
   nextLevelXp = 100,
+  currentLevelXp = 0,
+  ninjaTitle = '',
 }) {
   const container =
     getNotificationContainer();
@@ -139,7 +143,7 @@ function showXpNotification({
       "LEVEL UP!";
 
     description.textContent =
-      `Você alcançou o LV ${level}`;
+      `Parabéns! Você alcançou o nível ${level} — ${ninjaTitle}!`;
   } else {
     title.textContent =
       `+${gainedXp} XP`;
@@ -206,11 +210,7 @@ function showXpNotification({
       representa 12% do caminho
       até o nível 3.
     */
-    const previousLevelXp =
-      Math.max(
-        0,
-        nextLevelXp - 100
-      );
+    const previousLevelXp = currentLevelXp;
 
     const xpInsideCurrentLevel =
       Math.max(
@@ -319,6 +319,7 @@ function updateCurrentUserMessageLevels(
       if (levelElement) {
         levelElement.textContent =
           `LV ${level}`;
+        levelElement.dataset.tier = String(Math.min(4, Math.ceil(level / 5)));
       }
     }
   );
@@ -340,6 +341,7 @@ function sendMessage() {
     {
       roomId: state.roomId,
       message: text,
+      clientKey: crypto.randomUUID(),
     }
   );
 
@@ -434,7 +436,7 @@ function addMessage(messageData) {
     `/perfil.html?id=${encodeURIComponent(messageData.user.id)}`;
 
   const levelElement =
-    document.createElement("span");
+    document.createElement("a");
 
   levelElement.classList.add(
     "message-level"
@@ -442,6 +444,9 @@ function addMessage(messageData) {
 
   levelElement.textContent =
     `LV ${messageData.user.level}`;
+  levelElement.title = messageData.user.title || `Nível ${messageData.user.level}`;
+  levelElement.href = usernameElement.href;
+  levelElement.dataset.tier = String(Math.min(4, Math.ceil(messageData.user.level / 5)));
 
   userInfoElement.append(
     usernameElement,
@@ -578,8 +583,8 @@ export function initializeChat() {
       xp:
         state.currentUser.xp,
       nextLevelXp:
-        Number(data.nextLevelXp) ||
-        state.currentUser.level * 100,
+        data.nextLevelXp === null ? NaN : Number(data.nextLevelXp),
+      currentLevelXp: Number(data.currentLevelXp) || 0,
     });
   }
 );
@@ -617,6 +622,7 @@ export function initializeChat() {
         level: newLevel,
         xp:
           state.currentUser.xp,
+        ninjaTitle: data.title || '',
       });
     }
   );

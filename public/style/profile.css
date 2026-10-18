@@ -25,9 +25,21 @@ button { cursor: pointer; }
 .profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .profile-eyebrow, .profile-section-label { color: #bd9eff; font-size: 11px; font-weight: 900; letter-spacing: 1.8px; }
 .profile-content h1 { margin: 7px 0 14px; color: #fff; font-size: clamp(30px,5vw,42px); line-height: 1.1; letter-spacing: -1.1px; overflow-wrap: anywhere; }
+.profile-load-message { margin: 0 auto 16px; max-width: 520px; color: #ffd5d5; font-size: 14px; }
 .profile-quick-actions { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 9px; }
 .level-badge, .edit-profile-button, .follow-button { display: inline-flex; align-items: center; justify-content: center; min-height: 37px; padding: 8px 14px; border-radius: 999px; font-size: 12px; font-weight: 900; text-decoration: none; }
 .level-badge { color: #c7aaff; border: 1px solid rgba(189,158,255,.35); background: rgba(189,158,255,.13); }
+.ninja-title { color: #ffbd70; font-weight: 800; font-size: 13px; }
+.reputation-detail { margin: 9px 0 0; color: #c9d4eb; font-size: 13px; }
+.reputation-panel { margin-top: 16px; padding: 19px 22px; border: 1px solid #55415c; border-radius: 16px; background: #241f38; text-align: left; }
+.reputation-panel h2 { margin: 0 0 10px; color: #ffbd70; font-size: 18px; }
+.reputation-panel p { color: #d7dced; }
+.reputation-panel select { margin-left: 8px; padding: 6px; border-radius: 7px; color: #fff; background: #302949; border: 1px solid #806b96; }
+#ranking-list { padding-left: 24px; }
+#ranking-list li { padding: 7px 0; color: #e7e0ef; }
+.ranking-user { display: inline-flex; align-items: center; gap: 8px; color: inherit; text-decoration: none; }
+.ranking-user img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+.level-toast { position: fixed; z-index: 10; top: 16px; right: 16px; max-width: min(360px, calc(100vw - 32px)); padding: 16px 20px; border: 1px solid #ffc47c; border-radius: 14px; background: #35243d; color: #ffe4b3; box-shadow: 0 12px 34px #0008; font-weight: 800; }
 .edit-profile-button, .follow-button { color: #23123f; border: 0; background: #c8aaff; }
 .edit-profile-button:hover, .follow-button:hover { background: #dcc8ff; }
 .follow-button.following { color: #e9e2ff; border: 1px solid #665987; background: #32304f; }

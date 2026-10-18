@@ -11,11 +11,13 @@
 
   <title>Meu perfil</title>
 
-  <link rel="stylesheet" href="/style/profile.css?v=3">
-  <script src="/script/perfil.js?v=3" defer></script>
+  <link rel="stylesheet" href="/style/profile.css?v=5">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/script/perfil.js?v=5" defer></script>
 </head>
 
 <body>
+  <div id="level-toast" class="level-toast hidden" role="status"></div>
   <main class="profile-page">
     <section class="profile-card">
       <nav class="profile-nav" aria-label="Navegação do perfil">
@@ -41,12 +43,14 @@
         <h1 id="profile-username">
           Carregando...
         </h1>
+        <p id="profile-load-message" class="profile-load-message hidden" role="alert"></p>
 
         <div class="profile-quick-actions">
           <div class="level-badge">
             <span id="profile-level">LV 1</span>
           </div>
-          <a href="/editar-perfil.html" class="edit-profile-button" id="edit-profile-button">Editar perfil</a>
+          <span id="profile-title" class="ninja-title"></span>
+          <a href="/editar-perfil.html" class="edit-profile-button hidden" id="edit-profile-button">Editar perfil</a>
           <button type="button" id="follow-button" class="follow-button hidden">Seguir</button>
         </div>
 
@@ -76,7 +80,23 @@
               id="xp-progress"
             ></div>
           </div>
+          <p id="profile-next-xp" class="reputation-detail"></p>
+          <p id="profile-rank" class="reputation-detail"></p>
         </div>
+
+        <section class="reputation-panel">
+          <h2>Check-in ninja</h2>
+          <p id="checkin-status"></p>
+          <button type="button" id="checkin-button" class="follow-button hidden">Fazer check-in</button>
+        </section>
+
+        <section class="reputation-panel">
+          <h2>Ranking de reputação</h2>
+          <label for="ranking-period">Período</label>
+          <select id="ranking-period"><option value="daily">Diário</option><option value="weekly">Semanal</option><option value="monthly">Mensal</option><option value="all">Geral</option></select>
+          <ol id="ranking-list"></ol>
+          <button type="button" id="ranking-more" class="follow-button hidden">Carregar mais</button>
+        </section>
 
         <p
           class="profile-email"

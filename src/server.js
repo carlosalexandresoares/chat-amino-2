@@ -10,6 +10,10 @@ const path = require("path");
 const authRoutes = require("./routes/authRoutes");
 const roomRoutes = require("./routes/roomRoutes");
 const socialRoutes = require("./routes/socialRoutes");
+const reputation = require('./services/reputation');
+const reputationRoutes = require('./routes/reputationRoutes');
+const projectionRep = require('./services/projectionRep');
+const projectionRoutes = require('./routes/projectionRoutes');
 
 const app = express();
 
@@ -23,6 +27,8 @@ app.use(express.static(path.join(__dirname, "../public")));
 app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api", socialRoutes);
+app.use('/api', reputationRoutes.router);
+app.use('/api/projections', projectionRoutes);
 
 // Health check do Render
 app.get("/healthz", (req, res) => {
@@ -50,12 +56,38 @@ function emitRoomPresence(roomId) {
   io.to(roomId).emit("room-presence", { roomId, onlineCount: users.size });
 }
 
-/*
-  Regras de XP
-*/
-const XP_PER_MESSAGE = 2;
-const XP_DAILY_LOGIN = 10;
-const XP_PER_LEVEL = 100;
+const projectionSettles = new Map();
+function projectionEvidence(roomId, liveState) {
+  const sockets = [...(io.sockets.adapter.rooms.get(roomId) || [])]
+    .map(id => io.sockets.sockets.get(id)).filter(Boolean);
+  return {
+    playing: liveState.isPlaying, videoId: liveState.currentVideoId,
+    hostConnected: sockets.some(socket => socket.user?.id === liveState.hostId),
+    viewerIds: projectionRep.distinctViewerIds(new Map(sockets.map(socket => [socket.id, socket])), roomId, liveState.hostId),
+  };
+}
+async function settleProjection(roomId) {
+  const previous = projectionSettles.get(roomId);
+  if (previous) await previous.catch(() => {});
+  const state = liveStates[roomId];
+  if (!state?.active) return;
+  const task = projectionRep.settle(state.liveId, projectionEvidence(roomId, state));
+  projectionSettles.set(roomId, task);
+  try {
+    const result = await task;
+    if (!result) return;
+    for (const { userId, result: xp } of result.viewerAwards) emitXpToUser(userId, xp, 'LIVE_VIEWER');
+    const hostRep = await projectionRep.hostStatus(state.liveId, state.hostId);
+    for (const socket of io.sockets.sockets.values()) if (socket.user?.id === state.hostId) {
+      socket.emit('projection-rep', { liveId: state.liveId, hostRep });
+    }
+  } finally { if (projectionSettles.get(roomId) === task) projectionSettles.delete(roomId); }
+}
+app.set('settleProjection', settleProjection);
+setInterval(() => {
+  for (const roomId of Object.keys(liveStates)) settleProjection(roomId)
+    .catch(error => console.error('Erro ao calcular REP de projeção:', error));
+}, 30000).unref();
 
 /*
   Estado temporário das lives.
@@ -109,24 +141,12 @@ async function endLiveSession(roomId) {
     return false;
   }
 
-  await prisma.$transaction([
-    prisma.liveSession.update({
-      where: { id: live.id },
-      data: {
-        status: "ENDED",
-        endedAt: new Date(),
-        isPlaying: false,
-        currentTime: liveStates[roomId] ? currentLiveTime(liveStates[roomId]) : live.currentTime,
-      },
-    }),
-    prisma.playlistItem.updateMany({
-      where: { liveId: live.id, status: { in: ["WAITING", "PLAYING"] } },
-      data: { status: "REMOVED" },
-    }),
-  ]);
+  if (liveStates[roomId]) await settleProjection(roomId);
+  const finished = await projectionRep.finish(live.id,
+    liveStates[roomId] ? currentLiveTime(liveStates[roomId]) : live.currentTime);
   delete liveStates[roomId];
-  io.to(roomId).emit("live-ended");
-  return true;
+  if (finished) io.to(roomId).emit("live-ended", { id: live.id });
+  return finished;
 }
 app.set("endLiveSession", endLiveSession);
 
@@ -136,263 +156,6 @@ function endLiveWhenRoomEmpty(roomId) {
     .catch((error) => console.error("Erro ao encerrar live de sala vazia:", error))
     .finally(() => closingRooms.delete(roomId));
   closingRooms.set(roomId, closing);
-}
-
-/**
- * Calcula o nível usando o XP total.
- *
- * 0 até 99 XP = nível 1
- * 100 até 199 XP = nível 2
- * 200 até 299 XP = nível 3
- */
-function calculateLevel(xp) {
-  const normalizedXp = Math.max(
-    0,
-    Number(xp) || 0
-  );
-
-  return (
-    Math.floor(
-      normalizedXp / XP_PER_LEVEL
-    ) + 1
-  );
-}
-
-/**
- * Retorna o início do dia atual em UTC.
- *
- * Esse valor é usado para impedir que o
- * bônus diário seja recebido mais de uma
- * vez no mesmo dia.
- */
-function getStartOfCurrentUtcDay() {
-  const now = new Date();
-
-  return new Date(
-    Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-      0,
-      0,
-      0,
-      0
-    )
-  );
-}
-
-/**
- * Concede uma quantidade de XP ao usuário.
- *
- * Pode receber o Prisma normal ou o cliente
- * de uma transação.
- */
-async function grantXp(
-  databaseClient,
-  userId,
-  amount
-) {
-  const normalizedAmount = Math.max(
-    0,
-    Number(amount) || 0
-  );
-
-  if (!normalizedAmount) {
-    const user =
-      await databaseClient.user.findUnique({
-        where: {
-          id: userId,
-        },
-        select: {
-          id: true,
-          username: true,
-          avatar: true,
-          xp: true,
-          level: true,
-        },
-      });
-
-    return {
-      user,
-      gainedXp: 0,
-      previousLevel:
-        user?.level || 1,
-      leveledUp: false,
-    };
-  }
-
-  /*
-    O increment evita perder XP caso duas
-    ações aconteçam quase ao mesmo tempo.
-  */
-  const userWithNewXp =
-    await databaseClient.user.update({
-      where: {
-        id: userId,
-      },
-      data: {
-        xp: {
-          increment: normalizedAmount,
-        },
-      },
-      select: {
-        id: true,
-        username: true,
-        avatar: true,
-        xp: true,
-        level: true,
-      },
-    });
-
-  const previousLevel =
-    userWithNewXp.level;
-
-  const newLevel = calculateLevel(
-    userWithNewXp.xp
-  );
-
-  let updatedUser = userWithNewXp;
-
-  if (
-    newLevel !== userWithNewXp.level
-  ) {
-    updatedUser =
-      await databaseClient.user.update({
-        where: {
-          id: userId,
-        },
-        data: {
-          level: newLevel,
-        },
-        select: {
-          id: true,
-          username: true,
-          avatar: true,
-          xp: true,
-          level: true,
-        },
-      });
-  }
-
-  return {
-    user: updatedUser,
-    gainedXp: normalizedAmount,
-    previousLevel,
-    leveledUp:
-      updatedUser.level > previousLevel,
-  };
-}
-
-/**
- * Tenta conceder o bônus diário.
- *
- * O updateMany garante que somente uma
- * conexão por dia consiga alterar o XP.
- */
-async function claimDailyXp(userId) {
-  const now = new Date();
-
-  const startOfToday =
-    getStartOfCurrentUtcDay();
-
-  const dailyUpdate =
-    await prisma.user.updateMany({
-      where: {
-        id: userId,
-        OR: [
-          {
-            lastDailyXpAt: null,
-          },
-          {
-            lastDailyXpAt: {
-              lt: startOfToday,
-            },
-          },
-        ],
-      },
-      data: {
-        xp: {
-          increment: XP_DAILY_LOGIN,
-        },
-        lastDailyXpAt: now,
-      },
-    });
-
-  const userAfterDailyXp =
-    await prisma.user.findUnique({
-      where: {
-        id: userId,
-      },
-      select: {
-        id: true,
-        username: true,
-        avatar: true,
-        xp: true,
-        level: true,
-        lastDailyXpAt: true,
-      },
-    });
-
-  if (!userAfterDailyXp) {
-    return {
-      user: null,
-      gainedXp: 0,
-      previousLevel: 1,
-      leveledUp: false,
-      granted: false,
-    };
-  }
-
-  const previousLevel =
-    userAfterDailyXp.level;
-
-  const calculatedLevel =
-    calculateLevel(
-      userAfterDailyXp.xp
-    );
-
-  let updatedUser =
-    userAfterDailyXp;
-
-  if (
-    calculatedLevel !==
-    userAfterDailyXp.level
-  ) {
-    updatedUser =
-      await prisma.user.update({
-        where: {
-          id: userId,
-        },
-        data: {
-          level: calculatedLevel,
-        },
-        select: {
-          id: true,
-          username: true,
-          avatar: true,
-          xp: true,
-          level: true,
-          lastDailyXpAt: true,
-        },
-      });
-  }
-
-  const granted =
-    dailyUpdate.count === 1;
-
-  return {
-    user: updatedUser,
-    gainedXp:
-      granted
-        ? XP_DAILY_LOGIN
-        : 0,
-    previousLevel,
-    leveledUp:
-      granted &&
-      updatedUser.level >
-        previousLevel,
-    granted,
-  };
 }
 
 /**
@@ -418,9 +181,7 @@ function emitXpResult(
     xp: xpResult.user.xp,
     level:
       xpResult.user.level,
-    nextLevelXp:
-      xpResult.user.level *
-      XP_PER_LEVEL,
+    ...reputation.progress(xpResult.user.xp),
   });
 
   if (xpResult.leveledUp) {
@@ -431,6 +192,7 @@ function emitXpResult(
         xpResult.user.level,
       xp:
         xpResult.user.xp,
+      ...reputation.progress(xpResult.user.xp),
     });
   }
 }
@@ -455,6 +217,13 @@ function updateSocketUser(
     xp: user.xp,
     level: user.level,
   };
+}
+
+function emitXpToUser(userId, result, reason) {
+  for (const peer of io.sockets.sockets.values()) if (peer.user?.id === userId) {
+    updateSocketUser(peer, result.user);
+    emitXpResult(peer, result, reason);
+  }
 }
 
 /**
@@ -549,6 +318,8 @@ async function playNextVideo(
         "Não existe uma live ativa.",
     };
   }
+
+  await settleProjection(roomId);
 
   const nextItem =
     await prisma.playlistItem.findFirst({
@@ -726,12 +497,9 @@ io.use(async (socket, next) => {
       Se o usuário já recebeu hoje,
       nenhum XP adicional será concedido.
     */
-    const dailyXpResult =
-      await claimDailyXp(
-        existingUser.id
-      );
-
-    if (!dailyXpResult.user) {
+    const currentUser = await prisma.user.findUnique({ where: { id: existingUser.id },
+      select: { id: true, username: true, avatar: true, xp: true, level: true } });
+    if (!currentUser) {
       return next(
         new Error(
           "Usuário não encontrado."
@@ -739,11 +507,7 @@ io.use(async (socket, next) => {
       );
     }
 
-    socket.user =
-      dailyXpResult.user;
-
-    socket.dailyXpResult =
-      dailyXpResult;
+    socket.user = currentUser;
 
     return next();
   } catch (error) {
@@ -769,15 +533,6 @@ io.on("connection", (socket) => {
     Informa o bônus diário depois que
     a conexão do socket foi concluída.
   */
-  if (
-    socket.dailyXpResult?.granted
-  ) {
-    emitXpResult(
-      socket,
-      socket.dailyXpResult,
-      "DAILY_LOGIN"
-    );
-  }
 
   /*
     Entrar na sala
@@ -910,6 +665,7 @@ io.on("connection", (socket) => {
                   message.user.avatar,
                 level:
                   message.user.level,
+                title: reputation.LEVELS[Math.min(20, Math.max(1, message.user.level)) - 1][0],
               },
               message:
                 message.content,
@@ -960,6 +716,8 @@ io.on("connection", (socket) => {
           });
 
         if (activeLive) {
+          const viewers = projectionRep.distinctViewerIds(io.sockets.sockets, normalizedRoomId, activeLive.hostId);
+          await projectionRep.recordJoin(activeLive.id, socket.user.id, viewers.length);
           // O banco guarda apenas o ultimo marco; o relogio em memoria
           // continua avancando enquanto a live permanece ativa.
           const liveState = liveStates[normalizedRoomId];
@@ -1017,7 +775,7 @@ io.on("connection", (socket) => {
   socket.on(
     "chat-message",
     async (
-      { roomId, message }
+      { roomId, message, clientKey }
     ) => {
       try {
         const normalizedRoomId =
@@ -1069,6 +827,10 @@ io.on("connection", (socket) => {
           return;
         }
 
+        const safeClientKey = typeof clientKey === 'string' && /^[a-f0-9-]{36}$/i.test(clientKey)
+          ? `${socket.user.id}:${clientKey}` : null;
+        if (safeClientKey && await prisma.message.findUnique({ where: { clientKey: safeClientKey }, select: { id: true } })) return;
+
         /*
           Salva a mensagem e concede XP
           dentro da mesma transação.
@@ -1081,6 +843,7 @@ io.on("connection", (socket) => {
                   data: {
                     content:
                       normalizedMessage,
+                    clientKey: safeClientKey,
                     roomId:
                       normalizedRoomId,
                     userId:
@@ -1100,12 +863,14 @@ io.on("connection", (socket) => {
                   },
                 });
 
-              const xpResult =
-                await grantXp(
-                  transaction,
-                  socket.user.id,
-                  XP_PER_MESSAGE
-                );
+              const xpResult = await reputation.messageAward(transaction, socket.user.id,
+                savedMessage.id, normalizedMessage);
+
+              const activeProjection = liveStates[normalizedRoomId];
+              if (activeProjection?.active) await transaction.liveSession.updateMany({
+                where: { id: activeProjection.liveId, status: 'ACTIVE' },
+                data: { messageCount: { increment: 1 } },
+              });
 
               return {
                 savedMessage,
@@ -1114,16 +879,9 @@ io.on("connection", (socket) => {
             }
           );
 
-        updateSocketUser(
-          socket,
-          result.xpResult.user
-        );
+        if (result.xpResult.realActivity) socket.realActivityAt = Date.now();
 
-        emitXpResult(
-          socket,
-          result.xpResult,
-          "MESSAGE_SENT"
-        );
+        emitXpToUser(socket.user.id, result.xpResult, "MESSAGE_SENT");
 
         const messageData = {
           id:
@@ -1139,6 +897,7 @@ io.on("connection", (socket) => {
                 .avatar,
             level:
               result.xpResult.user.level,
+            title: reputation.progress(result.xpResult.user.xp).title,
           },
           message:
             result.savedMessage.content,
@@ -1153,6 +912,7 @@ io.on("connection", (socket) => {
           messageData
         );
       } catch (error) {
+        if (error?.code === 'P2002') return;
         console.error(
           "Erro ao salvar mensagem:",
           error
@@ -1252,6 +1012,8 @@ io.on("connection", (socket) => {
                 normalizedRoomId,
               hostId:
                 socket.user.id,
+              roomName: (await prisma.room.findUnique({ where: { id: normalizedRoomId }, select: { name: true } })).name,
+              repTickAt: new Date(),
             },
             select: {
               id: true,
@@ -1322,6 +1084,22 @@ io.on("connection", (socket) => {
   /*
     Adicionar vídeo à playlist
   */
+  socket.on('projection-confirm', async ({ roomId } = {}, callback) => {
+    try {
+      const id = normalizeRoomId(roomId);
+      const live = liveStates[id];
+      if (!live?.active || !socket.rooms.has(id) || live.hostId === socket.user.id) {
+        return callback?.({ success: false, message: 'Entre em uma projeção ativa para confirmar presença.' });
+      }
+      const confirmedAt = await projectionRep.confirmViewer(live.liveId, socket.user.id);
+      callback?.({ success: Boolean(confirmedAt), confirmedAt: confirmedAt?.toISOString(),
+        message: confirmedAt ? undefined : 'Não foi possível confirmar sua presença.' });
+    } catch (error) {
+      console.error('Erro ao confirmar presença na projeção:', error);
+      callback?.({ success: false, message: 'Não foi possível confirmar sua presença.' });
+    }
+  });
+
   socket.on(
     "playlist-add",
     async (
@@ -1598,6 +1376,7 @@ io.on("connection", (socket) => {
           return;
         }
 
+        await settleProjection(normalizedRoomId);
         setLiveClock(liveState, currentTime, true);
 
         await prisma.liveSession.update({
@@ -1655,6 +1434,7 @@ io.on("connection", (socket) => {
           return;
         }
 
+        await settleProjection(normalizedRoomId);
         setLiveClock(liveState, currentTime, false);
 
         await prisma.liveSession.update({
@@ -1784,8 +1564,15 @@ io.on("connection", (socket) => {
     "disconnecting",
     () => {
       const roomIds = [...socket.rooms].filter((roomId) => roomId !== socket.id);
+      for (const roomId of roomIds) if (liveStates[roomId]) settleProjection(roomId)
+        .catch(error => console.error('Erro ao registrar saída da projeção:', error));
       setImmediate(() => roomIds.forEach((roomId) => {
         emitRoomPresence(roomId);
+        const liveId = liveStates[roomId]?.liveId;
+        if (liveId && ![...io.sockets.sockets.values()].some(peer => peer.user?.id === socket.user.id && peer.rooms.has(roomId))) {
+          projectionRep.recordLeave(liveId, socket.user.id)
+            .catch(error => console.error('Erro ao registrar visitante da projeção:', error));
+        }
         endLiveWhenRoomEmpty(roomId);
       }));
     }
@@ -1801,15 +1588,31 @@ io.on("connection", (socket) => {
   );
 });
 
+// Somente mensagens válidas observadas pelo servidor iniciam atividade.
+// O estado persistido e o bloqueio por usuário impedem multiplicação por abas.
+setInterval(async () => {
+  const connected = new Map();
+  for (const socket of io.sockets.sockets.values())
+    if (socket.user?.id && socket.realActivityAt && Date.now() - socket.realActivityAt <= 180000)
+      connected.set(socket.user.id, socket);
+  for (const [userId, socket] of connected) {
+    try {
+      const result = await reputation.presenceAward(userId);
+      if (result?.gainedXp) {
+        emitXpToUser(userId, result, 'CHAT_PRESENCE');
+      }
+    } catch (error) { console.error('Erro ao conceder XP de presença:', error); }
+  }
+}, 30000).unref();
+
 const PORT =
   process.env.PORT || 3000;
 
-server.listen(
-  PORT,
-  "0.0.0.0",
-  () => {
-    console.log(
-      `🔥 Servidor rodando na porta ${PORT}`
-    );
-  }
-);
+async function startServer() {
+  try {
+    const orphaned = await prisma.liveSession.findMany({ where: { status: 'ACTIVE' }, select: { roomId: true } });
+    for (const live of orphaned) await endLiveSession(live.roomId);
+  } catch (error) { console.error('Erro ao encerrar projeções interrompidas:', error); }
+  server.listen(PORT, '0.0.0.0', () => console.log(`🔥 Servidor rodando na porta ${PORT}`));
+}
+startServer();

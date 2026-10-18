@@ -2,95 +2,70 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  >
-
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Editar perfil</title>
-
-  <link
-    rel="stylesheet"
-    href="/style/editar-perfil.css"
-  >
+  <link rel="stylesheet" href="/style/editar-perfil.css?v=2">
+  <script src="/script/editar-perfil.js?v=2" defer></script>
 </head>
-
 <body>
-  <main class="edit-profile-container">
-    <a
-      href="/perfil.html"
-      class="back-link"
-    >
-      ← Voltar ao perfil
-    </a>
+  <main class="edit-page">
+    <header class="page-header">
+      <a href="/perfil.html" class="back-link">← Voltar ao perfil</a>
+      <span class="brand">✳ CHAT AMINO 2</span>
+    </header>
 
-    <section class="edit-profile-card">
-      <h1>Editar perfil</h1>
-
-      <div class="profile-preview">
-        <div
-          id="bannerPreview"
-          class="banner-preview"
-        ></div>
-
-        <img
-          id="avatarPreview"
-          class="avatar-preview"
-          alt="Prévia do avatar"
-        >
+    <section class="edit-card" aria-labelledby="page-title">
+      <div class="heading">
+        <span class="eyebrow">SEU PERFIL NINJA</span>
+        <h1 id="page-title">Editar perfil</h1>
+        <p>Escolha imagens da galeria ou do computador, ou use um link.</p>
       </div>
 
-      <form id="editProfileForm">
-        <label for="avatar">
-          URL do avatar
-        </label>
+      <div class="profile-preview" aria-label="Prévia do perfil">
+        <div class="banner-preview"><img id="bannerPreview" alt="Prévia do banner" hidden></div>
+        <div class="avatar-preview">
+          <img id="avatarPreview" alt="Prévia do avatar" hidden>
+          <span id="avatarFallback">?</span>
+        </div>
+      </div>
 
-        <input
-          id="avatar"
-          name="avatar"
-          type="url"
-          placeholder="https://exemplo.com/avatar.jpg"
-        >
+      <form id="editProfileForm" novalidate>
+        <div class="field-grid">
+          <fieldset class="image-field">
+            <legend>Foto de perfil</legend>
+            <p>JPG, PNG, WebP ou GIF · até 2 MB</p>
+            <label class="file-picker" for="avatarFile">Escolher da galeria ou pasta</label>
+            <input id="avatarFile" name="avatarFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+            <span id="avatarFileName" class="file-name">Nenhum arquivo escolhido</span>
+            <label class="url-label" for="avatar">Ou cole um link</label>
+            <input id="avatar" name="avatar" type="url" inputmode="url" placeholder="https://exemplo.com/avatar.jpg" autocomplete="url">
+            <button id="removeAvatar" class="remove-image" type="button">Remover foto</button>
+          </fieldset>
 
-        <label for="banner">
-          URL do banner
-        </label>
-
-        <input
-          id="banner"
-          name="banner"
-          type="url"
-          placeholder="https://exemplo.com/banner.jpg"
-        >
-
-        <label for="bio">
-          Bio
-        </label>
-
-        <textarea
-          id="bio"
-          name="bio"
-          maxlength="300"
-          placeholder="Conte um pouco sobre você..."
-        ></textarea>
-
-        <div class="bio-counter">
-          <span id="bioLength">0</span>/300
+          <fieldset class="image-field">
+            <legend>Banner</legend>
+            <p>JPG, PNG, WebP ou GIF · até 5 MB</p>
+            <label class="file-picker" for="bannerFile">Escolher da galeria ou pasta</label>
+            <input id="bannerFile" name="bannerFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif">
+            <span id="bannerFileName" class="file-name">Nenhum arquivo escolhido</span>
+            <label class="url-label" for="banner">Ou cole um link</label>
+            <input id="banner" name="banner" type="url" inputmode="url" placeholder="https://exemplo.com/banner.jpg" autocomplete="url">
+            <button id="removeBanner" class="remove-image" type="button">Remover banner</button>
+          </fieldset>
         </div>
 
-        <p
-          id="formMessage"
-          class="form-message"
-        ></p>
+        <div class="bio-field">
+          <label for="bio">Biografia</label>
+          <textarea id="bio" name="bio" maxlength="300" placeholder="Conte um pouco sobre você..."></textarea>
+          <span class="bio-counter"><span id="bioLength">0</span>/300</span>
+        </div>
 
-        <button type="submit">
-          Salvar alterações
-        </button>
+        <div class="form-footer">
+          <p id="formMessage" class="form-message" role="status"></p>
+          <button class="save-button" type="submit" disabled>Salvar alterações</button>
+        </div>
       </form>
     </section>
   </main>
-
-  <script src="/script/editar-perfil.js"></script>
 </body>
 </html>

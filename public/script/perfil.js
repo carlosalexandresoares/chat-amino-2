@@ -1,5 +1,15 @@
 const token = localStorage.getItem("authToken");
 if (!token) window.location.href = "/login.html";
+if (token && typeof io === 'function') {
+  const profileSocket = io({ auth: { token } });
+  profileSocket.on('level-up', (data) => {
+    const toast = document.getElementById('level-toast');
+    toast.textContent = `Parabéns! Você alcançou o nível ${data.level} — ${data.title}!`;
+    toast.classList.remove('hidden');
+    setTimeout(() => toast.classList.add('hidden'), 5000);
+    loadProfile();
+  });
+}
 
 const $ = (id) => document.getElementById(id);
 const targetId = new URLSearchParams(window.location.search).get("id");
@@ -15,6 +25,8 @@ let viewedUser = null;
 let connectionsKind = "followers";
 let connectionsOffset = 0;
 let connectionsRequestId = 0;
+let rankingPage = 1;
+const fmt = new Intl.NumberFormat('pt-BR');
 
 async function request(url, options = {}) {
   const response = await fetch(url, {
@@ -47,15 +59,21 @@ function updateAvatar(user) {
 
 function renderProfile(user) {
   viewedUser = user;
+  $("profile-load-message").classList.add("hidden");
   document.title = `${user.username} | Chat Amino 2`;
   $("profile-username").textContent = user.username;
   $("profile-level").textContent = `LV ${user.level}`;
-  $("profile-xp").textContent = `${user.xp} XP`;
+  $("profile-title").textContent = user.title;
+  $("profile-xp").textContent = user.nextLevelXp === null ? `${fmt.format(user.xp)} XP` : `${fmt.format(user.xp)} / ${fmt.format(user.nextLevelXp)} XP`;
+  $("profile-next-xp").textContent = user.nextLevelXp === null ? 'Nível Máximo' : `Faltam ${fmt.format(user.xpToNext)} XP para o próximo nível.`;
+  $("profile-rank").textContent = `Posição geral: #${fmt.format(user.rank)}`;
+  $("checkin-status").textContent = `Sequência: ${user.checkin.streak} dia(s). ${user.checkin.claimed ? 'Check-in de hoje concluído.' : `Próximo check-in: ${Math.min(user.checkin.streak + 1, 11)} XP.`}`;
+  $("checkin-button").classList.toggle('hidden', !user.isSelf || user.checkin.claimed);
   $("profile-bio").textContent = user.bio || "Este usuário ainda não adicionou uma biografia.";
   $("profile-followers-count").textContent = user.followersCount;
   $("profile-following-count").textContent = user.followingCount;
   $("profile-posts-count").textContent = user.postsCount;
-  $("xp-progress").style.width = `${Math.min(100, ((user.xp % 100) / 100) * 100)}%`;
+  $("xp-progress").style.width = `${user.progressPercent}%`;
   $("profile-banner").style.backgroundImage = user.banner
     ? `url("${user.banner.replaceAll('"', '%22')}")` : "";
   updateAvatar(user);
@@ -85,6 +103,20 @@ function renderPosts(posts) {
     const content = document.createElement("p");
     content.textContent = post.content;
     article.append(date, content);
+    if (post.featuredAt) { const mark = document.createElement('strong'); mark.textContent = '★ Destaque'; article.append(mark); }
+    if (viewedUser?.id !== currentUserId) {
+      const like = document.createElement('button');
+      like.type = 'button'; like.className = 'follow-button';
+      like.textContent = `Curtir (${post._count?.likes || 0})`;
+      like.disabled = Boolean(post.likes?.length);
+      like.addEventListener('click', async () => { try { await request(`/api/posts/${post.id}/like`, { method: 'POST' }); loadPosts(); } catch (e) { message.textContent = e.message; } });
+      article.append(like);
+    }
+    if (viewedUser?.viewerIsModerator && !post.featuredAt) {
+      const feature = document.createElement('button'); feature.type = 'button'; feature.className = 'follow-button'; feature.textContent = 'Destacar';
+      feature.addEventListener('click', async () => { try { await request(`/api/posts/${post.id}/feature`, { method: 'POST' }); loadPosts(); } catch (e) { message.textContent = e.message; } });
+      article.append(feature);
+    }
     postList.append(article);
   }
 }
@@ -160,16 +192,50 @@ async function loadProfile() {
   try {
     const me = await request("/api/auth/me");
     const id = targetId || me.user.id;
-    const [profile, posts] = await Promise.all([
-      request(`/api/users/${encodeURIComponent(id)}`),
-      request(`/api/users/${encodeURIComponent(id)}/posts`),
-    ]);
+    currentUserId = me.user.id;
+    const profile = await request(`/api/users/${encodeURIComponent(id)}`);
     renderProfile(profile.user);
-    renderPosts(posts.posts);
+    try {
+      const posts = await request(`/api/users/${encodeURIComponent(id)}/posts`);
+      renderPosts(posts.posts);
+    } catch (postsError) { message.textContent = postsError.message; }
+    loadRanking(true);
   } catch (error) {
-    message.textContent = error.message;
+    $("profile-username").textContent = "Não foi possível carregar o perfil";
+    $("profile-load-message").textContent = error.message;
+    $("profile-load-message").classList.remove("hidden");
   }
 }
+let currentUserId = null;
+async function loadPosts() {
+  if (!viewedUser) return;
+  const data = await request(`/api/users/${encodeURIComponent(viewedUser.id)}/posts`);
+  renderPosts(data.posts);
+  const profile = await request(`/api/users/${encodeURIComponent(viewedUser.id)}`);
+  renderProfile(profile.user);
+}
+async function loadRanking(reset = false) {
+  if (reset) { rankingPage = 1; $('ranking-list').replaceChildren(); }
+  try {
+    const data = await request(`/api/reputation/ranking?period=${$('ranking-period').value}&page=${rankingPage}`);
+    for (const user of data.users) {
+      const li = document.createElement('li');
+      const link = document.createElement('a'); link.className = 'ranking-user'; link.href = `/perfil.html?id=${encodeURIComponent(user.id)}`;
+      if (user.avatar) { const img = document.createElement('img'); img.src = user.avatar; img.alt = ''; link.append(img); }
+      const label = document.createElement('span'); label.textContent = `#${user.position} ${user.username} · Nível ${user.level} — ${user.title} · ${fmt.format(user.points)} XP`; link.append(label); li.append(link); $('ranking-list').append(li);
+    }
+    $('ranking-more').classList.toggle('hidden', !data.hasMore);
+    rankingPage += 1;
+  } catch (e) { message.textContent = e.message; }
+}
+$('ranking-period').addEventListener('change', () => loadRanking(true));
+$('ranking-more').addEventListener('click', () => loadRanking());
+$('checkin-button').addEventListener('click', async () => {
+  $('checkin-button').disabled = true;
+  try { await request('/api/reputation/checkin', { method: 'POST' }); await loadProfile(); }
+  catch (e) { message.textContent = e.message; }
+  finally { $('checkin-button').disabled = false; }
+});
 
 followButton.addEventListener("click", async () => {
   if (!viewedUser) return;
@@ -203,6 +269,7 @@ postForm.addEventListener("submit", async (event) => {
     renderPosts(posts.posts);
     viewedUser.postsCount += 1;
     $("profile-posts-count").textContent = viewedUser.postsCount;
+    await loadPosts();
   } catch (error) {
     message.textContent = error.message;
   } finally {

@@ -1,6 +1,8 @@
 const express = require("express");
 const prisma = require("../database/prisma");
 const auth = require("../middleware/authMiddleware");
+const reputation = require('../services/reputation');
+const { notify } = require('./reputationRoutes');
 
 const router = express.Router();
 router.use(auth);
@@ -19,9 +21,15 @@ async function profile(req, res) {
     const follow = req.userId === user.id ? null : await prisma.follow.findUnique({
       where: { followerId_followedId: { followerId: req.userId, followedId: user.id } },
     });
+    const [rank, checkin, moderator] = await Promise.all([
+      prisma.user.count({ where: { OR: [{ xp: { gt: user.xp } }, { xp: user.xp, id: { lt: user.id } }] } }),
+      reputation.checkinStatus(user.id),
+      prisma.roomMember.findFirst({ where: { userId: req.userId, role: { in: ['OWNER', 'CO_ADMIN'] } }, select: { id: true } }),
+    ]);
     res.json({
       user: {
         ...user,
+        ...reputation.progress(user.xp), rank: rank + 1, checkin, viewerIsModerator: Boolean(moderator),
         followersCount: user._count.followers,
         followingCount: user._count.following,
         postsCount: user._count.posts,
@@ -103,7 +111,7 @@ router.get("/users/:id/posts", async (req, res) => {
   try {
     const posts = await prisma.post.findMany({
       where: { userId: req.params.id }, orderBy: { createdAt: "desc" }, take: 50,
-      select: { id: true, content: true, createdAt: true },
+      select: { id: true, content: true, createdAt: true, featuredAt: true, likes: { where: { userId: req.userId }, select: { userId: true } }, _count: { select: { likes: true } } },
     });
     res.json({ posts });
   } catch (error) {
@@ -116,15 +124,51 @@ router.post("/posts", async (req, res) => {
   const content = typeof req.body.content === "string" ? req.body.content.trim() : "";
   if (!content || content.length > 1000) return res.status(400).json({ message: "O post deve ter entre 1 e 1000 caracteres." });
   try {
-    const post = await prisma.post.create({
-      data: { content, userId: req.userId },
-      select: { id: true, content: true, createdAt: true },
+    const { post, xpResult } = await prisma.$transaction(async tx => {
+      const post = await tx.post.create({ data: { content, userId: req.userId }, select: { id: true, content: true, createdAt: true } });
+      const user = await reputation.locked(tx, req.userId);
+      const xpResult = await reputation.award(tx, user, 10, 'POST_CREATED', `post:${post.id}`);
+      return { post, xpResult };
     });
+    notify(req, req.userId, xpResult, 'POST_CREATED');
     res.status(201).json({ post });
   } catch (error) {
     console.error("Erro ao publicar post:", error);
     res.status(500).json({ message: "Não foi possível publicar." });
   }
+});
+
+router.post('/posts/:id/like', async (req, res) => {
+  try {
+    const post = await prisma.post.findUnique({ where: { id: req.params.id }, select: { id: true, userId: true } });
+    if (!post) return res.status(404).json({ message: 'Publicação não encontrada.' });
+    if (post.userId === req.userId) return res.status(400).json({ message: 'Você não pode curtir sua publicação.' });
+    const result = await prisma.$transaction(async tx => {
+      const user = await reputation.locked(tx, post.userId);
+      const inserted = await tx.$queryRaw`INSERT INTO "PostLike" ("postId", "userId") VALUES (${post.id}, ${req.userId}) ON CONFLICT DO NOTHING RETURNING "postId"`;
+      if (!inserted.length) return null;
+      return reputation.award(tx, user, 1, 'POST_LIKED', `like:${post.id}:${req.userId}`);
+    });
+    if (result) notify(req, post.userId, result, 'POST_LIKED');
+    res.json({ liked: true, awarded: Boolean(result?.gainedXp) });
+  } catch (e) { console.error(e); res.status(500).json({ message: 'Não foi possível curtir.' }); }
+});
+
+router.post('/posts/:id/feature', async (req, res) => {
+  try {
+    const moderator = await prisma.roomMember.findFirst({ where: { userId: req.userId, role: { in: ['OWNER', 'CO_ADMIN'] } }, select: { id: true } });
+    if (!moderator) return res.status(403).json({ message: 'Apenas moderadores podem destacar.' });
+    const post = await prisma.post.findUnique({ where: { id: req.params.id }, select: { id: true, userId: true } });
+    if (!post) return res.status(404).json({ message: 'Publicação não encontrada.' });
+    const result = await prisma.$transaction(async tx => {
+      const user = await reputation.locked(tx, post.userId);
+      const updated = await tx.post.updateMany({ where: { id: post.id, featuredAt: null }, data: { featuredAt: new Date(), featuredById: req.userId } });
+      if (!updated.count) return null;
+      return reputation.award(tx, user, 20, 'POST_FEATURED', `feature:${post.id}`);
+    });
+    if (result) notify(req, post.userId, result, 'POST_FEATURED');
+    res.json({ featured: true, awarded: Boolean(result?.gainedXp) });
+  } catch (e) { console.error(e); res.status(500).json({ message: 'Não foi possível destacar.' }); }
 });
 
 module.exports = router;

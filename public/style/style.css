@@ -1,8 +1,8 @@
 @import url("./base.css");
 @import url("./layout.css");
-@import url("./chat.css");
+@import url("./chat.css?v=2");
 @import url("./youtube.css?v=2");
-@import url("./live.css");
+@import url("./live.css?v=2");
 @import url("./dark.css");
 @import url("./responsive.css?v=2");
 @import url("./salas.css?v=7");

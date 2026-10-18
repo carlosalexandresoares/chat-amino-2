@@ -1,5 +1,6 @@
 import state from "./state.js";
 import dom from "./dom.js";
+import { initializeProjectionUi, syncProjectionUi, onProjectionEnded } from './projection-ui.js';
 
 import {
   showElement,
@@ -261,6 +262,7 @@ export function updateLiveInterface() {
 
     setVideoControlAccess(false);
     stopTimeUpdater();
+    syncProjectionUi();
 
     return;
   }
@@ -295,6 +297,7 @@ export function updateLiveInterface() {
 
   updateLiveDetails();
   updatePlayerButton();
+  syncProjectionUi();
 }
 
 function resetLiveState() {
@@ -384,6 +387,7 @@ function addVideoToPlaylist() {
 }
 
 export function initializeLive() {
+  initializeProjectionUi();
   dom.toggleLiveDetailsButton.addEventListener(
     "click",
     () => {
@@ -630,9 +634,12 @@ export function initializeLive() {
 
   state.socket.on(
     "live-ended",
-    () => {
+    (payload) => {
+      const reportId = payload?.id || state.currentLiveId;
+      const wasHost = state.isLiveHost;
       stopPlayer();
       resetLiveState();
+      onProjectionEnded(reportId, wasHost);
     }
   );
 
