@@ -18,6 +18,18 @@ enum LiveStatus {
   ENDED
 }
 
+enum MessageType {
+  TEXT
+  AUDIO
+  STICKER
+}
+
+enum ChatAssetKind {
+  AUDIO
+  STICKER
+  WALLPAPER
+}
+
 enum PlaylistItemStatus {
   WAITING
   PLAYING
@@ -60,6 +72,12 @@ model User {
   projectionParticipants ProjectionParticipant[]
   projectionVisits ProjectionVisit[]
   projectionEngagement ProjectionEngagement?
+  chatAssets ChatAsset[]
+  stickers Sticker[]
+  stickerPacks StickerPack[]
+  stickerFavorites StickerFavorite[]
+  chatAppearance ChatAppearance?
+  reactions MessageReaction[]
 }
 
 model UserImage {
@@ -187,7 +205,11 @@ model RoomMember {
 model Message {
   id        String   @id @default(cuid())
   clientKey String? @unique
-  content   String
+  content   String @default("")
+  type MessageType @default(TEXT)
+  mediaId String?
+  replyToId String?
+  deletedAt DateTime?
   createdAt DateTime @default(now())
 
   userId String
@@ -195,9 +217,87 @@ model Message {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  media ChatAsset? @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  replyTo Message? @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies Message[] @relation("MessageReplies")
+  reactions MessageReaction[]
 
   @@index([roomId, createdAt])
   @@index([userId])
+  @@index([roomId, id])
+  @@index([replyToId])
+}
+
+model MessageReaction {
+  messageId String
+  userId String
+  emoji String
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([messageId, userId])
+}
+
+model ChatAsset {
+  id String @id @default(cuid())
+  key String @unique
+  kind ChatAssetKind
+  mimeType String
+  size Int
+  duration Float?
+  ownerId String
+  roomId String?
+  createdAt DateTime @default(now())
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  messages Message[]
+  sticker Sticker?
+  appearances ChatAppearance[]
+  @@index([ownerId, createdAt])
+}
+
+model StickerPack {
+  id String @id @default(cuid())
+  name String
+  ownerId String
+  createdAt DateTime @default(now())
+  stickers Sticker[]
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  @@index([ownerId])
+}
+
+model Sticker {
+  id String @id @default(cuid())
+  name String
+  ownerId String
+  assetId String @unique
+  packId String?
+  createdAt DateTime @default(now())
+  owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  asset ChatAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  pack StickerPack? @relation(fields: [packId], references: [id], onDelete: SetNull)
+  favorites StickerFavorite[]
+  @@index([ownerId, createdAt])
+}
+
+model StickerFavorite {
+  userId String
+  stickerId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sticker Sticker @relation(fields: [stickerId], references: [id], onDelete: Cascade)
+  @@id([userId, stickerId])
+}
+
+model ChatAppearance {
+  userId String @id
+  mode String @default("DEFAULT")
+  color String?
+  preset String?
+  assetId String?
+  positionX Int @default(50)
+  positionY Int @default(50)
+  darkness Int @default(0)
+  overlay Int @default(0)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  asset ChatAsset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
 }
 
 model LiveSession {

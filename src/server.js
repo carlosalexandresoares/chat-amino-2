@@ -14,6 +14,9 @@ const reputation = require('./services/reputation');
 const reputationRoutes = require('./routes/reputationRoutes');
 const projectionRep = require('./services/projectionRep');
 const projectionRoutes = require('./routes/projectionRoutes');
+const chatMessages = require('./services/chatMessages');
+const chatRoutes = require('./routes/chatRoutes');
+const chatMedia = require('./services/chatMedia');
 
 const app = express();
 
@@ -29,6 +32,9 @@ app.use("/api/rooms", roomRoutes);
 app.use("/api", socialRoutes);
 app.use('/api', reputationRoutes.router);
 app.use('/api/projections', projectionRoutes);
+app.use('/api/chat', chatRoutes);
+setInterval(() => chatMedia.cleanupOrphans(prisma).catch(error =>
+  console.error('Erro na limpeza de arquivos do chat:', error)), 3600000).unref();
 
 // Health check do Render
 app.get("/healthz", (req, res) => {
@@ -635,43 +641,11 @@ io.on("connection", (socket) => {
             orderBy: {
               createdAt: "desc",
             },
-            take: 100,
-            select: {
-              id: true,
-              content: true,
-              createdAt: true,
-              user: {
-                select: {
-                  id: true,
-                  username: true,
-                  avatar: true,
-                  level: true,
-                },
-              },
-            },
+            take: 40,
+            select: chatMessages.messageSelect,
           });
 
-        const formattedHistory =
-          history
-            .reverse()
-            .map((message) => ({
-              id: message.id,
-              user: {
-                id:
-                  message.user.id,
-                username:
-                  message.user.username,
-                avatar:
-                  message.user.avatar,
-                level:
-                  message.user.level,
-                title: reputation.LEVELS[Math.min(20, Math.max(1, message.user.level)) - 1][0],
-              },
-              message:
-                message.content,
-              createdAt:
-                message.createdAt.toISOString(),
-            }));
+        const formattedHistory = history.reverse().map(chatMessages.format);
 
         socket.emit(
           "chat-history",
@@ -775,7 +749,7 @@ io.on("connection", (socket) => {
   socket.on(
     "chat-message",
     async (
-      { roomId, message, clientKey }
+      { roomId, message, clientKey, replyToId }
     ) => {
       try {
         const normalizedRoomId =
@@ -830,6 +804,7 @@ io.on("connection", (socket) => {
         const safeClientKey = typeof clientKey === 'string' && /^[a-f0-9-]{36}$/i.test(clientKey)
           ? `${socket.user.id}:${clientKey}` : null;
         if (safeClientKey && await prisma.message.findUnique({ where: { clientKey: safeClientKey }, select: { id: true } })) return;
+        const safeReplyId = typeof replyToId === 'string' && replyToId.length < 100 ? replyToId : null;
 
         /*
           Salva a mensagem e concede XP
@@ -838,6 +813,9 @@ io.on("connection", (socket) => {
         const result =
           await prisma.$transaction(
             async (transaction) => {
+              if (safeReplyId && !await transaction.message.findFirst({ where: { id: safeReplyId, roomId: normalizedRoomId, deletedAt: null }, select: { id: true } })) {
+                throw Object.assign(new Error('A mensagem respondida não está disponível nesta sala.'), { status: 400 });
+              }
               const savedMessage =
                 await transaction.message.create({
                   data: {
@@ -848,19 +826,9 @@ io.on("connection", (socket) => {
                       normalizedRoomId,
                     userId:
                       socket.user.id,
+                    replyToId: safeReplyId,
                   },
-                  select: {
-                    id: true,
-                    content: true,
-                    createdAt: true,
-                    user: {
-                      select: {
-                        id: true,
-                        username: true,
-                        avatar: true,
-                      },
-                    },
-                  },
+                  select: chatMessages.messageSelect,
                 });
 
               const xpResult = await reputation.messageAward(transaction, socket.user.id,
@@ -883,27 +851,9 @@ io.on("connection", (socket) => {
 
         emitXpToUser(socket.user.id, result.xpResult, "MESSAGE_SENT");
 
-        const messageData = {
-          id:
-            result.savedMessage.id,
-          user: {
-            id:
-              result.savedMessage.user.id,
-            username:
-              result.savedMessage.user
-                .username,
-            avatar:
-              result.savedMessage.user
-                .avatar,
-            level:
-              result.xpResult.user.level,
-            title: reputation.progress(result.xpResult.user.xp).title,
-          },
-          message:
-            result.savedMessage.content,
-          createdAt:
-            result.savedMessage.createdAt.toISOString(),
-        };
+        const messageData = chatMessages.format(result.savedMessage);
+        messageData.user.level = result.xpResult.user.level;
+        messageData.user.title = reputation.progress(result.xpResult.user.xp).title;
 
         io.to(
           normalizedRoomId
@@ -921,13 +871,60 @@ io.on("connection", (socket) => {
         socket.emit(
           "chat-error",
           {
-            message:
-              "Não foi possível enviar a mensagem.",
+            message: error.status ? error.message : "Não foi possível enviar a mensagem.",
           }
         );
       }
     }
   );
+
+  socket.on('chat-media-message', async ({ roomId, type, mediaId, stickerId, replyToId, clientKey } = {}, callback) => {
+    try {
+      const id = normalizeRoomId(roomId);
+      if (!socket.rooms.has(id) || !['AUDIO', 'STICKER'].includes(type)) throw new Error('Entre na sala para enviar esta mensagem.');
+      const safeKey = typeof clientKey === 'string' && /^[a-f0-9-]{36}$/i.test(clientKey) ? `${socket.user.id}:${clientKey}` : null;
+      if (!safeKey) throw new Error('Identificador de mensagem inválido.');
+      const existing = await prisma.message.findUnique({ where: { clientKey: safeKey }, select: { id: true } });
+      if (existing) return callback?.({ success: true, id: existing.id, duplicate: true });
+      let assetId;
+      if (type === 'AUDIO') {
+        const asset = await prisma.chatAsset.findFirst({ where: { id: mediaId, kind: 'AUDIO', ownerId: socket.user.id,
+          roomId: id, createdAt: { gte: new Date(Date.now() - 86400000) }, messages: { none: {} } }, select: { id: true } });
+        if (!asset) throw new Error('Áudio indisponível ou já enviado.');
+        assetId = asset.id;
+      } else {
+        const sticker = await prisma.sticker.findUnique({ where: { id: stickerId }, select: { assetId: true } });
+        if (!sticker) throw new Error('Figurinha indisponível.');
+        assetId = sticker.assetId;
+      }
+      const recent = await prisma.message.count({ where: { userId: socket.user.id,
+        createdAt: { gte: new Date(Date.now() - 60000) } } });
+      if (recent >= 30) throw new Error('Aguarde antes de enviar mais mensagens.');
+      const saved = await prisma.$transaction(async tx => {
+        if (type === 'AUDIO') {
+          await tx.$queryRaw`SELECT id FROM "ChatAsset" WHERE id = ${assetId} FOR UPDATE`;
+          if (await tx.message.findFirst({ where: { mediaId: assetId }, select: { id: true } })) {
+            throw new Error('Este áudio já foi enviado.');
+          }
+        }
+        const parentId = typeof replyToId === 'string' ? replyToId : null;
+        if (parentId && !await tx.message.findFirst({ where: { id: parentId, roomId: id, deletedAt: null }, select: { id: true } })) {
+          throw new Error('A mensagem respondida não está disponível nesta sala.');
+        }
+        const row = await tx.message.create({ data: { content: '', type, mediaId: assetId,
+          roomId: id, userId: socket.user.id, clientKey: safeKey, replyToId: parentId }, select: chatMessages.messageSelect });
+        const active = liveStates[id];
+        if (active?.active) await tx.liveSession.updateMany({ where: { id: active.liveId, status: 'ACTIVE' },
+          data: { messageCount: { increment: 1 } } });
+        return row;
+      });
+      io.to(id).emit('chat-message', chatMessages.format(saved));
+      callback?.({ success: true, id: saved.id });
+    } catch (error) {
+      if (error?.code === 'P2002') return callback?.({ success: true, duplicate: true });
+      callback?.({ success: false, message: error.message || 'Não foi possível enviar a mensagem.' });
+    }
+  });
 
   /*
     Iniciar live

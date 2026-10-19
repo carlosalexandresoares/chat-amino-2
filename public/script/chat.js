@@ -1,5 +1,6 @@
 import state from "./state.js";
 import dom from "./dom.js";
+import { initializeRichChat, enhanceMessage, replyToId, clearReply } from './chat-rich.js?v=2';
 
 /*
   Fila das notificações de XP.
@@ -342,20 +343,23 @@ function sendMessage() {
       roomId: state.roomId,
       message: text,
       clientKey: crypto.randomUUID(),
+      replyToId: replyToId(),
     }
   );
 
   dom.input.value = "";
+  clearReply();
   dom.input.focus();
 }
 
-function addMessage(messageData) {
+function addMessage(messageData, { prepend = false } = {}) {
   if (
     !messageData?.user ||
-    !messageData?.message
+    (!messageData?.message && !['AUDIO', 'STICKER'].includes(messageData?.type))
   ) {
     return;
   }
+  if ([...dom.messages.querySelectorAll('.message')].some(element => element.dataset.messageId === messageData.id)) return;
 
   const isCurrentUser =
     state.currentUser &&
@@ -374,6 +378,7 @@ function addMessage(messageData) {
 
   messageElement.dataset.messageId =
     messageData.id;
+  if (messageData.replyToId) messageElement.dataset.replyToId = messageData.replyToId;
 
   /*
     Permite atualizar os níveis de todas
@@ -500,12 +505,12 @@ function addMessage(messageData) {
     textElement
   );
 
-  dom.messages.appendChild(
-    messageElement
-  );
+  enhanceMessage(messageElement, messageData, headerElement, textElement);
 
-  dom.messages.scrollTop =
-    dom.messages.scrollHeight;
+  if (prepend) dom.messages.prepend(messageElement);
+  else dom.messages.appendChild(messageElement);
+
+  if (!prepend) dom.messages.scrollTop = dom.messages.scrollHeight;
 }
 
 export function initializeChat() {
@@ -513,6 +518,7 @@ export function initializeChat() {
     Já cria o contêiner ao iniciar o chat.
   */
   getNotificationContainer();
+  initializeRichChat(addMessage);
 
   dom.chatForm.addEventListener(
     "submit",
