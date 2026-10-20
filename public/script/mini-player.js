@@ -6,6 +6,133 @@ const preferenceKey = 'floatingVideoEnabled';
 const allowedPages = new Set(['/index.html', '/', '/perfil.html', '/editar-perfil.html', '/communities.html', '/room.html', '/admin.html']);
 let initialized = false;
 let noticeTimer;
+let pipWindow = null;
+let pipOpening = false;
+let pipIframe = null;
+let pipFrameLoadHandler = null;
+let pipMessageHandler = null;
+let pipResyncHandler = () => {};
+
+export function setPipResyncHandler(handler) { pipResyncHandler = handler; }
+
+function externalPipAvailable() {
+  return window === window.top && window.isSecureContext && 'documentPictureInPicture' in window;
+}
+
+function restoreExternalPip(closeWindow = false, resync = true) {
+  const previousWindow = pipWindow;
+  if (!previousWindow) return;
+  pipWindow = null;
+  const frame = pipIframe;
+  if (pipIframe && pipFrameLoadHandler) pipIframe.removeEventListener('load', pipFrameLoadHandler);
+  if (pipMessageHandler) previousWindow.removeEventListener('message', pipMessageHandler);
+  pipIframe = null;
+  pipFrameLoadHandler = null;
+  pipMessageHandler = null;
+  dom.youtubeContainer.append(dom.youtubeStage);
+  $('pip-placeholder').classList.add('hidden');
+  if (closeWindow && !previousWindow.closed) previousWindow.close();
+  if (resync && state.liveActive && state.playerReady) {
+    let requested = false;
+    const resyncOnce = () => {
+      if (requested || !state.liveActive) return;
+      requested = true;
+      pipResyncHandler();
+    };
+    frame?.addEventListener('load', resyncOnce, { once: true });
+    setTimeout(resyncOnce, 1000);
+  }
+  syncMiniPlayer();
+}
+
+function showPipHelp(message = '') {
+  const iframe = state.player?.getIframe?.();
+  $('pip-fullscreen').disabled = !iframe || (!iframe.requestFullscreen && !iframe.webkitRequestFullscreen);
+  $('pip-help-status').textContent = message || ($('pip-fullscreen').disabled
+    ? 'Este navegador não permite abrir o player em tela cheia por este botão.' : '');
+  if (!$('pip-help-dialog').open) $('pip-help-dialog').showModal();
+}
+
+async function openExternalPip() {
+  if (!state.liveActive || !state.playerReady || !dom.youtubeContainer.classList.contains('active')) {
+    notify('Abra um vídeo da projeção para tentar o PiP.');
+    return;
+  }
+  if (pipWindow) { restoreExternalPip(true); return; }
+  if (pipOpening) return;
+  if (!externalPipAvailable()) {
+    showPipHelp('PiP externo não está disponível neste navegador para o player incorporado do YouTube.');
+    return;
+  }
+  pipOpening = true;
+  let opened;
+  try {
+    const wasPlaying = state.player?.getPlayerState?.() === 1;
+    let iframeReloaded = false;
+    let receivedYouTubeMessage = false;
+    // requestWindow must run directly in this user click; awaiting first loses activation.
+    opened = await window.documentPictureInPicture.requestWindow({ width: 420, height: 320 });
+    if (!state.liveActive || !dom.youtubeContainer.classList.contains('active')) {
+      opened.close();
+      return;
+    }
+    pipWindow = opened;
+    opened.document.title = 'Projeção · Chat Amino 2';
+    const style = opened.document.createElement('style');
+    style.textContent = `*{box-sizing:border-box}body{margin:0;background:#14182a;color:#fff;font:13px system-ui,sans-serif}
+      header{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:42px;padding:6px 10px;background:#23233b}
+      header span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}button{border:1px solid #b9a5d4;border-radius:7px;padding:5px 8px;background:#6749a3;color:#fff;cursor:pointer}
+      .youtube-stage{position:relative;width:100%;aspect-ratio:16/9;background:#000}#youtube-frame,.youtube-stage iframe{display:block;width:100%;height:100%}
+      .viewer-overlay{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-end;padding:8px;pointer-events:none}
+      .viewer-overlay button{pointer-events:auto}.hidden{display:none!important}`;
+    opened.document.head.append(style);
+    const header = opened.document.createElement('header');
+    const label = opened.document.createElement('span');
+    label.id = 'pip-title';
+    label.textContent = `${$('mini-room-name').textContent || 'Projeção'} · ${$('mini-video-name').textContent}`;
+    const back = opened.document.createElement('button');
+    back.type = 'button'; back.textContent = 'Voltar';
+    back.addEventListener('click', () => returnToProjection());
+    header.append(label, back);
+    opened.document.body.append(header);
+    pipIframe = state.player.getIframe();
+    pipFrameLoadHandler = () => {
+      // Some browsers reload an iframe when it moves between documents.
+      // Reapply the authoritative Socket.IO snapshot if that happens.
+      iframeReloaded = true;
+      if (pipWindow === opened && state.liveActive) setTimeout(pipResyncHandler, 300);
+    };
+    pipIframe.addEventListener('load', pipFrameLoadHandler);
+    pipMessageHandler = event => {
+      if (event.source !== pipIframe?.contentWindow ||
+          !/^https:\/\/(?:www\.)?youtube(?:-nocookie)?\.com$/.test(event.origin)) return;
+      receivedYouTubeMessage = true;
+      // The YouTube iframe posts to its current parent. Keep the existing
+      // YT.Player API listener in the opener receiving those state updates.
+      window.dispatchEvent(new MessageEvent('message', { data: event.data, origin: event.origin, source: event.source }));
+    };
+    opened.addEventListener('message', pipMessageHandler);
+    opened.addEventListener('pagehide', () => {
+      if (pipWindow === opened) restoreExternalPip();
+    }, { once: true });
+    opened.document.body.append(dom.youtubeStage);
+    $('pip-placeholder').classList.remove('hidden');
+    notify('Janela flutuante aberta. O PiP automático depende do navegador e das permissões.');
+    setTimeout(() => {
+      if (pipWindow !== opened || !state.liveActive || !wasPlaying) return;
+      let stillPlaying = false;
+      try { stillPlaying = state.player?.getPlayerState?.() === 1; } catch { /* Player unavailable after moving. */ }
+      if (iframeReloaded && !receivedYouTubeMessage && !stillPlaying) {
+        restoreExternalPip(true);
+        showPipHelp('O YouTube interrompeu o vídeo ao mover o iframe. O player voltou ao chat; tente o PiP do próprio YouTube, se disponível.');
+      }
+    }, 8000);
+  } catch (error) {
+    if (pipWindow === opened) restoreExternalPip(true);
+    else if (opened && !opened.closed) opened.close();
+    showPipHelp(`Não foi possível abrir o PiP externo (${error?.name || 'bloqueado'}).`);
+  } finally { pipOpening = false; }
+}
 
 export function floatingEnabled() {
   return localStorage.getItem(preferenceKey) !== 'false';
@@ -30,6 +157,7 @@ function resetPosition() {
 export function syncMiniPlayer() {
   const player = dom.youtubeContainer;
   if (!state.liveActive) {
+    restoreExternalPip(true, false);
     player.classList.remove('mini-mode', 'mini-minimized');
     resetPosition();
     $('mini-open').classList.add('hidden');
@@ -40,6 +168,10 @@ export function syncMiniPlayer() {
   $('mini-host-name').textContent = `Host: ${state.currentLiveHost?.username || 'Desconhecido'}`;
   const playing = state.currentPlaylist.find(item => item.status === 'PLAYING');
   $('mini-video-name').textContent = playing?.title || 'Vídeo da projeção';
+  if (pipWindow && !pipWindow.closed) {
+    const title = pipWindow.document.getElementById('pip-title');
+    if (title) title.textContent = `${$('mini-room-name').textContent} · ${$('mini-video-name').textContent}`;
+  }
   $('mini-minimize').textContent = player.classList.contains('mini-minimized') ? 'Mostrar vídeo' : 'Minimizar';
 }
 
@@ -51,12 +183,14 @@ export function showMiniPlayer() {
 }
 
 export function hideMiniPlayer() {
+  restoreExternalPip(true);
   dom.youtubeContainer.classList.remove('mini-mode', 'mini-minimized');
   resetPosition();
   syncMiniPlayer();
 }
 
 export function returnToProjection() {
+  restoreExternalPip(true);
   const view = $('site-view');
   view.classList.add('hidden');
   $('site-frame').removeAttribute('src');
@@ -79,22 +213,11 @@ export function openSitePage(address) {
 }
 
 export function projectionFinished() {
-  const wasFloating = dom.youtubeContainer.classList.contains('mini-mode');
+  const wasFloating = dom.youtubeContainer.classList.contains('mini-mode') || Boolean(pipWindow);
+  restoreExternalPip(true, false);
   if (!$('site-view').classList.contains('hidden')) returnToProjection();
   else hideMiniPlayer();
   if (wasFloating) notify('A projeção foi encerrada pelo host.');
-}
-
-function explainPip() {
-  if (!state.liveActive || !state.playerReady || !dom.youtubeContainer.classList.contains('active')) {
-    notify('Abra um vídeo da projeção para tentar o PiP.');
-    return;
-  }
-  const iframe = state.player?.getIframe?.();
-  $('pip-fullscreen').disabled = !iframe || (!iframe.requestFullscreen && !iframe.webkitRequestFullscreen);
-  $('pip-help-status').textContent = $('pip-fullscreen').disabled
-    ? 'Este navegador não permite abrir o player em tela cheia por este botão.' : '';
-  $('pip-help-dialog').showModal();
 }
 
 async function tryFullscreenForPip() {
@@ -155,8 +278,9 @@ export function initializeMiniPlayer() {
     dom.youtubeContainer.classList.toggle('mini-minimized');
     syncMiniPlayer();
   });
-  $('pip-open').addEventListener('click', explainPip);
-  $('mini-pip').addEventListener('click', explainPip);
+  $('pip-open').addEventListener('click', openExternalPip);
+  $('mini-pip').addEventListener('click', openExternalPip);
+  $('pip-return').addEventListener('click', returnToProjection);
   $('pip-fullscreen').addEventListener('click', tryFullscreenForPip);
   $('pip-help-close').addEventListener('click', () => $('pip-help-dialog').close());
   document.addEventListener('click', event => {

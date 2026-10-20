@@ -12,7 +12,7 @@
 
   <link
     rel="stylesheet"
-    href="style/style.css?v=18"
+    href="style/style.css?v=20"
   />
 
   <script src="/socket.io/socket.io.js"></script>
@@ -20,7 +20,7 @@
 
   <script
     type="module"
-    src="script/script.js?v=17"
+    src="script/script.js?v=18"
   ></script>
 </head>
 
@@ -301,6 +301,7 @@
             <div class="mini-player-label"><span class="mini-live-dot" aria-hidden="true"></span><strong id="mini-room-name">Projeção</strong><small id="mini-host-name"></small><small id="mini-video-name"></small></div>
             <div class="mini-player-buttons"><button type="button" id="mini-pip" title="Picture-in-Picture fora do navegador">PiP</button><button type="button" id="mini-minimize">Minimizar</button><button type="button" id="mini-expand">Expandir</button><button type="button" id="mini-back">Voltar à sala</button></div>
           </div>
+          <div id="pip-placeholder" class="pip-placeholder hidden"><span>Vídeo na janela flutuante</span><button type="button" id="pip-return">Voltar ao chat</button></div>
           <button
             type="button"
             class="close-yt"
@@ -370,10 +371,10 @@
   <div id="mini-player-notice" class="mini-player-notice hidden" role="status"></div>
   <dialog id="pip-help-dialog" class="pip-help-dialog" aria-labelledby="pip-help-title">
     <h2 id="pip-help-title">Vídeo sobre outros aplicativos</h2>
-    <p>Esta projeção usa o player incorporado do YouTube. O site não consegue ativar diretamente o PiP do vídeo dentro dele.</p>
-    <p><strong>Android:</strong> abra o vídeo em tela cheia e vá para a tela inicial do celular. O Chrome poderá abrir a janela flutuante se o aparelho e o vídeo permitirem.</p>
-    <p><strong>iPhone:</strong> use o controle de PiP do próprio player, caso ele apareça. A disponibilidade depende do Safari e do YouTube.</p>
-    <p>Se a janela não aparecer, continue pelo mini player dentro do site.</p>
+    <p>O vídeo vem de um iframe do YouTube. Este navegador não ofereceu uma janela PiP externa para a projeção, ou bloqueou a tentativa.</p>
+    <p><strong>Android:</strong> abra o vídeo em tela cheia e vá para a tela inicial. O Chrome pode oferecer PiP se o aparelho e o vídeo permitirem.</p>
+    <p><strong>iPhone:</strong> use o controle de PiP do próprio player, se aparecer. A disponibilidade depende do Safari e do YouTube.</p>
+    <p>O mini player dentro do site continua disponível.</p>
     <p id="pip-help-status" role="status"></p>
     <div class="pip-help-actions"><button type="button" id="pip-help-close">Fechar</button><button type="button" id="pip-fullscreen">Tentar tela cheia</button></div>
   </dialog>

@@ -17,6 +17,8 @@
 .youtube-container.mini-mode .player-actions, .youtube-container.mini-mode .close-yt { display: none; }
 .app-screen .youtube-container.mini-mode .youtube-stage { width: 100%; aspect-ratio: 16 / 9; }
 .youtube-container.mini-minimized .youtube-stage { position: absolute; width: 1px !important; height: 1px; opacity: 0; pointer-events: none; }
+.pip-placeholder { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; width: 100%; min-height: 72px; padding: 12px; color: #eee5ff; font-size: 13px; }
+.pip-placeholder button { padding: 7px 10px; border: 1px solid #b9a5d4; border-radius: 8px; background: #6749a3; color: #fff; cursor: pointer; }
 .site-view { position: fixed; z-index: 100; inset: 0; background: #0b1020; }
 .site-view iframe { display: block; width: 100%; height: 100%; border: 0; background: #0b1020; }
 .mini-player-notice { position: fixed; z-index: 130; left: 50%; bottom: max(18px, env(safe-area-inset-bottom)); transform: translateX(-50%); width: max-content; max-width: min(460px, calc(100vw - 24px)); padding: 12px 16px; border: 1px solid #b196d9; border-radius: 10px; background: #242139; color: #fff; box-shadow: 0 8px 30px #0008; font-size: 13px; text-align: center; }

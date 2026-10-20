@@ -1,6 +1,6 @@
 import state from "./state.js";
 import dom from "./dom.js";
-import { syncMiniPlayer, hideMiniPlayer } from './mini-player.js?v=4';
+import { syncMiniPlayer, hideMiniPlayer, setPipResyncHandler } from './mini-player.js?v=5';
 
 let apiPromise;
 let playerPromise;
@@ -180,10 +180,13 @@ export function stopPlayer() {
   try { state.player.stopVideo(); } catch (error) { console.error("Erro ao parar vídeo:", error); }
 }
 
-function requestCurrentVideo() {
+function requestCurrentVideo(forceReload = false) {
   if (!state.liveActive || !state.socket.connected) return;
   state.socket.emit("video-sync-request", { roomId: state.roomId }, (response) => {
-    if (response?.success && response.videoId) applyVideoState({ ...response, force: true });
+    if (response?.success && response.videoId) {
+      if (forceReload) loadVideo(response.videoId, response);
+      else applyVideoState({ ...response, force: true });
+    }
   });
 }
 
@@ -198,6 +201,7 @@ function togglePlayer(visible) {
 }
 
 export function initializeYouTube() {
+  setPipResyncHandler(() => requestCurrentVideo(true));
   dom.closeYT.addEventListener("click", () => togglePlayer(false));
   dom.btnYoutube.addEventListener("click", () => togglePlayer(!playerVisible()));
   dom.togglePlayerButton.addEventListener("click", () => togglePlayer(!playerVisible()));
