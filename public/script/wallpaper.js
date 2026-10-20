@@ -31,7 +31,8 @@ async function apply(value, assetUrl, preview = false) {
   area.style.setProperty('--chat-bg-position', `${value.positionX ?? 50}% ${value.positionY ?? 50}%`);
 }
 
-export function initializeWallpaper(api, assetUrl) {
+export function initializeWallpaper(api, assetUrl, roomId) {
+  if (!roomId) return;
   const dialog = $('wallpaper-dialog');
   const syncControls = value => {
     $('wallpaper-x').value = value.positionX ?? 50;
@@ -54,9 +55,9 @@ export function initializeWallpaper(api, assetUrl) {
         const uploaded = await api('/wallpaper', { method: 'POST', body: form });
         draft.assetId = uploaded.id;
       }
-      const response = await api('/appearance', { method: 'PUT', body: JSON.stringify(draft) });
+      const response = await api('/appearance', { method: 'PUT', body: JSON.stringify({ ...draft, roomId }) });
       saved = response.appearance; draft = { ...saved };
-      $('wallpaper-status').textContent = 'Fundo salvo na sua conta.';
+      $('wallpaper-status').textContent = 'Fundo salvo para este chat.';
       close();
     } catch (error) { $('wallpaper-status').textContent = error.message; }
     finally { button.disabled = false; }
@@ -83,6 +84,6 @@ export function initializeWallpaper(api, assetUrl) {
   }
   $('wallpaper-save').addEventListener('click', save);
   $('wallpaper-reset').addEventListener('click', () => { draft = { mode: 'DEFAULT', positionX: 50, positionY: 50, darkness: 0, overlay: 0 }; preview(); save(); });
-  api('/appearance').then(response => { saved = response.appearance || saved; draft = { ...saved }; apply(saved, assetUrl); })
+  api(`/appearance?roomId=${encodeURIComponent(roomId)}`).then(response => { saved = response.appearance || saved; draft = { ...saved }; apply(saved, assetUrl); })
     .catch(error => console.error('Erro ao carregar fundo:', error));
 }

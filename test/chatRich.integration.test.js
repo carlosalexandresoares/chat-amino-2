@@ -18,10 +18,12 @@ test('histórico, respostas, autorização, exclusão, reações e wallpaper per
     username: `chat-${role}-${tag}`, email: `chat-${role}-${tag}@test.invalid`, password: 'test',
   } });
   const owner = await createUser('owner');
-  let viewer, outsider, room, server, storedAssetKey;
+  let viewer, outsider, room, secondRoom, server, storedAssetKey;
   try {
     viewer = await createUser('viewer'); outsider = await createUser('outsider');
     room = await prisma.room.create({ data: { name: 'Sala de teste', ownerId: owner.id,
+      members: { create: [{ userId: owner.id, role: 'OWNER' }, { userId: viewer.id, role: 'MEMBER' }] } } });
+    secondRoom = await prisma.room.create({ data: { name: 'Outra sala de teste', ownerId: owner.id,
       members: { create: [{ userId: owner.id, role: 'OWNER' }, { userId: viewer.id, role: 'MEMBER' }] } } });
     const original = await prisma.message.create({ data: { roomId: room.id, userId: owner.id, content: 'Mensagem original' } });
     const reply = await prisma.message.create({ data: { roomId: room.id, userId: viewer.id, content: 'Estou chegando', replyToId: original.id } });
@@ -62,10 +64,15 @@ test('histórico, respostas, autorização, exclusão, reações e wallpaper per
     assert.equal((await call(owner, `/messages/${original.id}`, { method: 'DELETE' })).status, 200);
     const afterDelete = await call(viewer, `/rooms/${room.id}/messages`);
     assert.equal((await afterDelete.json()).messages.find(row => row.id === reply.id).replyTo.message, 'Mensagem indisponível');
-    const appearance = { mode: 'COLOR', color: '#123456', positionX: 50, positionY: 50, darkness: 0, overlay: 0 };
+    const appearance = { roomId: room.id, mode: 'COLOR', color: '#123456', positionX: 50, positionY: 50, darkness: 0, overlay: 0 };
     assert.equal((await call(viewer, '/appearance', { method: 'PUT', body: JSON.stringify(appearance) })).status, 200);
-    assert.equal((await (await call(viewer, '/appearance')).json()).appearance.color, '#123456');
-    assert.equal((await (await call(outsider, '/appearance')).json()).appearance, null);
+    assert.equal((await (await call(viewer, `/appearance?roomId=${room.id}`)).json()).appearance.color, '#123456');
+    assert.equal((await (await call(viewer, `/appearance?roomId=${secondRoom.id}`)).json()).appearance, null);
+    assert.equal((await (await call(outsider, `/appearance?roomId=${room.id}`)).json()).appearance, null);
+    assert.equal((await call(viewer, '/appearance')).status, 400);
+    assert.equal((await call(viewer, '/appearance', { method: 'PUT', body: JSON.stringify({ ...appearance, roomId: secondRoom.id, color: '#654321' }) })).status, 200);
+    assert.equal((await (await call(viewer, `/appearance?roomId=${room.id}`)).json()).appearance.color, '#123456');
+    assert.equal((await (await call(viewer, `/appearance?roomId=${secondRoom.id}`)).json()).appearance.color, '#654321');
     if (media.configured) {
       const image = await sharp({ create: { width: 100, height: 80, channels: 4, background: '#6655aa' } }).png().toBuffer();
       const form = new FormData();
@@ -85,6 +92,7 @@ test('histórico, respostas, autorização, exclusão, reações e wallpaper per
     if (server) await new Promise(resolve => server.close(resolve));
     if (storedAssetKey) await media.remove(storedAssetKey);
     if (room) await prisma.room.delete({ where: { id: room.id } });
+    if (secondRoom) await prisma.room.delete({ where: { id: secondRoom.id } });
     if (viewer) await prisma.user.delete({ where: { id: viewer.id } });
     if (outsider) await prisma.user.delete({ where: { id: outsider.id } });
     await prisma.user.delete({ where: { id: owner.id } });

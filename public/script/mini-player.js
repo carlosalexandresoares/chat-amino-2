@@ -86,8 +86,30 @@ export function projectionFinished() {
 }
 
 function explainPip() {
-  notify('O PiP nativo não pode ser iniciado por este site para o iframe do YouTube. Use o mini player dentro do site ou os controles oferecidos pelo navegador.');
-  showMiniPlayer();
+  if (!state.liveActive || !state.playerReady || !dom.youtubeContainer.classList.contains('active')) {
+    notify('Abra um vídeo da projeção para tentar o PiP.');
+    return;
+  }
+  const iframe = state.player?.getIframe?.();
+  $('pip-fullscreen').disabled = !iframe || (!iframe.requestFullscreen && !iframe.webkitRequestFullscreen);
+  $('pip-help-status').textContent = $('pip-fullscreen').disabled
+    ? 'Este navegador não permite abrir o player em tela cheia por este botão.' : '';
+  $('pip-help-dialog').showModal();
+}
+
+async function tryFullscreenForPip() {
+  const iframe = state.player?.getIframe?.();
+  if (!iframe || !state.liveActive) return;
+  try {
+    dom.youtubeContainer.classList.remove('mini-minimized');
+    syncMiniPlayer();
+    const request = iframe.requestFullscreen || iframe.webkitRequestFullscreen;
+    if (!request) throw new Error('unsupported');
+    await request.call(iframe);
+    $('pip-help-dialog').close();
+  } catch {
+    $('pip-help-status').textContent = 'O navegador bloqueou a tela cheia. Tente o controle do próprio player do YouTube, se estiver disponível.';
+  }
 }
 
 function bindDrag() {
@@ -135,6 +157,8 @@ export function initializeMiniPlayer() {
   });
   $('pip-open').addEventListener('click', explainPip);
   $('mini-pip').addEventListener('click', explainPip);
+  $('pip-fullscreen').addEventListener('click', tryFullscreenForPip);
+  $('pip-help-close').addEventListener('click', () => $('pip-help-dialog').close());
   document.addEventListener('click', event => {
     const link = event.target.closest('a[href]');
     if (!link || event.defaultPrevented || event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || link.target || link.hasAttribute('download')) return;

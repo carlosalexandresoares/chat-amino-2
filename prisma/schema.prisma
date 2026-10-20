@@ -77,7 +77,7 @@ model User {
   stickers Sticker[]
   stickerPacks StickerPack[]
   stickerFavorites StickerFavorite[]
-  chatAppearance ChatAppearance?
+  chatAppearances ChatAppearance[]
   reactions MessageReaction[]
 }
 
@@ -179,6 +179,7 @@ model Room {
   messages Message[]
   members  RoomMember[]
   lives    LiveSession[]
+  appearances ChatAppearance[]
 
   @@index([ownerId])
   @@index([category])
@@ -288,7 +289,8 @@ model StickerFavorite {
 }
 
 model ChatAppearance {
-  userId String @id
+  userId String
+  roomId String
   mode String @default("DEFAULT")
   color String?
   preset String?
@@ -298,7 +300,11 @@ model ChatAppearance {
   darkness Int @default(0)
   overlay Int @default(0)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
   asset ChatAsset? @relation(fields: [assetId], references: [id], onDelete: SetNull)
+
+  @@id([userId, roomId])
+  @@index([roomId])
 }
 
 model LiveSession {

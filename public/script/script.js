@@ -1,9 +1,9 @@
 import state from "./state.js";
 import { loadAuthenticatedUser } from "./auth.js";
-import { initializeChat } from "./chat.js?v=7";
-import { initializeYouTube, stopTimeUpdater } from "./youtube.js?v=5";
-import { initializeLive } from "./live.js?v=5";
-import { initializeMiniPlayer, openSitePage } from './mini-player.js?v=3';
+import { initializeChat } from "./chat.js?v=8";
+import { initializeYouTube, stopTimeUpdater } from "./youtube.js?v=6";
+import { initializeLive } from "./live.js?v=6";
+import { initializeMiniPlayer, openSitePage } from './mini-player.js?v=4';
 
 const roomsScreen = document.getElementById("rooms-screen");
 const appScreen = document.getElementById("app-screen");

@@ -172,12 +172,20 @@ router.put('/stickers/:id/favorite', async (req, res) => {
 });
 
 router.get('/appearance', async (req, res) => {
-  try { res.json({ appearance: await prisma.chatAppearance.findUnique({ where: { userId: req.userId } }) }); }
+  try {
+    const roomId = req.query.roomId;
+    if (!validRoomId(roomId)) throw media.problem('Chat inválido.');
+    if (!await prisma.room.findUnique({ where: { id: roomId }, select: { id: true } })) throw media.problem('Chat não encontrado.', 404);
+    const appearance = await prisma.chatAppearance.findUnique({ where: { userId_roomId: { userId: req.userId, roomId } } });
+    res.json({ appearance });
+  }
   catch (error) { fail(res, error, 'Não foi possível carregar o plano de fundo.'); }
 });
 router.put('/appearance', async (req, res) => {
   try {
-    const { mode, color, preset, assetId } = req.body || {};
+    const { roomId, mode, color, preset, assetId } = req.body || {};
+    if (!validRoomId(roomId)) throw media.problem('Chat inválido.');
+    if (!await prisma.room.findUnique({ where: { id: roomId }, select: { id: true } })) throw media.problem('Chat não encontrado.', 404);
     if (!['DEFAULT', 'COLOR', 'PRESET', 'IMAGE'].includes(mode)) throw media.problem('Tipo de fundo inválido.');
     if (mode === 'COLOR' && !/^#[0-9a-f]{6}$/i.test(color)) throw media.problem('Cor inválida.');
     if (mode === 'PRESET' && !['geometry', 'twilight', 'night', 'minimal'].includes(preset)) throw media.problem('Papel de parede inválido.');
@@ -186,7 +194,8 @@ router.put('/appearance', async (req, res) => {
     const data = { mode, color: mode === 'COLOR' ? color : null, preset: mode === 'PRESET' ? preset : null,
       assetId: mode === 'IMAGE' ? assetId : null, positionX: clamp(req.body.positionX ?? 50),
       positionY: clamp(req.body.positionY ?? 50), darkness: clamp(req.body.darkness), overlay: clamp(req.body.overlay) };
-    const appearance = await prisma.chatAppearance.upsert({ where: { userId: req.userId }, create: { userId: req.userId, ...data }, update: data });
+    const appearance = await prisma.chatAppearance.upsert({ where: { userId_roomId: { userId: req.userId, roomId } },
+      create: { userId: req.userId, roomId, ...data }, update: data });
     res.json({ appearance });
   } catch (error) { fail(res, error, 'Não foi possível salvar o plano de fundo.'); }
 });

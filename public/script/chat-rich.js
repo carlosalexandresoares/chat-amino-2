@@ -1,6 +1,6 @@
 import state from './state.js';
 import dom from './dom.js';
-import { initializeWallpaper } from './wallpaper.js';
+import { initializeWallpaper } from './wallpaper.js?v=2';
 
 const $ = id => document.getElementById(id);
 const mediaUrls = new Map();
@@ -472,5 +472,5 @@ export function initializeRichChat(addMessage) {
     finally { historyLoading = false; }
   });
   state.socket.on('chat-history', () => { historyMore = true; });
-  initializeWallpaper(api, assetUrl);
+  initializeWallpaper(api, assetUrl, state.roomId);
 }

@@ -12,7 +12,7 @@
 
   <link
     rel="stylesheet"
-    href="style/style.css?v=15"
+    href="style/style.css?v=17"
   />
 
   <script src="/socket.io/socket.io.js"></script>
@@ -20,7 +20,7 @@
 
   <script
     type="module"
-    src="script/script.js?v=14"
+    src="script/script.js?v=16"
   ></script>
 </head>
 
@@ -296,10 +296,10 @@
           class="youtube-container"
           id="youtube-container"
         >
-          <div class="player-actions"><button type="button" id="mini-open" class="hidden">▣ Mini player</button><button type="button" id="pip-open" aria-label="Picture-in-Picture">▣ PiP</button></div>
+          <div class="player-actions"><button type="button" id="mini-open" class="hidden">▣ Mini player</button><button type="button" id="pip-open" aria-label="Picture-in-Picture fora do navegador">▣ PiP</button></div>
           <div id="mini-player-header" class="mini-player-header">
             <div class="mini-player-label"><span class="mini-live-dot" aria-hidden="true"></span><strong id="mini-room-name">Projeção</strong><small id="mini-host-name"></small><small id="mini-video-name"></small></div>
-            <div class="mini-player-buttons"><button type="button" id="mini-pip" title="Picture-in-Picture">PiP</button><button type="button" id="mini-minimize">Minimizar</button><button type="button" id="mini-expand">Expandir</button><button type="button" id="mini-back">Voltar à sala</button></div>
+            <div class="mini-player-buttons"><button type="button" id="mini-pip" title="Picture-in-Picture fora do navegador">PiP</button><button type="button" id="mini-minimize">Minimizar</button><button type="button" id="mini-expand">Expandir</button><button type="button" id="mini-back">Voltar à sala</button></div>
           </div>
           <button
             type="button"
@@ -362,11 +362,20 @@
             <button type="submit" id="enviar" aria-label="Enviar mensagem"><img src="image/button-enviar.jpg" alt="" /></button>
           </div>
         </form>
-        <dialog id="wallpaper-dialog" class="wallpaper-dialog" aria-labelledby="wallpaper-title"><div class="wallpaper-head"><h2 id="wallpaper-title">Fundo do chat</h2><button type="button" id="wallpaper-close" aria-label="Fechar">×</button></div><p>Este fundo aparece somente para você.</p><div class="wallpaper-options"><button type="button" data-wallpaper-preset="geometry">Geométrico</button><button type="button" data-wallpaper-preset="twilight">Crepúsculo</button><button type="button" data-wallpaper-preset="night">Noite</button><button type="button" data-wallpaper-preset="minimal">Minimalista</button></div><div class="wallpaper-colors"><button type="button" data-wallpaper-color="#111827" aria-label="Preto"></button><button type="button" data-wallpaper-color="#374151" aria-label="Cinza escuro"></button><button type="button" data-wallpaper-color="#1e3a8a" aria-label="Azul"></button><button type="button" data-wallpaper-color="#581c87" aria-label="Roxo"></button><button type="button" data-wallpaper-color="#14532d" aria-label="Verde"></button><button type="button" data-wallpaper-color="#ffffff" aria-label="Branco"></button><label>Outra cor <input id="wallpaper-color" type="color" value="#66727b"></label></div><label class="wallpaper-upload">Imagem do dispositivo <input id="wallpaper-file" type="file" accept="image/png,image/jpeg,image/webp"></label><label>Posição horizontal <input id="wallpaper-x" type="range" min="0" max="100" value="50"></label><label>Posição vertical <input id="wallpaper-y" type="range" min="0" max="100" value="50"></label><label>Escurecimento <input id="wallpaper-darkness" type="range" min="0" max="100" value="0"></label><label>Sobreposição <input id="wallpaper-overlay" type="range" min="0" max="100" value="0"></label><div class="wallpaper-actions"><button type="button" id="wallpaper-reset">Restaurar padrão</button><button type="button" id="wallpaper-save">Aplicar fundo</button></div><p id="wallpaper-status" role="status"></p></dialog>
+        <dialog id="wallpaper-dialog" class="wallpaper-dialog" aria-labelledby="wallpaper-title"><div class="wallpaper-head"><h2 id="wallpaper-title">Fundo do chat</h2><button type="button" id="wallpaper-close" aria-label="Fechar">×</button></div><p>Este fundo aparece somente para você neste chat.</p><div class="wallpaper-options"><button type="button" data-wallpaper-preset="geometry">Geométrico</button><button type="button" data-wallpaper-preset="twilight">Crepúsculo</button><button type="button" data-wallpaper-preset="night">Noite</button><button type="button" data-wallpaper-preset="minimal">Minimalista</button></div><div class="wallpaper-colors"><button type="button" data-wallpaper-color="#111827" aria-label="Preto"></button><button type="button" data-wallpaper-color="#374151" aria-label="Cinza escuro"></button><button type="button" data-wallpaper-color="#1e3a8a" aria-label="Azul"></button><button type="button" data-wallpaper-color="#581c87" aria-label="Roxo"></button><button type="button" data-wallpaper-color="#14532d" aria-label="Verde"></button><button type="button" data-wallpaper-color="#ffffff" aria-label="Branco"></button><label>Outra cor <input id="wallpaper-color" type="color" value="#66727b"></label></div><label class="wallpaper-upload">Imagem do dispositivo <input id="wallpaper-file" type="file" accept="image/png,image/jpeg,image/webp"></label><label>Posição horizontal <input id="wallpaper-x" type="range" min="0" max="100" value="50"></label><label>Posição vertical <input id="wallpaper-y" type="range" min="0" max="100" value="50"></label><label>Escurecimento <input id="wallpaper-darkness" type="range" min="0" max="100" value="0"></label><label>Sobreposição <input id="wallpaper-overlay" type="range" min="0" max="100" value="0"></label><div class="wallpaper-actions"><button type="button" id="wallpaper-reset">Restaurar padrão</button><button type="button" id="wallpaper-save">Aplicar fundo</button></div><p id="wallpaper-status" role="status"></p></dialog>
       </main>
     </div>
   </div>
   <div id="site-view" class="site-view hidden"><iframe id="site-frame" title="Outra área do Chat Amino 2"></iframe></div>
   <div id="mini-player-notice" class="mini-player-notice hidden" role="status"></div>
+  <dialog id="pip-help-dialog" class="pip-help-dialog" aria-labelledby="pip-help-title">
+    <h2 id="pip-help-title">Vídeo sobre outros aplicativos</h2>
+    <p>Esta projeção usa o player incorporado do YouTube. O site não consegue ativar diretamente o PiP do vídeo dentro dele.</p>
+    <p><strong>Android:</strong> abra o vídeo em tela cheia e vá para a tela inicial do celular. O Chrome poderá abrir a janela flutuante se o aparelho e o vídeo permitirem.</p>
+    <p><strong>iPhone:</strong> use o controle de PiP do próprio player, caso ele apareça. A disponibilidade depende do Safari e do YouTube.</p>
+    <p>Se a janela não aparecer, continue pelo mini player dentro do site.</p>
+    <p id="pip-help-status" role="status"></p>
+    <div class="pip-help-actions"><button type="button" id="pip-help-close">Fechar</button><button type="button" id="pip-fullscreen">Tentar tela cheia</button></div>
+  </dialog>
 </body>
 </html>

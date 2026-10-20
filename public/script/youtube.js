@@ -1,6 +1,6 @@
 import state from "./state.js";
 import dom from "./dom.js";
-import { syncMiniPlayer, hideMiniPlayer } from './mini-player.js?v=3';
+import { syncMiniPlayer, hideMiniPlayer } from './mini-player.js?v=4';
 
 let apiPromise;
 let playerPromise;
@@ -57,11 +57,20 @@ async function ensurePlayer() {
       width: "100%", height: "100%",
       playerVars: {
         autoplay: 0, controls: hostMode ? 1 : 0,
-        disablekb: hostMode ? 0 : 1, fs: hostMode ? 1 : 0,
+        disablekb: hostMode ? 0 : 1, fs: 1,
         mute: 1, playsinline: 1, origin: window.location.origin,
       },
       events: {
-        onReady: () => { state.playerReady = true; resolve(); },
+        onReady: () => {
+          const iframe = state.player.getIframe();
+          const permissions = new Set((iframe.getAttribute('allow') || '').split(';').map(value => value.trim()).filter(Boolean));
+          permissions.add('picture-in-picture');
+          permissions.add('fullscreen');
+          iframe.setAttribute('allow', [...permissions].join('; '));
+          iframe.allowFullscreen = true;
+          state.playerReady = true;
+          resolve();
+        },
         onStateChange: handlePlayerStateChange,
         onError: (event) => console.error("Erro do YouTube:", event.data),
       },
