@@ -4,6 +4,11 @@ import { initializeWallpaper } from './wallpaper.js';
 
 const $ = id => document.getElementById(id);
 const mediaUrls = new Map();
+const renderedMessages = new WeakMap();
+const swipeReturnTimers = new WeakMap();
+const SWIPE_REPLY_THRESHOLD = 60;
+const SWIPE_REPLY_MAX = 88;
+let swipeInitialized = false;
 let renderMessage;
 let reply = null;
 let activeMenu = null;
@@ -66,6 +71,85 @@ function startReply(data) {
 }
 export function replyToId() { return reply?.id || null; }
 export function clearReply() { reply = null; $('reply-composer').classList.add('hidden'); }
+
+function initializeSwipeReply() {
+  if (swipeInitialized) return;
+  swipeInitialized = true;
+  let gesture = null;
+  const interactive = 'button, a, input, select, textarea, audio, video, [contenteditable], .message-actions';
+
+  function restore(activate = false) {
+    if (!gesture) return;
+    const { element, data, indicator, distance } = gesture;
+    gesture = null;
+    indicator?.remove();
+    if (element.isConnected) {
+      element.classList.remove('swiping');
+      element.classList.add('swipe-returning');
+      element.style.transform = '';
+      const timer = setTimeout(() => {
+        element.classList.remove('swipe-returning');
+        swipeReturnTimers.delete(element);
+      }, 220);
+      swipeReturnTimers.set(element, timer);
+    }
+    if (activate && distance >= SWIPE_REPLY_THRESHOLD && element.isConnected && !data.deleted) startReply(data);
+  }
+
+  dom.messages.addEventListener('pointerdown', event => {
+    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+    if (!event.isPrimary || event.button !== 0 || event.target.closest(interactive)) return;
+    const element = event.target.closest('.message');
+    if (!element || !dom.messages.contains(element)) return;
+    const data = renderedMessages.get(element);
+    if (!data || data.deleted) return;
+    restore();
+    clearTimeout(swipeReturnTimers.get(element));
+    element.classList.remove('swipe-returning');
+    gesture = { element, data, pointerId: event.pointerId, startX: event.clientX,
+      startY: event.clientY, direction: null, distance: 0, vibrated: false, indicator: null };
+  });
+
+  window.addEventListener('pointermove', event => {
+    if (!gesture || event.pointerId !== gesture.pointerId) return;
+    const dx = event.clientX - gesture.startX;
+    const dy = event.clientY - gesture.startY;
+    if (!gesture.direction) {
+      if (Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      if (Math.abs(dy) >= Math.abs(dx) || dx <= 0) { restore(); return; }
+      gesture.direction = 'horizontal';
+      gesture.element.classList.add('swiping');
+      closeMenu();
+      const indicator = document.createElement('span');
+      indicator.className = 'reply-swipe-indicator';
+      indicator.textContent = '↩';
+      indicator.setAttribute('aria-hidden', 'true');
+      const rect = gesture.element.getBoundingClientRect();
+      indicator.style.left = `${Math.max(8, rect.left - 40)}px`;
+      indicator.style.top = `${rect.top + rect.height / 2}px`;
+      document.body.append(indicator);
+      gesture.indicator = indicator;
+    }
+    if (Math.abs(dy) > Math.abs(dx) * 1.2 && Math.abs(dy) > 24) { restore(); return; }
+    if (event.cancelable) event.preventDefault();
+    gesture.distance = Math.max(0, Math.min(SWIPE_REPLY_MAX, dx));
+    gesture.element.style.transform = `translate3d(${gesture.distance}px, 0, 0)`;
+    gesture.indicator.style.setProperty('--swipe-progress', String(Math.min(1, gesture.distance / SWIPE_REPLY_THRESHOLD)));
+    const ready = gesture.distance >= SWIPE_REPLY_THRESHOLD;
+    gesture.indicator.classList.toggle('ready', ready);
+    if (ready && !gesture.vibrated) {
+      gesture.vibrated = true;
+      navigator.vibrate?.(10);
+    }
+  }, { passive: false });
+  window.addEventListener('pointerup', event => {
+    if (gesture && event.pointerId === gesture.pointerId) restore(true);
+  });
+  window.addEventListener('pointercancel', event => {
+    if (gesture && event.pointerId === gesture.pointerId) restore();
+  });
+  window.addEventListener('blur', () => restore());
+}
 
 async function navigateTo(id) {
   let target = [...dom.messages.querySelectorAll('.message')].find(element => element.dataset.messageId === id);
@@ -151,8 +235,12 @@ function openMenu(element, data) {
 }
 
 export function enhanceMessage(element, data, header, content) {
+  renderedMessages.set(element, data);
   if (data.deleted) { content.textContent = 'Mensagem indisponível'; element.classList.add('deleted-message'); }
-  else if (data.type === 'AUDIO' && data.mediaId) content.replaceWith(audioPlayer(data));
+  else if (data.type === 'AUDIO' && data.mediaId) {
+    element.classList.add('audio-message');
+    content.replaceWith(audioPlayer(data));
+  }
   else if (data.type === 'STICKER' && data.mediaId) {
     const img = document.createElement('img'); img.className = 'message-sticker'; img.alt = 'Figurinha'; img.dataset.mediaId = data.mediaId;
     content.replaceWith(img); lazyMedia.observe(img); element.classList.add('sticker-message');
@@ -168,9 +256,15 @@ export function enhanceMessage(element, data, header, content) {
   button.textContent = '⋯'; button.setAttribute('aria-label', 'Ações da mensagem');
   button.addEventListener('click', () => activeMenu?.parentElement === element ? closeMenu() : openMenu(element, data));
   header.append(button);
-  element.addEventListener('contextmenu', event => { event.preventDefault(); openMenu(element, data); });
+  element.addEventListener('contextmenu', event => {
+    if (event.target.closest('button, input, audio, a')) return;
+    event.preventDefault(); openMenu(element, data);
+  });
   let hold;
-  element.addEventListener('touchstart', () => { hold = setTimeout(() => openMenu(element, data), 550); }, { passive: true });
+  element.addEventListener('touchstart', event => {
+    if (event.target.closest('button, input, audio, a')) return;
+    hold = setTimeout(() => openMenu(element, data), 550);
+  }, { passive: true });
   for (const type of ['touchend', 'touchcancel', 'touchmove']) element.addEventListener(type, () => clearTimeout(hold), { passive: true });
   updateReactions(element, data.reactions);
 }
@@ -288,6 +382,7 @@ async function loadPacks() {
 
 export function initializeRichChat(addMessage) {
   renderMessage = addMessage;
+  initializeSwipeReply();
   api('/config').then(config => {
     maxAudioSeconds = Number(config.maxAudioSeconds) || 120;
     uploadsAvailable = Boolean(config.uploadsAvailable);

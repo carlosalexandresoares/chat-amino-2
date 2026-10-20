@@ -1,6 +1,6 @@
 import state from "./state.js";
 import dom from "./dom.js";
-import { initializeRichChat, enhanceMessage, replyToId, clearReply } from './chat-rich.js?v=2';
+import { initializeRichChat, enhanceMessage, replyToId, clearReply } from './chat-rich.js?v=3';
 
 /*
   Fila das notificações de XP.

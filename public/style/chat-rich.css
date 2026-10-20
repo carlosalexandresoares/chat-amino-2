@@ -11,6 +11,11 @@
 .audio-compose button, .sticker-create button, #sticker-save, .wallpaper-actions button { padding: 8px 12px; border: 1px solid #8d70bc; border-radius: 9px; background: #6746a3; color: #fff; cursor: pointer; }
 .audio-compose #audio-cancel { background: #fff; color: #5a426f; }
 .message { position: relative; }
+.message:not(.audio-message), .audio-message .message-header, .audio-message .wave, .audio-message .message-audio span { touch-action: pan-y; }
+.message.swiping { animation: none; transition: none; will-change: transform; }
+.message.swipe-returning { animation: none; transition: transform 180ms cubic-bezier(.2, .75, .25, 1); }
+.reply-swipe-indicator { position: fixed; z-index: 80; display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid #b395dc; border-radius: 50%; background: #352844; box-shadow: 0 4px 12px #0005; color: #fff; font-size: 24px; line-height: 1; pointer-events: none; opacity: var(--swipe-progress, 0); transform: translateY(-50%) scale(calc(.75 + .25 * var(--swipe-progress, 0))); }
+.reply-swipe-indicator.ready { background: #8758c6; border-color: #e5d2ff; box-shadow: 0 0 0 4px #b78bea55, 0 5px 16px #0005; }
 .message.reply-message { padding-left: 13px; }
 .message-reply { display: grid; gap: 2px; margin: 3px 0 5px; padding: 6px 9px; border: 0; border-left: 3px solid #bb92eb; border-radius: 6px; background: #ffffff26; color: inherit; text-align: left; cursor: pointer; }
 .message.bot .message-reply { background: #eae4f4; }
@@ -62,3 +67,4 @@
 .wallpaper-actions #wallpaper-reset { background: #313650; }
 .app-screen .chat-area .messages { background-color: var(--chat-bg-color, #586773); background-image: var(--chat-bg-image, linear-gradient(155deg, #66727b, #444f58)); background-position: var(--chat-bg-position, center); background-size: cover; background-attachment: fixed; }
 @media (max-width: 600px) { .message { max-width: 88%; } .composer-icon { width: 39px; height: 42px; } .sticker-filters { flex-wrap: wrap; } .sticker-filters select { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .message.swipe-returning, .reply-swipe-indicator { transition: none; } }
