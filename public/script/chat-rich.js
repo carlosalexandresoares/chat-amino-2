@@ -225,7 +225,7 @@ function openMenu(element, data) {
   if (!data.deleted) action('Responder', () => startReply(data));
   if (data.type === 'TEXT' && !data.deleted) action('Copiar texto', () => navigator.clipboard.writeText(data.message).catch(() => {}));
   if (!data.deleted) for (const emoji of ['❤️', '😂', '👍', '😮', '😢', '🔥']) action(`Reagir ${emoji}`, () => react(data.id, emoji));
-  if (data.user.id === state.currentUser?.id && !data.deleted) action('Excluir mensagem', async () => {
+  if ((data.user.id === state.currentUser?.id || state.currentUser?.isSiteAdmin) && !data.deleted) action('Excluir mensagem', async () => {
     if (!confirm('Excluir esta mensagem?')) return;
     try { await api(`/messages/${encodeURIComponent(data.id)}`, { method: 'DELETE' }); }
     catch (error) { window.alert(error.message); }

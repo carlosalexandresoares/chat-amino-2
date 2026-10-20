@@ -69,7 +69,8 @@ async function register(req, res) {
         username: user.username,
         email: user.email,
         level: user.level,
-        xp: user.xp
+        xp: user.xp,
+        isSiteAdmin: user.isSiteAdmin
       }
     });
   } catch (error) {
@@ -150,7 +151,8 @@ async function login(req, res) {
         banner: user.banner,
         bio: user.bio,
         level: user.level,
-        xp: user.xp
+        xp: user.xp,
+        isSiteAdmin: user.isSiteAdmin
       }
     });
   } catch (error) {
@@ -178,6 +180,7 @@ async function me(req, res) {
         bio: true,
         xp: true,
         level: true,
+        isSiteAdmin: true,
         createdAt: true
       }
     });

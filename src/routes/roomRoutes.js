@@ -2,6 +2,7 @@ const express = require("express");
 const prisma = require("../database/prisma");
 const auth = require("../middleware/authMiddleware");
 const projectionRep = require('../services/projectionRep');
+const { isSiteAdmin } = require('../middleware/siteAdmin');
 
 const router = express.Router();
 router.use(auth);
@@ -91,6 +92,7 @@ async function manageableRoom(req, res, allowCoAdmin = true) {
     res.status(404).json({ message: "Chat não encontrado." });
     return null;
   }
+  if (await isSiteAdmin(req.userId)) return { room, role: 'OWNER' };
   if (!room.ownerId) {
     res.status(403).json({ message: "Este chat não pode ser modificado." });
     return null;
@@ -156,6 +158,7 @@ router.patch("/:id/members/:userId/role", async (req, res) => {
     const access = await manageableRoom(req, res, false);
     if (!access) return;
     const role = req.body.role;
+    if (await isSiteAdmin(req.params.userId)) return res.status(403).json({ message: 'O administrador geral não pode ter sua permissão alterada.' });
     if (!["MEMBER", "CO_ADMIN"].includes(role) || req.params.userId === req.userId) {
       return res.status(400).json({ message: "Permissão inválida." });
     }
@@ -169,8 +172,8 @@ router.patch("/:id/members/:userId/role", async (req, res) => {
       if (socket.user?.id === req.params.userId && socket.rooms.has(access.room.id)) {
         socket.emit("room-permissions", {
           roomId: access.room.id,
-          role,
-          canStartLive: role === "CO_ADMIN",
+          role: socket.user.isSiteAdmin ? 'OWNER' : role,
+          canStartLive: socket.user.isSiteAdmin || role === "CO_ADMIN",
         });
       }
     }
@@ -185,6 +188,7 @@ router.delete("/:id/members/:userId", async (req, res) => {
   try {
     const access = await manageableRoom(req, res);
     if (!access) return;
+    if (await isSiteAdmin(req.params.userId)) return res.status(403).json({ message: 'O administrador geral não pode ser removido do chat.' });
     if (req.params.userId === req.userId) {
       return res.status(400).json({ message: "Você não pode remover a si mesmo." });
     }

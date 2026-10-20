@@ -4,6 +4,7 @@ const prisma = require('../database/prisma');
 const auth = require('../middleware/authMiddleware');
 const chat = require('../services/chatMessages');
 const media = require('../services/chatMedia');
+const { isSiteAdmin } = require('../middleware/siteAdmin');
 
 const router = express.Router();
 router.use(auth);
@@ -58,7 +59,7 @@ router.get('/messages/:id/context', async (req, res) => {
 router.delete('/messages/:id', async (req, res) => {
   try {
     const message = await prisma.message.findUnique({ where: { id: req.params.id }, select: { userId: true, roomId: true, type: true, deletedAt: true } });
-    if (!message || message.userId !== req.userId) return res.status(403).json({ message: 'Você só pode excluir suas mensagens.' });
+    if (!message || (message.userId !== req.userId && !await isSiteAdmin(req.userId))) return res.status(403).json({ message: 'Você só pode excluir suas mensagens.' });
     if (!message.deletedAt) {
       await prisma.message.update({ where: { id: req.params.id }, data: { deletedAt: new Date(), content: '',
         ...(message.type === 'AUDIO' ? { mediaId: null } : {}) } });

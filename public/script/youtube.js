@@ -1,5 +1,6 @@
 import state from "./state.js";
 import dom from "./dom.js";
+import { syncMiniPlayer, hideMiniPlayer } from './mini-player.js?v=3';
 
 let apiPromise;
 let playerPromise;
@@ -7,6 +8,7 @@ let playerHostMode = null;
 let loadedVideoId = null;
 let syncReleaseTimer;
 let latestSnapshot = null;
+const floatingGuest = window !== window.top && new URLSearchParams(window.location.search).has('floatingGuest');
 
 function loadYouTubeAPI() {
   if (window.YT?.Player) return Promise.resolve();
@@ -84,13 +86,14 @@ function handlePlayerStateChange(event) {
 }
 
 export async function loadVideo(videoId, options = {}) {
-  if (!videoId || !state.liveActive) return;
+  if (floatingGuest || !videoId || !state.liveActive) return;
   const currentTime = Math.max(0, Number(options.currentTime) || 0);
   const isPlaying = options.isPlaying !== false;
   state.pendingVideoState = { videoId, currentTime, isPlaying };
   latestSnapshot = state.pendingVideoState;
   dom.youtubeContainer.classList.add("active");
   updatePlayerButton();
+  syncMiniPlayer();
   await ensurePlayer();
   if (!state.liveActive || !state.playerReady) return;
   const pending = state.pendingVideoState;
@@ -110,7 +113,7 @@ export async function loadVideo(videoId, options = {}) {
 }
 
 export function applyVideoState(videoState) {
-  if (!videoState?.videoId || !state.liveActive) return;
+  if (floatingGuest || !videoState?.videoId || !state.liveActive) return;
   latestSnapshot = videoState;
   if (!state.playerReady || loadedVideoId !== videoState.videoId || playerHostMode !== Boolean(state.isLiveHost)) {
     return loadVideo(videoState.videoId, videoState);
@@ -153,6 +156,7 @@ export function setVideoControlAccess(allowed) {
 }
 
 export function updatePlayerButton() {
+  if (floatingGuest) { dom.togglePlayerButton.classList.add('hidden'); return; }
   dom.togglePlayerButton.classList.toggle("hidden", !state.liveActive);
   if (state.liveActive) dom.togglePlayerButton.textContent = playerVisible() ? "Ocultar vídeo" : "Mostrar vídeo";
 }
@@ -175,9 +179,11 @@ function requestCurrentVideo() {
 }
 
 function togglePlayer(visible) {
-  if (!state.liveActive) return;
+  if (floatingGuest || !state.liveActive) return;
+  if (!visible) hideMiniPlayer();
   dom.youtubeContainer.classList.toggle("active", visible);
   updatePlayerButton();
+  syncMiniPlayer();
   if (visible) requestCurrentVideo();
   else stopTimeUpdater();
 }

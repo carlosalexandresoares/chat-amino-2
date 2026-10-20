@@ -9,6 +9,11 @@ if (token && typeof io === 'function') {
     setTimeout(() => toast.classList.add('hidden'), 5000);
     loadProfile();
   });
+  profileSocket.on('account-deleted', payload => {
+    localStorage.removeItem('authToken');
+    alert(payload?.message || 'Sua conta foi excluída.');
+    window.location.replace('/login.html');
+  });
 }
 
 const $ = (id) => document.getElementById(id);
@@ -22,6 +27,7 @@ const connectionsList = $("connections-list");
 const connectionsMessage = $("connections-message");
 const loadMoreConnections = $("load-more-connections");
 let viewedUser = null;
+let currentUserIsSiteAdmin = false;
 let connectionsKind = "followers";
 let connectionsOffset = 0;
 let connectionsRequestId = 0;
@@ -117,6 +123,15 @@ function renderPosts(posts) {
       feature.addEventListener('click', async () => { try { await request(`/api/posts/${post.id}/feature`, { method: 'POST' }); loadPosts(); } catch (e) { message.textContent = e.message; } });
       article.append(feature);
     }
+    if (currentUserIsSiteAdmin) {
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'follow-button'; remove.textContent = 'Excluir publicação';
+      remove.addEventListener('click', async () => {
+        if (!confirm('Excluir esta publicação permanentemente?')) return;
+        try { await request(`/api/posts/${post.id}`, { method: 'DELETE' }); loadPosts(); }
+        catch (error) { message.textContent = error.message; }
+      });
+      article.append(remove);
+    }
     postList.append(article);
   }
 }
@@ -191,6 +206,8 @@ loadMoreConnections.addEventListener("click", () => loadConnections());
 async function loadProfile() {
   try {
     const me = await request("/api/auth/me");
+    currentUserIsSiteAdmin = Boolean(me.user.isSiteAdmin);
+    $('site-admin-link').classList.toggle('hidden', !currentUserIsSiteAdmin);
     const id = targetId || me.user.id;
     currentUserId = me.user.id;
     const profile = await request(`/api/users/${encodeURIComponent(id)}`);

@@ -1,6 +1,7 @@
 import state from "./state.js";
 import dom from "./dom.js";
 import { initializeProjectionUi, syncProjectionUi, onProjectionEnded } from './projection-ui.js';
+import { syncMiniPlayer, projectionFinished } from './mini-player.js?v=3';
 
 import {
   showElement,
@@ -16,7 +17,7 @@ import {
   stopPlayer,
   stopTimeUpdater,
   updatePlayerButton,
-} from "./youtube.js";
+} from "./youtube.js?v=5";
 
 function setLiveFormMessage(
   message,
@@ -82,6 +83,7 @@ function renderPlaylist(playlist) {
     Array.isArray(playlist)
       ? playlist
       : [];
+  syncMiniPlayer();
 
   dom.playlistElement.innerHTML = "";
 
@@ -263,6 +265,7 @@ export function updateLiveInterface() {
     setVideoControlAccess(false);
     stopTimeUpdater();
     syncProjectionUi();
+    syncMiniPlayer();
 
     return;
   }
@@ -298,9 +301,11 @@ export function updateLiveInterface() {
   updateLiveDetails();
   updatePlayerButton();
   syncProjectionUi();
+  syncMiniPlayer();
 }
 
 function resetLiveState() {
+  projectionFinished();
   state.liveActive = false;
   state.liveDetailsOpen = false;
 

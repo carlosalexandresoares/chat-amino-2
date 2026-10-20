@@ -1,8 +1,9 @@
 import state from "./state.js";
 import { loadAuthenticatedUser } from "./auth.js";
-import { initializeChat } from "./chat.js?v=6";
-import { initializeYouTube, stopTimeUpdater } from "./youtube.js";
-import { initializeLive } from "./live.js?v=2";
+import { initializeChat } from "./chat.js?v=7";
+import { initializeYouTube, stopTimeUpdater } from "./youtube.js?v=5";
+import { initializeLive } from "./live.js?v=5";
+import { initializeMiniPlayer, openSitePage } from './mini-player.js?v=3';
 
 const roomsScreen = document.getElementById("rooms-screen");
 const appScreen = document.getElementById("app-screen");
@@ -33,8 +34,18 @@ async function roomRequest(url, options = {}) {
 }
 
 function enterRoom(roomId) {
+  if (window !== window.top) {
+    try {
+      const shell = window.parent.document.getElementById('site-view');
+      if (shell && !shell.classList.contains('hidden') && shell.querySelector('iframe')?.contentWindow === window) {
+        window.parent.postMessage({ type: 'floating-enter-room', roomId }, window.location.origin);
+        return;
+      }
+    } catch { /* Navegação normal em incorporações de outras origens. */ }
+  }
   const url = new URL(window.location.href);
   url.searchParams.set("sala", roomId);
+  if (window !== window.top) url.searchParams.set('floatingGuest', '1');
   window.location.href = `${url.pathname}${url.search}`;
 }
 
@@ -276,6 +287,7 @@ form.addEventListener("submit", async (event) => {
 });
 
 document.getElementById("leave-room").addEventListener("click", () => {
+  if (openSitePage('/index.html')) return;
   stopTimeUpdater();
   state.socket.disconnect();
   const url = new URL(window.location.href);
@@ -285,6 +297,7 @@ document.getElementById("leave-room").addEventListener("click", () => {
 
 initializeChat();
 initializeYouTube();
+initializeMiniPlayer();
 initializeLive();
 
 state.socket.on("connect", () => {
@@ -324,11 +337,18 @@ state.socket.on("room-removed", ({ roomId, message }) => {
   window.location.replace("/index.html");
 });
 state.socket.on("disconnect", stopTimeUpdater);
+state.socket.on('account-deleted', payload => {
+  localStorage.removeItem('authToken');
+  window.alert(payload?.message || 'Sua conta foi excluída.');
+  window.location.replace('/login.html');
+});
 state.socket.on("connect_error", (error) => {
   if (state.roomId) alert(`Erro ao conectar ao chat: ${error.message}`);
 });
 
-loadRooms().then(loadAuthenticatedUser);
+loadRooms().then(loadAuthenticatedUser).then(() => {
+  document.querySelectorAll('.site-admin-link').forEach(link => link.classList.toggle('hidden', !state.currentUser?.isSiteAdmin));
+});
 window.setInterval(() => {
   if (!state.roomId && document.visibilityState === "visible") loadRooms();
 }, 15000);

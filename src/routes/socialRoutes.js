@@ -3,6 +3,7 @@ const prisma = require("../database/prisma");
 const auth = require("../middleware/authMiddleware");
 const reputation = require('../services/reputation');
 const { notify } = require('./reputationRoutes');
+const { isSiteAdmin } = require('../middleware/siteAdmin');
 
 const router = express.Router();
 router.use(auth);
@@ -29,7 +30,7 @@ async function profile(req, res) {
     res.json({
       user: {
         ...user,
-        ...reputation.progress(user.xp), rank: rank + 1, checkin, viewerIsModerator: Boolean(moderator),
+        ...reputation.progress(user.xp), rank: rank + 1, checkin, viewerIsModerator: Boolean(moderator) || await isSiteAdmin(req.userId),
         followersCount: user._count.followers,
         followingCount: user._count.following,
         postsCount: user._count.posts,
@@ -157,7 +158,7 @@ router.post('/posts/:id/like', async (req, res) => {
 router.post('/posts/:id/feature', async (req, res) => {
   try {
     const moderator = await prisma.roomMember.findFirst({ where: { userId: req.userId, role: { in: ['OWNER', 'CO_ADMIN'] } }, select: { id: true } });
-    if (!moderator) return res.status(403).json({ message: 'Apenas moderadores podem destacar.' });
+    if (!moderator && !await isSiteAdmin(req.userId)) return res.status(403).json({ message: 'Apenas moderadores podem destacar.' });
     const post = await prisma.post.findUnique({ where: { id: req.params.id }, select: { id: true, userId: true } });
     if (!post) return res.status(404).json({ message: 'Publicação não encontrada.' });
     const result = await prisma.$transaction(async tx => {
@@ -169,6 +170,18 @@ router.post('/posts/:id/feature', async (req, res) => {
     if (result) notify(req, post.userId, result, 'POST_FEATURED');
     res.json({ featured: true, awarded: Boolean(result?.gainedXp) });
   } catch (e) { console.error(e); res.status(500).json({ message: 'Não foi possível destacar.' }); }
+});
+
+router.delete('/posts/:id', async (req, res) => {
+  try {
+    if (!await isSiteAdmin(req.userId)) return res.status(403).json({ message: 'Apenas a administração geral pode excluir publicações.' });
+    const deleted = await prisma.post.deleteMany({ where: { id: req.params.id } });
+    if (!deleted.count) return res.status(404).json({ message: 'Publicação não encontrada.' });
+    res.json({ deleted: true });
+  } catch (error) {
+    console.error('Erro ao excluir publicação:', error);
+    res.status(500).json({ message: 'Não foi possível excluir a publicação.' });
+  }
 });
 
 module.exports = router;

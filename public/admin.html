@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Administração | Chat Amino 2</title>
+  <link rel="stylesheet" href="/style/admin.css?v=1">
+  <script src="/script/admin.js?v=1" defer></script>
+</head>
+<body>
+  <main class="admin-shell">
+    <header class="admin-header">
+      <div><span class="admin-kicker">CHAT AMINO 2</span><h1>Administração geral</h1><p>Gerencie chats e perfis da comunidade.</p></div>
+      <nav aria-label="Navegação"><a href="/index.html">Chats</a><a href="/perfil.html">Meu perfil</a></nav>
+    </header>
+    <section id="admin-content" class="admin-content hidden">
+      <div class="admin-tabs"><button type="button" data-admin-tab="rooms" class="active">Chats</button><button type="button" data-admin-tab="users">Perfis</button></div>
+      <form id="admin-search-form" class="admin-search"><input id="admin-search" type="search" maxlength="80" placeholder="Buscar chat pelo nome" aria-label="Buscar"><button type="submit">Buscar</button></form>
+      <p id="admin-count" class="admin-count"></p>
+      <div id="admin-list" class="admin-list"></div>
+      <button type="button" id="admin-more" class="admin-more hidden">Carregar mais</button>
+    </section>
+    <p id="admin-status" role="status"></p>
+  </main>
+</body>
+</html>

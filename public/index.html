@@ -12,7 +12,7 @@
 
   <link
     rel="stylesheet"
-    href="style/style.css?v=13"
+    href="style/style.css?v=15"
   />
 
   <script src="/socket.io/socket.io.js"></script>
@@ -20,7 +20,7 @@
 
   <script
     type="module"
-    src="script/script.js?v=11"
+    src="script/script.js?v=14"
   ></script>
 </head>
 
@@ -33,6 +33,7 @@
       <nav class="rooms-topbar" aria-label="Navegação principal">
         <a class="rooms-brand" href="/index.html"><span class="brand-mark">✳</span> Chat Amino <span class="brand-version">2</span></a>
         <a class="rooms-profile-link" href="/perfil.html">Meu perfil <span aria-hidden="true">↗</span></a>
+        <a class="rooms-profile-link site-admin-link hidden" href="/admin.html">Administração</a>
       </nav>
 
       <header class="rooms-header">
@@ -92,6 +93,8 @@
       </div>
 
       <div class="chat-header-actions">
+        <a href="/perfil.html" class="manage-room-button">Meu perfil</a>
+        <a href="/admin.html" class="manage-room-button site-admin-link hidden">Administração</a>
         <button type="button" id="wallpaper-open" class="manage-room-button" aria-label="Personalizar fundo do chat">▦ Fundo</button>
         <button type="button" id="manage-room" class="manage-room-button hidden">⚙ Gerenciar chat</button>
         <button type="button" id="leave-room" class="leave-room-button">Todos os chats</button>
@@ -182,6 +185,7 @@
             id="live-content"
             class="live-content hidden"
           >
+            <label class="floating-video-setting"><input id="floating-video-preference" type="checkbox" /> Manter vídeo flutuante ao navegar</label>
             <div class="live-host">
               <div
                 class="live-host-avatar"
@@ -292,6 +296,11 @@
           class="youtube-container"
           id="youtube-container"
         >
+          <div class="player-actions"><button type="button" id="mini-open" class="hidden">▣ Mini player</button><button type="button" id="pip-open" aria-label="Picture-in-Picture">▣ PiP</button></div>
+          <div id="mini-player-header" class="mini-player-header">
+            <div class="mini-player-label"><span class="mini-live-dot" aria-hidden="true"></span><strong id="mini-room-name">Projeção</strong><small id="mini-host-name"></small><small id="mini-video-name"></small></div>
+            <div class="mini-player-buttons"><button type="button" id="mini-pip" title="Picture-in-Picture">PiP</button><button type="button" id="mini-minimize">Minimizar</button><button type="button" id="mini-expand">Expandir</button><button type="button" id="mini-back">Voltar à sala</button></div>
+          </div>
           <button
             type="button"
             class="close-yt"
@@ -357,5 +366,7 @@
       </main>
     </div>
   </div>
+  <div id="site-view" class="site-view hidden"><iframe id="site-frame" title="Outra área do Chat Amino 2"></iframe></div>
+  <div id="mini-player-notice" class="mini-player-notice hidden" role="status"></div>
 </body>
 </html>

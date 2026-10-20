@@ -16,6 +16,7 @@ const projectionRep = require('./services/projectionRep');
 const projectionRoutes = require('./routes/projectionRoutes');
 const chatMessages = require('./services/chatMessages');
 const chatRoutes = require('./routes/chatRoutes');
+const siteAdminRoutes = require('./routes/siteAdminRoutes');
 const chatMedia = require('./services/chatMedia');
 
 const app = express();
@@ -33,6 +34,7 @@ app.use("/api", socialRoutes);
 app.use('/api', reputationRoutes.router);
 app.use('/api/projections', projectionRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/admin', siteAdminRoutes);
 setInterval(() => chatMedia.cleanupOrphans(prisma).catch(error =>
   console.error('Erro na limpeza de arquivos do chat:', error)), 3600000).unref();
 
@@ -504,7 +506,7 @@ io.use(async (socket, next) => {
       nenhum XP adicional será concedido.
     */
     const currentUser = await prisma.user.findUnique({ where: { id: existingUser.id },
-      select: { id: true, username: true, avatar: true, xp: true, level: true } });
+      select: { id: true, username: true, avatar: true, xp: true, level: true, isSiteAdmin: true } });
     if (!currentUser) {
       return next(
         new Error(
@@ -620,8 +622,9 @@ io.on("connection", (socket) => {
             roomId:
               normalizedRoomId,
             role:
-              membership.role,
+              socket.user.isSiteAdmin ? 'OWNER' : membership.role,
             canStartLive:
+              socket.user.isSiteAdmin ||
               membership.role ===
                 "OWNER" ||
               membership.role ===
@@ -973,6 +976,7 @@ io.on("connection", (socket) => {
           });
 
         const canStartLive =
+          socket.user.isSiteAdmin ||
           membership?.role ===
             "OWNER" ||
           membership?.role ===
