@@ -20,6 +20,10 @@ function externalPipAvailable() {
   return window === window.top && window.isSecureContext && 'documentPictureInPicture' in window;
 }
 
+function isAndroidBrowser() {
+  return /Android/i.test(navigator.userAgent);
+}
+
 function restoreExternalPip(closeWindow = false, resync = true) {
   const previousWindow = pipWindow;
   if (!previousWindow) return;
@@ -70,7 +74,13 @@ async function openExternalPip() {
   if (pipWindow) { restoreExternalPip(true); return; }
   if (pipOpening) return;
   if (!externalPipAvailable()) {
-    showPipHelp('Este navegador não oferece Document PiP para esta projeção. No celular, só o controle PiP do próprio player do YouTube pode abrir vídeo sobre outros aplicativos, quando disponível.');
+    // Android Chrome cannot open Document PiP here. Fullscreen is a
+    // best-effort route to the browser's own video PiP when it is permitted.
+    if (isAndroidBrowser()) {
+      await tryFullscreenForPip();
+      return;
+    }
+    showPipHelp('Este navegador não oferece PiP externo para o player incorporado do YouTube.');
     return;
   }
   pipOpening = true;
@@ -250,10 +260,11 @@ async function tryFullscreenForPip() {
     syncMiniPlayer();
     const request = iframe.requestFullscreen || iframe.webkitRequestFullscreen;
     if (!request) throw new Error('unsupported');
+    // Keep the call in the same click so the browser still has user activation.
     await request.call(iframe);
-    $('pip-help-dialog').close();
+    if ($('pip-help-dialog').open) $('pip-help-dialog').close();
   } catch {
-    $('pip-help-status').textContent = 'O navegador bloqueou a tela cheia. Tente o controle do próprio player do YouTube, se estiver disponível.';
+    showPipHelp('O navegador bloqueou a tela cheia deste vídeo. Se o player mostrar seu próprio botão de tela cheia ou PiP, tente por ele.');
   }
 }
 

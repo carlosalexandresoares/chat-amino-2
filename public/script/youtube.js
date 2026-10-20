@@ -1,6 +1,6 @@
 import state from "./state.js";
 import dom from "./dom.js";
-import { syncMiniPlayer, hideMiniPlayer, setPipResyncHandler, handleExternalPipError } from './mini-player.js?v=6';
+import { syncMiniPlayer, hideMiniPlayer, setPipResyncHandler, handleExternalPipError } from './mini-player.js?v=7';
 
 let apiPromise;
 let playerPromise;
