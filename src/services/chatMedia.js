@@ -4,6 +4,7 @@ const path = require('node:path');
 const { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const cloudinary = require('../../config/cloudinary');
 const sharp = require('sharp');
+const webmDuration = require('./webmDuration');
 
 const MAX_AUDIO_BYTES = 8 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -88,9 +89,15 @@ async function prepareAudio(buffer) {
     const { parseBuffer } = await import('music-metadata');
     metadata = await parseBuffer(buffer, { mimeType, size: buffer.length }, { duration: true, skipCovers: true });
   } catch { throw problem('Não foi possível validar o áudio enviado.'); }
-  const duration = metadata.format.duration;
-  if (!Number.isFinite(duration) || duration < 0.2 || duration > MAX_AUDIO_SECONDS) throw problem(`O áudio deve ter até ${MAX_AUDIO_SECONDS} segundos.`);
   if (!metadata.format.hasAudio || metadata.format.hasVideo) throw problem('Envie somente áudio.');
+  const timelineDuration = mimeType === 'audio/webm' ? webmDuration(buffer) : null;
+  const metadataDuration = metadata.format.duration;
+  const duration = mimeType === 'audio/webm'
+    ? (Number.isFinite(timelineDuration) && Number.isFinite(metadataDuration)
+      ? Math.max(timelineDuration, metadataDuration) : (timelineDuration ?? metadataDuration))
+    : metadataDuration;
+  if (!Number.isFinite(duration) || duration < 0.2) throw problem('Não foi possível determinar a duração do áudio.');
+  if (duration > MAX_AUDIO_SECONDS) throw problem(`O áudio deve ter até ${MAX_AUDIO_SECONDS} segundos.`);
   return { buffer, mimeType, duration, extension: { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/wav': 'wav', 'audio/mp4': 'm4a', 'audio/mpeg': 'mp3' }[mimeType] };
 }
 

@@ -223,6 +223,14 @@ function openMenu(element, data) {
     button.addEventListener('click', () => { closeMenu(); callback(); }); menu.append(button);
   };
   if (!data.deleted) action('Responder', () => startReply(data));
+  if (data.type === 'STICKER' && data.mediaId && !data.deleted) action('Salvar figurinha', async () => {
+    try {
+      const result = await api('/stickers/save', { method: 'POST', body: JSON.stringify({ messageId: data.id }) });
+      $('sticker-panel').classList.remove('hidden');
+      await loadStickers(true);
+      $('sticker-status').textContent = result.alreadySaved ? 'Esta figurinha já está na sua biblioteca.' : 'Figurinha salva na sua biblioteca.';
+    } catch (error) { window.alert(error.message); }
+  });
   if (data.type === 'TEXT' && !data.deleted) action('Copiar texto', () => navigator.clipboard.writeText(data.message).catch(() => {}));
   if (!data.deleted) for (const emoji of ['❤️', '😂', '👍', '😮', '😢', '🔥']) action(`Reagir ${emoji}`, () => react(data.id, emoji));
   if ((data.user.id === state.currentUser?.id || state.currentUser?.isSiteAdmin) && !data.deleted) action('Excluir mensagem', async () => {
@@ -360,7 +368,17 @@ async function loadStickers(reset = false) {
           sticker.favorite = result.favorite; favorite.textContent = result.favorite ? '♥' : '♡'; }
         catch (error) { $('sticker-status').textContent = error.message; }
       });
-      tile.append(send, favorite); $('sticker-grid').append(tile);
+      const remove = document.createElement('button'); remove.type = 'button'; remove.className = 'sticker-remove';
+      remove.textContent = '×'; remove.setAttribute('aria-label', `Excluir ${sticker.name}`);
+      remove.addEventListener('click', async () => {
+        if (!confirm('Excluir esta figurinha da sua biblioteca? As mensagens já enviadas permanecerão no chat.')) return;
+        remove.disabled = true;
+        try {
+          await api(`/stickers/${encodeURIComponent(sticker.id)}`, { method: 'DELETE' });
+          await loadStickers(true); $('sticker-status').textContent = 'Figurinha excluída da sua biblioteca.';
+        } catch (error) { $('sticker-status').textContent = error.message; remove.disabled = false; }
+      });
+      tile.append(send, favorite, remove); $('sticker-grid').append(tile);
     }
     stickerMore = data.hasMore; $('sticker-more').classList.toggle('hidden', !stickerMore);
     if (reset && !data.stickers.length) $('sticker-status').textContent = uploadsAvailable

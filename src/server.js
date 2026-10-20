@@ -897,7 +897,7 @@ io.on("connection", (socket) => {
         if (!asset) throw new Error('Áudio indisponível ou já enviado.');
         assetId = asset.id;
       } else {
-        const sticker = await prisma.sticker.findUnique({ where: { id: stickerId }, select: { assetId: true } });
+        const sticker = await prisma.sticker.findFirst({ where: { id: stickerId, ownerId: socket.user.id }, select: { assetId: true } });
         if (!sticker) throw new Error('Figurinha indisponível.');
         assetId = sticker.assetId;
       }

@@ -271,12 +271,14 @@ model Sticker {
   name String
   ownerId String
   assetId String @unique
+  sourceAssetId String?
   packId String?
   createdAt DateTime @default(now())
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   asset ChatAsset @relation(fields: [assetId], references: [id], onDelete: Cascade)
   pack StickerPack? @relation(fields: [packId], references: [id], onDelete: SetNull)
   favorites StickerFavorite[]
+  @@unique([ownerId, sourceAssetId])
   @@index([ownerId, createdAt])
 }
 

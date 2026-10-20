@@ -18,7 +18,7 @@ test('histórico, respostas, autorização, exclusão, reações e wallpaper per
     username: `chat-${role}-${tag}`, email: `chat-${role}-${tag}@test.invalid`, password: 'test',
   } });
   const owner = await createUser('owner');
-  let viewer, outsider, room, secondRoom, server, storedAssetKey;
+  let viewer, outsider, room, secondRoom, server, storedAssetKey, sourceStickerKey, savedStickerKey;
   try {
     viewer = await createUser('viewer'); outsider = await createUser('outsider');
     room = await prisma.room.create({ data: { name: 'Sala de teste', ownerId: owner.id,
@@ -51,8 +51,10 @@ test('histórico, respostas, autorização, exclusão, reações e wallpaper per
     assert.equal((await call(outsider, `/messages/${original.id}/context`)).status, 404);
     assert.equal((await call(outsider, `/media/${audio.id}`)).status, 403);
     assert.equal((await call(outsider, '/stickers')).status, 200);
-    assert.equal((await call(viewer, `/stickers/${sticker.id}/favorite`, { method: 'PUT', body: JSON.stringify({ favorite: true }) })).status, 200);
-    assert.equal((await (await call(viewer, '/stickers?tab=favorites')).json()).stickers[0].id, sticker.id);
+    assert.equal((await (await call(viewer, '/stickers')).json()).stickers.length, 0);
+    assert.equal((await (await call(owner, '/stickers')).json()).stickers[0].id, sticker.id);
+    assert.equal((await call(viewer, `/stickers/${sticker.id}/favorite`, { method: 'PUT', body: JSON.stringify({ favorite: true }) })).status, 404);
+    assert.equal((await call(viewer, `/stickers/${sticker.id}`, { method: 'DELETE' })).status, 404);
     const upload = new FormData(); upload.append('roomId', room.id);
     upload.append('file', new Blob(['not audio'], { type: 'audio/wav' }), 'invalid.wav');
     const badUpload = await fetch(base + '/audio', { method: 'POST',
@@ -75,6 +77,33 @@ test('histórico, respostas, autorização, exclusão, reações e wallpaper per
     assert.equal((await (await call(viewer, `/appearance?roomId=${secondRoom.id}`)).json()).appearance.color, '#654321');
     if (media.configured) {
       const image = await sharp({ create: { width: 100, height: 80, channels: 4, background: '#6655aa' } }).png().toBuffer();
+      const prepared = await media.prepareImage(image, 'STICKER');
+      const sourceStored = await media.put('STICKER', owner.id, null, prepared);
+      sourceStickerKey = sourceStored.key;
+      const sourceAsset = await prisma.chatAsset.create({ data: sourceStored });
+      const sourceSticker = await prisma.sticker.create({ data: { name: 'Figurinha privada', ownerId: owner.id, assetId: sourceAsset.id } });
+      const stickerMessage = await prisma.message.create({ data: { roomId: room.id, userId: owner.id, type: 'STICKER', mediaId: sourceAsset.id } });
+      assert.equal((await call(outsider, `/media/${sourceAsset.id}`)).status, 403);
+      assert.equal((await call(viewer, `/media/${sourceAsset.id}`)).status, 200);
+      assert.equal((await call(outsider, '/stickers/save', { method: 'POST', body: JSON.stringify({ messageId: stickerMessage.id }) })).status, 404);
+      const savedResponse = await call(viewer, '/stickers/save', { method: 'POST', body: JSON.stringify({ messageId: stickerMessage.id }) });
+      assert.equal(savedResponse.status, 201);
+      const { sticker: savedSticker } = await savedResponse.json();
+      const savedRecord = await prisma.sticker.findUniqueOrThrow({ where: { id: savedSticker.id }, include: { asset: true } });
+      savedStickerKey = savedRecord.asset.key;
+      assert.notEqual(savedRecord.assetId, sourceAsset.id);
+      assert.notEqual(savedRecord.asset.key, sourceStored.key);
+      assert.equal(savedRecord.ownerId, viewer.id);
+      assert.equal((await call(viewer, '/stickers/save', { method: 'POST', body: JSON.stringify({ messageId: stickerMessage.id }) })).status, 200);
+      assert.equal((await (await call(viewer, '/stickers')).json()).stickers.length, 1);
+      assert.equal((await (await call(viewer, '/stickers?tab=mine')).json()).stickers.length, 0);
+      assert.equal((await call(viewer, `/stickers/${savedSticker.id}/favorite`, { method: 'PUT', body: JSON.stringify({ favorite: true }) })).status, 200);
+      assert.equal((await (await call(viewer, '/stickers?tab=favorites')).json()).stickers[0].id, savedSticker.id);
+      assert.equal((await call(owner, `/stickers/${sourceSticker.id}`, { method: 'DELETE' })).status, 200);
+      assert.equal((await call(viewer, `/media/${savedRecord.assetId}`)).status, 200);
+      assert.equal((await call(viewer, `/stickers/${savedSticker.id}`, { method: 'DELETE' })).status, 200);
+      assert.equal((await (await call(viewer, '/stickers')).json()).stickers.length, 0);
+      assert.equal((await call(viewer, `/media/${sourceAsset.id}`)).status, 200);
       const form = new FormData();
       form.append('file', new Blob([image], { type: 'image/png' }), 'wallpaper.png');
       const uploaded = await fetch(base + '/wallpaper', { method: 'POST',
@@ -91,6 +120,8 @@ test('histórico, respostas, autorização, exclusão, reações e wallpaper per
   } finally {
     if (server) await new Promise(resolve => server.close(resolve));
     if (storedAssetKey) await media.remove(storedAssetKey);
+    if (sourceStickerKey) await media.remove(sourceStickerKey);
+    if (savedStickerKey) await media.remove(savedStickerKey);
     if (room) await prisma.room.delete({ where: { id: room.id } });
     if (secondRoom) await prisma.room.delete({ where: { id: secondRoom.id } });
     if (viewer) await prisma.user.delete({ where: { id: viewer.id } });

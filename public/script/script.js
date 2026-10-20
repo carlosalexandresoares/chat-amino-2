@@ -1,6 +1,6 @@
 import state from "./state.js";
 import { loadAuthenticatedUser } from "./auth.js";
-import { initializeChat } from "./chat.js?v=8";
+import { initializeChat } from "./chat.js?v=9";
 import { initializeYouTube, stopTimeUpdater } from "./youtube.js?v=6";
 import { initializeLive } from "./live.js?v=6";
 import { initializeMiniPlayer, openSitePage } from './mini-player.js?v=4';

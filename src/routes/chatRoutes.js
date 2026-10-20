@@ -132,7 +132,8 @@ router.get('/stickers', async (req, res) => {
       assetIds = [...new Set(recent.map(row => row.mediaId))];
     }
     const stickers = await prisma.sticker.findMany({ where: {
-      ...(tab === 'mine' ? { ownerId: req.userId } : {}),
+      ownerId: req.userId,
+      ...(tab === 'mine' ? { sourceAssetId: null } : {}),
       ...(tab === 'favorites' ? { favorites: { some: { userId: req.userId } } } : {}),
       ...(tab === 'recent' ? { assetId: { in: assetIds } } : {}),
       ...(search ? { name: { contains: search, mode: 'insensitive' } } : {}),
@@ -160,9 +161,53 @@ router.post('/sticker-packs', async (req, res) => {
     res.status(201).json({ pack });
   } catch (error) { fail(res, error, 'Não foi possível criar o pacote.'); }
 });
+router.post('/stickers/save', async (req, res) => {
+  let stored;
+  let sourceAssetId;
+  try {
+    const messageId = String(req.body?.messageId || '');
+    const message = await prisma.message.findUnique({ where: { id: messageId },
+      select: { roomId: true, mediaId: true, type: true, deletedAt: true } });
+    if (!message || message.deletedAt || message.type !== 'STICKER' || !message.mediaId ||
+      !await chat.roomAccess(req.userId, message.roomId)) {
+      return res.status(404).json({ message: 'Figurinha indisponível nesta conversa.' });
+    }
+    sourceAssetId = message.mediaId;
+    const asset = await prisma.chatAsset.findUnique({ where: { id: message.mediaId }, select: { kind: true, key: true, mimeType: true } });
+    if (asset?.kind !== 'STICKER' || asset.mimeType !== 'image/webp') return res.status(404).json({ message: 'Figurinha indisponível.' });
+    const existing = await prisma.sticker.findFirst({ where: { ownerId: req.userId,
+      OR: [{ assetId: message.mediaId }, { sourceAssetId: message.mediaId }] }, select: { id: true } });
+    if (existing) return res.json({ sticker: existing, alreadySaved: true });
+    await uploadLimit(req.userId, 'STICKER', 30, 24);
+    const original = await prisma.sticker.findFirst({ where: { assetId: message.mediaId }, select: { name: true } });
+    const prepared = { buffer: await media.get(asset.key), mimeType: asset.mimeType, extension: 'webp' };
+    stored = await media.put('STICKER', req.userId, null, prepared);
+    const sticker = await prisma.$transaction(async tx => {
+      const copy = await tx.chatAsset.create({ data: stored });
+      return tx.sticker.create({ data: { name: original?.name || 'Figurinha salva', ownerId: req.userId,
+        assetId: copy.id, sourceAssetId: message.mediaId }, select: { id: true } });
+    });
+    res.status(201).json({ sticker, alreadySaved: false });
+  } catch (error) {
+    if (stored) await media.remove(stored.key).catch(console.error);
+    if (error.code === 'P2002' && sourceAssetId) {
+      const sticker = await prisma.sticker.findUnique({ where: { ownerId_sourceAssetId: {
+        ownerId: req.userId, sourceAssetId } }, select: { id: true } }).catch(() => null);
+      if (sticker) return res.json({ sticker, alreadySaved: true });
+    }
+    fail(res, error, 'Não foi possível salvar a figurinha.');
+  }
+});
+router.delete('/stickers/:id', async (req, res) => {
+  try {
+    const deleted = await prisma.sticker.deleteMany({ where: { id: req.params.id, ownerId: req.userId } });
+    if (!deleted.count) return res.status(404).json({ message: 'Figurinha não encontrada na sua biblioteca.' });
+    res.json({ deleted: true });
+  } catch (error) { fail(res, error, 'Não foi possível excluir a figurinha.'); }
+});
 router.put('/stickers/:id/favorite', async (req, res) => {
   try {
-    if (!await prisma.sticker.findUnique({ where: { id: req.params.id }, select: { id: true } })) return res.status(404).json({ message: 'Figurinha não encontrada.' });
+    if (!await prisma.sticker.findFirst({ where: { id: req.params.id, ownerId: req.userId }, select: { id: true } })) return res.status(404).json({ message: 'Figurinha não encontrada na sua biblioteca.' });
     const favorite = Boolean(req.body?.favorite);
     if (favorite) await prisma.stickerFavorite.upsert({ where: { userId_stickerId: { userId: req.userId, stickerId: req.params.id } },
       create: { userId: req.userId, stickerId: req.params.id }, update: {} });
@@ -220,7 +265,10 @@ router.get('/media/:id', async (req, res) => {
       messages: { where: { deletedAt: null }, take: 1, select: { id: true } },
     } });
     if (!asset) return res.status(404).end();
-    const allowed = asset.kind === 'STICKER' ||
+    const allowed = (asset.kind === 'STICKER' && (asset.ownerId === req.userId ||
+      await prisma.sticker.findFirst({ where: { assetId: req.params.id, ownerId: req.userId }, select: { id: true } }) ||
+      await prisma.message.findFirst({ where: { mediaId: req.params.id, deletedAt: null,
+        room: { OR: [{ ownerId: req.userId }, { members: { some: { userId: req.userId } } }] } }, select: { id: true } }))) ||
       (asset.kind === 'WALLPAPER' && asset.ownerId === req.userId) ||
       (asset.kind === 'AUDIO' && await chat.roomAccess(req.userId, asset.roomId) &&
         (asset.ownerId === req.userId || asset.messages.length > 0));

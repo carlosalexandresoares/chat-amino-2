@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const sharp = require('sharp');
+const fs = require('node:fs');
+const path = require('node:path');
 const chat = require('../src/services/chatMessages');
 const media = require('../src/services/chatMedia');
 
@@ -34,6 +36,27 @@ test('validação de áudio usa assinatura e duração real', async () => {
   assert.equal(Math.round(valid.duration), 1);
   await assert.rejects(media.prepareAudio(Buffer.from('<script>alert(1)</script>')));
   await assert.rejects(media.prepareAudio(Buffer.alloc(media.MAX_AUDIO_BYTES + 1)));
+});
+
+test('áudio WebM do MediaRecorder sem campo Duration é aceito pelo tempo dos blocos', async () => {
+  const webm = fs.readFileSync(path.join(__dirname, 'fixtures', 'recorder-webm.webm'));
+  const { parseBuffer } = await import('music-metadata');
+  const metadata = await parseBuffer(webm, { mimeType: 'audio/webm', size: webm.length }, { duration: true, skipCovers: true });
+  assert.equal(metadata.format.duration, undefined);
+  const prepared = await media.prepareAudio(webm);
+  assert.equal(prepared.mimeType, 'audio/webm');
+  assert.ok(prepared.duration >= 1.5 && prepared.duration <= 3);
+
+  const oversizedTimeline = Buffer.from(webm);
+  const scale = oversizedTimeline.indexOf(Buffer.from([0x2a, 0xd7, 0xb1, 0x83, 0x0f, 0x42, 0x40]));
+  assert.ok(scale >= 0);
+  oversizedTimeline.set([0x98, 0x96, 0x80], scale + 4); // 10 ms per tick
+  const cluster = oversizedTimeline.lastIndexOf(Buffer.from([0x1f, 0x43, 0xb6, 0x75]));
+  assert.ok(cluster >= 0);
+  const timecode = oversizedTimeline.indexOf(Buffer.from([0xe7, 0x82]), cluster);
+  assert.ok(timecode > cluster && timecode < cluster + 20);
+  oversizedTimeline.writeUInt16BE(30000, timecode + 2);
+  await assert.rejects(media.prepareAudio(oversizedTimeline), /120 segundos/);
 });
 
 test('figurinha é recortada e convertida para WebP; SVG ativo é rejeitado', async () => {
