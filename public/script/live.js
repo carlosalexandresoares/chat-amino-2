@@ -1,7 +1,7 @@
 import state from "./state.js";
 import dom from "./dom.js";
 import { initializeProjectionUi, syncProjectionUi, onProjectionEnded } from './projection-ui.js';
-import { syncMiniPlayer, projectionFinished } from './mini-player.js?v=5';
+import { syncMiniPlayer, projectionFinished } from './mini-player.js?v=6';
 
 import {
   showElement,
@@ -17,7 +17,7 @@ import {
   stopPlayer,
   stopTimeUpdater,
   updatePlayerButton,
-} from "./youtube.js?v=7";
+} from "./youtube.js?v=8";
 
 function setLiveFormMessage(
   message,

@@ -11,6 +11,7 @@ let pipOpening = false;
 let pipIframe = null;
 let pipFrameLoadHandler = null;
 let pipMessageHandler = null;
+let pipHostWindow = null;
 let pipResyncHandler = () => {};
 
 export function setPipResyncHandler(handler) { pipResyncHandler = handler; }
@@ -25,10 +26,11 @@ function restoreExternalPip(closeWindow = false, resync = true) {
   pipWindow = null;
   const frame = pipIframe;
   if (pipIframe && pipFrameLoadHandler) pipIframe.removeEventListener('load', pipFrameLoadHandler);
-  if (pipMessageHandler) previousWindow.removeEventListener('message', pipMessageHandler);
+  if (pipMessageHandler && pipHostWindow) pipHostWindow.removeEventListener('message', pipMessageHandler);
   pipIframe = null;
   pipFrameLoadHandler = null;
   pipMessageHandler = null;
+  pipHostWindow = null;
   dom.youtubeContainer.append(dom.youtubeStage);
   $('pip-placeholder').classList.add('hidden');
   if (closeWindow && !previousWindow.closed) previousWindow.close();
@@ -53,6 +55,13 @@ function showPipHelp(message = '') {
   if (!$('pip-help-dialog').open) $('pip-help-dialog').showModal();
 }
 
+export function handleExternalPipError(code) {
+  if (!pipWindow || code !== 153) return false;
+  restoreExternalPip(true);
+  showPipHelp('O YouTube recusou a reprodução na janela externa (erro 153). O player voltou ao chat.');
+  return true;
+}
+
 async function openExternalPip() {
   if (!state.liveActive || !state.playerReady || !dom.youtubeContainer.classList.contains('active')) {
     notify('Abra um vídeo da projeção para tentar o PiP.');
@@ -61,7 +70,7 @@ async function openExternalPip() {
   if (pipWindow) { restoreExternalPip(true); return; }
   if (pipOpening) return;
   if (!externalPipAvailable()) {
-    showPipHelp('PiP externo não está disponível neste navegador para o player incorporado do YouTube.');
+    showPipHelp('Este navegador não oferece Document PiP para esta projeção. No celular, só o controle PiP do próprio player do YouTube pode abrir vídeo sobre outros aplicativos, quando disponível.');
     return;
   }
   pipOpening = true;
@@ -77,14 +86,15 @@ async function openExternalPip() {
       return;
     }
     pipWindow = opened;
+    opened.addEventListener('pagehide', () => {
+      if (pipWindow === opened) restoreExternalPip();
+    }, { once: true });
     opened.document.title = 'Projeção · Chat Amino 2';
     const style = opened.document.createElement('style');
     style.textContent = `*{box-sizing:border-box}body{margin:0;background:#14182a;color:#fff;font:13px system-ui,sans-serif}
       header{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:42px;padding:6px 10px;background:#23233b}
       header span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}button{border:1px solid #b9a5d4;border-radius:7px;padding:5px 8px;background:#6749a3;color:#fff;cursor:pointer}
-      .youtube-stage{position:relative;width:100%;aspect-ratio:16/9;background:#000}#youtube-frame,.youtube-stage iframe{display:block;width:100%;height:100%}
-      .viewer-overlay{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-end;padding:8px;pointer-events:none}
-      .viewer-overlay button{pointer-events:auto}.hidden{display:none!important}`;
+      #pip-host-frame{display:block;width:100%;aspect-ratio:16/9;border:0;background:#000}`;
     opened.document.head.append(style);
     const header = opened.document.createElement('header');
     const label = opened.document.createElement('span');
@@ -95,7 +105,22 @@ async function openExternalPip() {
     back.addEventListener('click', () => returnToProjection());
     header.append(label, back);
     opened.document.body.append(header);
+    const hostFrame = opened.document.createElement('iframe');
+    hostFrame.id = 'pip-host-frame';
+    hostFrame.allow = 'autoplay; picture-in-picture';
+    hostFrame.src = new URL('/pip-host.html', location.origin).href;
+    const hostLoaded = new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('A página do player não carregou.')), 10000);
+      hostFrame.addEventListener('load', () => { clearTimeout(timeout); resolve(); }, { once: true });
+      hostFrame.addEventListener('error', () => { clearTimeout(timeout); reject(new Error('A página do player não carregou.')); }, { once: true });
+    });
+    opened.document.body.append(hostFrame);
+    await hostLoaded;
+    if (pipWindow !== opened || opened.closed || !state.liveActive) return;
+    if (hostFrame.contentWindow.location.origin !== location.origin) throw new Error('Origem do player inválida.');
+    pipHostWindow = hostFrame.contentWindow;
     pipIframe = state.player.getIframe();
+    pipIframe.referrerPolicy = 'strict-origin-when-cross-origin';
     pipFrameLoadHandler = () => {
       // Some browsers reload an iframe when it moves between documents.
       // Reapply the authoritative Socket.IO snapshot if that happens.
@@ -111,11 +136,8 @@ async function openExternalPip() {
       // YT.Player API listener in the opener receiving those state updates.
       window.dispatchEvent(new MessageEvent('message', { data: event.data, origin: event.origin, source: event.source }));
     };
-    opened.addEventListener('message', pipMessageHandler);
-    opened.addEventListener('pagehide', () => {
-      if (pipWindow === opened) restoreExternalPip();
-    }, { once: true });
-    opened.document.body.append(dom.youtubeStage);
+    pipHostWindow.addEventListener('message', pipMessageHandler);
+    hostFrame.contentDocument.body.append(dom.youtubeStage);
     $('pip-placeholder').classList.remove('hidden');
     notify('Janela flutuante aberta. O PiP automático depende do navegador e das permissões.');
     setTimeout(() => {

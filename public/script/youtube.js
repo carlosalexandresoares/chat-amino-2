@@ -1,6 +1,6 @@
 import state from "./state.js";
 import dom from "./dom.js";
-import { syncMiniPlayer, hideMiniPlayer, setPipResyncHandler } from './mini-player.js?v=5';
+import { syncMiniPlayer, hideMiniPlayer, setPipResyncHandler, handleExternalPipError } from './mini-player.js?v=6';
 
 let apiPromise;
 let playerPromise;
@@ -72,7 +72,9 @@ async function ensurePlayer() {
           resolve();
         },
         onStateChange: handlePlayerStateChange,
-        onError: (event) => console.error("Erro do YouTube:", event.data),
+        onError: (event) => {
+          if (!handleExternalPipError(event.data)) console.error("Erro do YouTube:", event.data);
+        },
       },
     });
   });
