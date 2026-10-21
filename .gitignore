@@ -1,6 +1,17 @@
 node_modules
 # Keep environment variables out of version control
 .env
+.env.*
+!.env.example
 .chat-uploads/
+*.pem
+*.key
+*.p12
+*.pfx
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.bak
 
 /src/generated/prisma
