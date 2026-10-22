@@ -54,6 +54,25 @@ router.get("/", async (req, res) => {
   }
 });
 
+router.get("/:id/members", async (req, res) => {
+  try {
+    const room = await prisma.room.findUnique({
+      where: { id: req.params.id },
+      select: { id: true, name: true, description: true },
+    });
+    if (!room) return res.status(404).json({ message: "Chat não encontrado." });
+    const members = await prisma.roomMember.findMany({
+      where: { roomId: room.id },
+      orderBy: { joinedAt: "asc" },
+      select: { role: true, user: { select: { id: true, username: true, avatar: true } } },
+    });
+    res.json({ room, members });
+  } catch (error) {
+    console.error("Erro ao listar participantes:", error);
+    res.status(500).json({ message: "Não foi possível carregar os participantes." });
+  }
+});
+
 router.post("/", async (req, res) => {
   const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
   const description = typeof req.body.description === "string" ? req.body.description.trim() : "";

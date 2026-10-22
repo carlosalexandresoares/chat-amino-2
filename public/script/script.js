@@ -19,6 +19,89 @@ const manageForm = document.getElementById("manage-room-form");
 const manageMembers = document.getElementById("manage-room-members");
 const manageMessage = document.getElementById("manage-room-message");
 const roomsById = new Map();
+const roomInfoDialog = document.getElementById("room-info-dialog");
+const roomOptionsToggle = document.getElementById("room-options-toggle");
+const roomOptionsMenu = document.getElementById("room-options-menu");
+const projectionsTab = document.getElementById("mobile-projections-tab");
+
+function closeRoomOptions() {
+  roomOptionsMenu.classList.add("hidden");
+  roomOptionsToggle.setAttribute("aria-expanded", "false");
+}
+
+roomOptionsToggle.addEventListener("click", () => {
+  const open = roomOptionsMenu.classList.toggle("hidden") === false;
+  roomOptionsToggle.setAttribute("aria-expanded", String(open));
+});
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".mobile-header-actions")) closeRoomOptions();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeRoomOptions();
+});
+document.querySelectorAll("[data-room-action]").forEach((item) => {
+  item.addEventListener("click", () => {
+    closeRoomOptions();
+    document.getElementById(item.dataset.roomAction)?.click();
+  });
+});
+
+async function openRoomInfo() {
+  const room = roomsById.get(state.roomId);
+  document.getElementById("room-info-title").textContent = room?.name || "Informações da sala";
+  document.getElementById("room-info-description").textContent = room?.description || "Converse e participe desta comunidade.";
+  document.getElementById("room-info-counts").textContent = `${membersCount.textContent} · ${onlineCount.textContent}`;
+  const list = document.getElementById("room-info-members");
+  list.textContent = "Carregando participantes...";
+  roomInfoDialog.showModal();
+  try {
+    const { members } = await roomRequest(`/api/rooms/${encodeURIComponent(state.roomId)}/members`);
+    list.replaceChildren();
+    for (const member of members) {
+      const row = document.createElement("div");
+      row.className = "room-info-member";
+      const avatar = document.createElement("span");
+      avatar.className = "room-info-avatar";
+      if (member.user.avatar) {
+        const image = document.createElement("img");
+        image.src = member.user.avatar;
+        image.alt = "";
+        avatar.append(image);
+      } else avatar.textContent = member.user.username.charAt(0).toUpperCase();
+      const name = document.createElement("span");
+      name.textContent = member.user.username;
+      const role = document.createElement("small");
+      role.textContent = member.role === "OWNER" ? "Criador" : member.role === "CO_ADMIN" ? "Coadmin" : "Membro";
+      row.append(avatar, name, role);
+      list.append(row);
+    }
+  } catch (error) { list.textContent = error.message; }
+}
+document.getElementById("room-info-open").addEventListener("click", openRoomInfo);
+document.getElementById("room-info-close").addEventListener("click", () => roomInfoDialog.close());
+projectionsTab.addEventListener("click", () => {
+  const expanded = appScreen.classList.toggle("mobile-projections-open");
+  projectionsTab.setAttribute("aria-expanded", String(expanded));
+  projectionsTab.classList.toggle("active", expanded);
+  appScreen.querySelector('.mobile-bottom-nav a[aria-current]')?.removeAttribute("aria-current");
+  if (!expanded) appScreen.querySelector('.mobile-bottom-nav a[href="/index.html"]')?.setAttribute("aria-current", "page");
+  if (expanded && state.liveActive) {
+    const details = document.getElementById("toggle-live-details");
+    if (details.getAttribute("aria-expanded") !== "true") details.click();
+    const player = document.getElementById("youtube-container");
+    if (!player.classList.contains("active")) document.getElementById("toggle-player").click();
+  }
+});
+
+function syncMobileViewport() {
+  if (!window.visualViewport) return;
+  document.documentElement.style.setProperty("--mobile-viewport-height", `${window.visualViewport.height}px`);
+  const keyboardOpen = window.innerHeight - window.visualViewport.height > 140;
+  document.body.classList.toggle("mobile-keyboard-open", keyboardOpen);
+}
+window.visualViewport?.addEventListener("resize", syncMobileViewport);
+window.addEventListener("resize", syncMobileViewport);
+syncMobileViewport();
 
 async function roomRequest(url, options = {}) {
   const response = await fetch(url, {
@@ -54,7 +137,20 @@ function showRoomsScreen() {
   roomsScreen.classList.remove("hidden");
   appScreen.classList.add("hidden");
   document.title = "Chats públicos | Chat Amino 2";
+  syncRoomsNavigation();
 }
+
+function syncRoomsNavigation() {
+  const communities = window.location.hash === "#communities";
+  const chatsLink = document.querySelector('.rooms-bottom-nav a[href="/index.html"]');
+  const communitiesLink = document.querySelector('.rooms-bottom-nav a[href="/index.html#communities"]');
+  chatsLink.toggleAttribute("aria-current", !communities);
+  communitiesLink.toggleAttribute("aria-current", communities);
+  if (!communities) chatsLink.setAttribute("aria-current", "page");
+  else communitiesLink.setAttribute("aria-current", "page");
+  if (communities) requestAnimationFrame(() => document.getElementById("communities").scrollIntoView({ block: "start" }));
+}
+window.addEventListener("hashchange", syncRoomsNavigation);
 
 function updateRoomStats(room) {
   membersCount.textContent = `${room.membersCount ?? 0} participantes`;
@@ -68,6 +164,7 @@ function showChatScreen(room) {
   roomTitle.textContent = `${room.category || "💬"} ${room.name}`;
   updateRoomStats(room);
   document.title = `${room.name} | Chat Amino 2`;
+  if (window.location.hash === "#projections" && !appScreen.classList.contains("mobile-projections-open")) projectionsTab.click();
 }
 
 function roomCard(room) {
@@ -319,6 +416,7 @@ state.socket.on("room-members-count", ({ roomId, membersCount: count }) => {
 state.socket.on("room-permissions", ({ roomId, role }) => {
   if (roomId === state.roomId) {
     manageButton.classList.toggle("hidden", !["OWNER", "CO_ADMIN"].includes(role));
+    document.querySelector('[data-room-action="manage-room"]').classList.toggle("hidden", !["OWNER", "CO_ADMIN"].includes(role));
     if (!["OWNER", "CO_ADMIN"].includes(role)) managePanel.classList.add("hidden");
   }
 });

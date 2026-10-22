@@ -1,0 +1,60 @@
+.mobile-header-actions, .mobile-bottom-nav, .room-info-trigger { display: none; }
+.room-info-dialog { width: min(440px, calc(100vw - 24px)); max-height: min(80dvh, 680px); margin: auto; padding: 22px; overflow: auto; border: 1px solid #675a87; border-radius: 20px; background: #1d2338; color: #f6f1ff; box-shadow: 0 30px 80px #0009; }
+.room-info-dialog::backdrop { background: #080b18bd; }
+.room-info-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.room-info-heading h2 { font-size: 21px; }
+.room-info-heading button { width: 34px; height: 34px; border: 0; border-radius: 9px; background: #353957; color: #fff; font-size: 24px; cursor: pointer; }
+#room-info-description, #room-info-counts { margin: 12px 0; color: #cbd3e6; font-size: 13px; line-height: 1.45; }
+.room-info-dialog h3 { margin: 20px 0 8px; font-size: 15px; }
+.room-info-members { max-height: 45dvh; overflow: auto; }
+.room-info-member { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid #3b435d; font-size: 13px; }
+.room-info-member small { margin-left: auto; color: #b99bff; }
+.room-info-avatar { flex: none; display: grid; place-items: center; width: 32px; height: 32px; overflow: hidden; border-radius: 50%; background: #7651b8; font-weight: 800; }
+.room-info-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+@media (max-width: 620px) {
+  body:not(.rooms-mode) { height: var(--mobile-viewport-height, 100dvh); min-height: 0; overflow: hidden; }
+  .app-screen { height: var(--mobile-viewport-height, 100dvh); }
+  .app-header { min-height: 0; height: 64px; gap: 8px; padding: 8px max(14px, env(safe-area-inset-right)) 8px max(14px, env(safe-area-inset-left)); }
+  .room-heading { position: relative; flex: 1; min-width: 0; padding-right: 4px; }
+  .app-header .app-name { display: none; }
+  .app-header h1 { display: block; width: 100%; margin: 0 0 3px; overflow: hidden; font-size: 17px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+  .room-stats { overflow: hidden; font-size: 11px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+  .room-info-trigger { position: absolute; inset: -8px 0; display: block; width: 100%; border: 0; background: transparent; cursor: pointer; }
+  .room-info-trigger:focus-visible { outline: 2px solid #b99bff; outline-offset: 2px; border-radius: 6px; }
+  .chat-header-actions { display: none; }
+  .mobile-header-actions { position: relative; display: block; flex: none; }
+  #room-options-toggle { width: 42px; height: 42px; border: 0; border-radius: 12px; background: #29283f; color: #f0eaff; font-size: 26px; line-height: 1; cursor: pointer; }
+  .room-options-menu { position: absolute; z-index: 80; top: 48px; right: 0; width: min(250px, calc(100vw - 24px)); padding: 6px; border: 1px solid #56516f; border-radius: 14px; background: #242840; box-shadow: 0 16px 45px #0009; }
+  .room-options-menu button, .room-options-menu a { display: block; width: 100%; min-height: 42px; padding: 10px 12px; border: 0; border-radius: 8px; background: transparent; color: #f0eaff; font: inherit; font-size: 13px; text-align: left; text-decoration: none; cursor: pointer; }
+  .room-options-menu button:hover, .room-options-menu a:hover, .room-options-menu button:focus-visible, .room-options-menu a:focus-visible { background: #393653; }
+  .room-options-menu [data-room-action="manage-room"].hidden { display: none; }
+  .app-screen .container { flex: 1 1 0; min-height: 0; }
+  .app-screen .container-lateral { display: none; }
+  .app-screen .chat-area { flex: 1 1 0; min-height: 0; }
+  .app-screen .live-panel { padding: 7px 12px; }
+  .app-screen .live-header { min-height: 34px; gap: 8px; }
+  .app-screen .live-title-row h2 { font-size: 12px; }
+  .app-screen .live-description { display: none; }
+  .app-screen .live-header-actions { gap: 5px; }
+  .app-screen #projection-reports-button { display: none; }
+  .app-screen.mobile-projections-open #projection-reports-button { display: inline-flex; align-items: center; }
+  .app-screen .live-header-actions .live-button { min-height: 32px; padding: 6px 8px; font-size: 11px; }
+  .app-screen .live-content.details-open { max-height: min(34dvh, 300px); }
+  .app-screen .youtube-container.active:not(.mini-mode) { flex: none; max-height: 28dvh; overflow: auto; }
+  .app-screen .youtube-container.active:not(.mini-mode) .youtube-stage { max-height: 24dvh; }
+  .app-screen .messages { flex: 1 1 0; min-height: 0; padding: 10px 10px 14px; overflow-x: hidden; }
+  .app-screen .container-chat { padding: 7px 8px; padding-bottom: 7px; }
+  .app-screen .container-chat input { font-size: 16px; }
+  .mobile-bottom-nav { z-index: 4; flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); min-height: 57px; padding: 3px max(5px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left)); border-top: 1px solid #353951; background: #171d31; }
+  .mobile-bottom-nav a, .mobile-bottom-nav button { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; border-radius: 11px; background: transparent; color: #b8bfd4; text-decoration: none; cursor: pointer; }
+  .mobile-bottom-nav span { font-size: 20px; line-height: 1; }
+  .mobile-bottom-nav small { font-size: 10px; font-weight: 700; }
+  .mobile-bottom-nav [aria-current="page"], .mobile-bottom-nav .active { background: #30294d; color: #ddc8ff; }
+  .rooms-bottom-nav, .profile-bottom-nav { position: fixed; z-index: 40; right: 0; bottom: 0; left: 0; }
+  .rooms-screen, .profile-page { padding-bottom: calc(75px + env(safe-area-inset-bottom)); }
+  body.mobile-keyboard-open .mobile-bottom-nav { display: none; }
+  body.mobile-keyboard-open .app-screen .container-chat { padding-bottom: 6px; }
+  .app-screen .youtube-container.mini-mode.active { bottom: max(70px, calc(env(safe-area-inset-bottom) + 62px)); }
+  body.mobile-keyboard-open .app-screen .youtube-container.mini-mode.active { bottom: 8px; }
+}

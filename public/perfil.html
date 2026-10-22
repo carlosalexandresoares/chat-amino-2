@@ -12,6 +12,7 @@
   <title>Meu perfil</title>
 
   <link rel="stylesheet" href="/style/profile.css?v=5">
+  <link rel="stylesheet" href="/style/mobile-app.css?v=1">
   <script src="/socket.io/socket.io.js"></script>
   <script src="/script/perfil.js?v=7" defer></script>
 </head>
@@ -136,6 +137,12 @@
       <button type="button" id="load-more-connections" class="load-more-connections hidden">Carregar mais</button>
     </dialog>
   </main>
+  <nav class="mobile-bottom-nav profile-bottom-nav" aria-label="Navegação principal">
+    <a href="/index.html"><span aria-hidden="true">▤</span><small>Chats</small></a>
+    <a href="/index.html#communities"><span aria-hidden="true">◎</span><small>Comunidades</small></a>
+    <a href="/index.html?sala=geral#projections"><span aria-hidden="true">▣</span><small>Projeções</small></a>
+    <a href="/perfil.html" aria-current="page"><span aria-hidden="true">◉</span><small>Perfil</small></a>
+  </nav>
 </body>
 
 </html>

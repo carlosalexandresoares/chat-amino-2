@@ -5,14 +5,14 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
   />
 
   <title>Chat Amino 2</title>
 
   <link
     rel="stylesheet"
-    href="style/style.css?v=20"
+    href="style/style.css?v=21"
   />
 
   <script src="/socket.io/socket.io.js"></script>
@@ -20,7 +20,7 @@
 
   <script
     type="module"
-    src="script/script.js?v=20"
+    src="script/script.js?v=21"
   ></script>
 </head>
 
@@ -68,9 +68,15 @@
         <div class="create-room-actions"><button type="submit">Criar chat <span aria-hidden="true">↗</span></button></div>
       </form>
 
-      <div class="rooms-section-title"><div><span class="section-kicker">EXPLORE</span><h2>Chats públicos</h2></div><p id="rooms-total">Carregando...</p></div>
+      <div class="rooms-section-title" id="communities"><div><span class="section-kicker">EXPLORE</span><h2>Chats públicos</h2></div><p id="rooms-total">Carregando...</p></div>
       <div class="public-rooms-grid" id="public-rooms-grid"><p class="rooms-loading">Carregando chats...</p></div>
     </div>
+    <nav class="mobile-bottom-nav rooms-bottom-nav" aria-label="Navegação principal">
+      <a href="/index.html" aria-current="page"><span aria-hidden="true">▤</span><small>Chats</small></a>
+      <a href="/index.html#communities"><span aria-hidden="true">◎</span><small>Comunidades</small></a>
+      <a href="/index.html?sala=geral#projections"><span aria-hidden="true">▣</span><small>Projeções</small></a>
+      <a href="/perfil.html"><span aria-hidden="true">◉</span><small>Perfil</small></a>
+    </nav>
   </section>
 
   <!-- =========================================
@@ -81,7 +87,7 @@
     id="app-screen"
   >
     <header class="app-header">
-      <div>
+      <div class="room-heading">
         <span class="app-name">
           Chat Amino 2
         </span>
@@ -90,6 +96,7 @@
           Sala Geral
         </h1>
         <p class="room-stats"><span id="room-members-count">0 participantes</span> · <span id="room-online-count">0 online agora</span></p>
+        <button type="button" id="room-info-open" class="room-info-trigger" aria-label="Informações e participantes da sala"></button>
       </div>
 
       <div class="chat-header-actions">
@@ -99,7 +106,24 @@
         <button type="button" id="manage-room" class="manage-room-button hidden">⚙ Gerenciar chat</button>
         <button type="button" id="leave-room" class="leave-room-button">Todos os chats</button>
       </div>
+      <div class="mobile-header-actions">
+        <button type="button" id="room-options-toggle" aria-label="Opções da sala" aria-expanded="false" aria-controls="room-options-menu">⋮</button>
+        <div id="room-options-menu" class="room-options-menu hidden" role="menu">
+          <button type="button" data-room-action="wallpaper-open" role="menuitem">Personalizar fundo</button>
+          <button type="button" data-room-action="manage-room" class="hidden" role="menuitem">Gerenciar chat</button>
+          <a href="/admin.html" class="site-admin-link hidden" role="menuitem">Administração</a>
+          <button type="button" data-room-action="room-info-open" role="menuitem">Configurações da sala</button>
+          <button type="button" data-room-action="leave-room" role="menuitem">Sair do chat</button>
+        </div>
+      </div>
     </header>
+    <dialog id="room-info-dialog" class="room-info-dialog" aria-labelledby="room-info-title">
+      <div class="room-info-heading"><h2 id="room-info-title">Informações da sala</h2><button type="button" id="room-info-close" aria-label="Fechar">×</button></div>
+      <p id="room-info-description"></p>
+      <p id="room-info-counts"></p>
+      <h3>Participantes</h3>
+      <div id="room-info-members" class="room-info-members"></div>
+    </dialog>
 
     <section class="manage-room-panel hidden" id="manage-room-panel" aria-label="Administração do chat">
       <div class="manage-room-heading"><div><span class="section-kicker">ADMINISTRAÇÃO</span><h2>Seu chat, suas regras.</h2></div><button type="button" id="close-manage-room" aria-label="Fechar administração">✕</button></div>
@@ -366,6 +390,12 @@
         <dialog id="wallpaper-dialog" class="wallpaper-dialog" aria-labelledby="wallpaper-title"><div class="wallpaper-head"><h2 id="wallpaper-title">Fundo do chat</h2><button type="button" id="wallpaper-close" aria-label="Fechar">×</button></div><p>Este fundo aparece somente para você neste chat.</p><div class="wallpaper-options"><button type="button" data-wallpaper-preset="geometry">Geométrico</button><button type="button" data-wallpaper-preset="twilight">Crepúsculo</button><button type="button" data-wallpaper-preset="night">Noite</button><button type="button" data-wallpaper-preset="minimal">Minimalista</button></div><div class="wallpaper-colors"><button type="button" data-wallpaper-color="#111827" aria-label="Preto"></button><button type="button" data-wallpaper-color="#374151" aria-label="Cinza escuro"></button><button type="button" data-wallpaper-color="#1e3a8a" aria-label="Azul"></button><button type="button" data-wallpaper-color="#581c87" aria-label="Roxo"></button><button type="button" data-wallpaper-color="#14532d" aria-label="Verde"></button><button type="button" data-wallpaper-color="#ffffff" aria-label="Branco"></button><label>Outra cor <input id="wallpaper-color" type="color" value="#66727b"></label></div><label class="wallpaper-upload">Imagem do dispositivo <input id="wallpaper-file" type="file" accept="image/png,image/jpeg,image/webp"></label><label>Posição horizontal <input id="wallpaper-x" type="range" min="0" max="100" value="50"></label><label>Posição vertical <input id="wallpaper-y" type="range" min="0" max="100" value="50"></label><label>Escurecimento <input id="wallpaper-darkness" type="range" min="0" max="100" value="0"></label><label>Sobreposição <input id="wallpaper-overlay" type="range" min="0" max="100" value="0"></label><div class="wallpaper-actions"><button type="button" id="wallpaper-reset">Restaurar padrão</button><button type="button" id="wallpaper-save">Aplicar fundo</button></div><p id="wallpaper-status" role="status"></p></dialog>
       </main>
     </div>
+    <nav class="mobile-bottom-nav" aria-label="Navegação principal">
+      <a href="/index.html" aria-current="page"><span aria-hidden="true">▤</span><small>Chats</small></a>
+      <a href="/index.html#communities"><span aria-hidden="true">◎</span><small>Comunidades</small></a>
+      <button type="button" id="mobile-projections-tab" aria-expanded="false"><span aria-hidden="true">▣</span><small>Projeções</small></button>
+      <a href="/perfil.html"><span aria-hidden="true">◉</span><small>Perfil</small></a>
+    </nav>
   </div>
   <div id="site-view" class="site-view hidden"><iframe id="site-frame" title="Outra área do Chat Amino 2"></iframe></div>
   <div id="mini-player-notice" class="mini-player-notice hidden" role="status"></div>
