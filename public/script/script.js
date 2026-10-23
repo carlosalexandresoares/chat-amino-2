@@ -38,12 +38,16 @@ function closeRoomOptions() {
 roomOptionsToggle.addEventListener("click", () => {
   const open = roomOptionsMenu.classList.toggle("hidden") === false;
   roomOptionsToggle.setAttribute("aria-expanded", String(open));
+  if (open) roomOptionsMenu.querySelector('[role="menuitem"]:not(.hidden)')?.focus();
 });
 document.addEventListener("click", (event) => {
   if (!event.target.closest(".mobile-header-actions")) closeRoomOptions();
 });
 document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeRoomOptions();
+  if (event.key === "Escape" && !roomOptionsMenu.classList.contains("hidden")) {
+    closeRoomOptions();
+    roomOptionsToggle.focus();
+  }
 });
 document.querySelectorAll("[data-room-action]").forEach((item) => {
   item.addEventListener("click", () => {
@@ -142,7 +146,7 @@ function showRoomsScreen() {
   document.body.classList.add("rooms-mode");
   roomsScreen.classList.remove("hidden");
   appScreen.classList.add("hidden");
-  document.title = "Comunidades | Chat Amino 2";
+  document.title = "Comunidades | Purpverse";
   syncRoomsNavigation();
 }
 
@@ -173,7 +177,7 @@ function showChatScreen(room) {
   appScreen.classList.remove("hidden");
   roomTitle.textContent = `${room.category || "💬"} ${room.name}`;
   updateRoomStats(room);
-  document.title = `${room.name} | Chat Amino 2`;
+  document.title = `${room.name} | Purpverse`;
   if (window.location.hash === "#projections" && !appScreen.classList.contains("mobile-projections-open")) projectionsTab.click();
 }
 

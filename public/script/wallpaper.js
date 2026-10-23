@@ -17,7 +17,7 @@ function backgroundImage(value, imageUrl) {
     const overlay = Number(value.overlay || 0) / 100 * .6;
     return `linear-gradient(rgba(0,0,0,${dark}),rgba(0,0,0,${dark})), linear-gradient(rgba(74,39,120,${overlay}),rgba(74,39,120,${overlay})), url("${imageUrl}")`;
   }
-  return value.mode === 'COLOR' ? 'none' : 'linear-gradient(155deg, #66727b, #444f58)';
+  return value.mode === 'COLOR' ? 'none' : 'var(--pv-chat-default-bg)';
 }
 async function apply(value, assetUrl, preview = false) {
   const area = $('messages');
@@ -26,7 +26,7 @@ async function apply(value, assetUrl, preview = false) {
     try { image = await assetUrl(value.assetId); }
     catch { image = null; }
   }
-  area.style.setProperty('--chat-bg-color', value.mode === 'COLOR' ? value.color : '#586773');
+  area.style.setProperty('--chat-bg-color', value.mode === 'COLOR' ? value.color : 'var(--pv-chat-default-color)');
   area.style.setProperty('--chat-bg-image', backgroundImage(value, image));
   area.style.setProperty('--chat-bg-position', `${value.positionX ?? 50}% ${value.positionY ?? 50}%`);
 }

@@ -1,20 +1,12 @@
-# Chat Amino 2
+# Purpverse
 
 Plataforma de comunidades com salas de conversa em tempo real, perfis sociais e projeções sincronizadas de vídeos do YouTube. A aplicação reúne interface web, API e Socket.IO em um servidor Node.js, com dados persistidos em PostgreSQL.
 
 ## Visão do produto
 
-Capturas reais da aplicação, feitas com perfis e conversa fictícios. É possível conhecer a interface sem criar uma conta.
+A identidade Purpverse usa o símbolo orbital fornecido nas versões [para fundos escuros](public/image/purpverse-dark.png) e [para fundos claros](public/image/purpverse-light.png). A navegação reúne chats, comunidades, projeções e perfil no celular e apresenta uma barra lateral no desktop.
 
-**Salas públicas**
-
-![Página de descoberta das salas, incluindo a sala de demonstração](docs/images/salas-demo.png)
-
-**Chat em tempo real**
-
-![Conversa de exemplo com respostas e reação na sala de demonstração](docs/images/chat-demo.png)
-
-[Ver também o perfil demonstrativo](docs/images/perfil-demo.png).
+As páginas existentes continuam disponíveis: [início](public/index.html), [feed](public/feed.html), [mensagens privadas](public/direct.html), [eventos](public/events.html) e [perfil](public/perfil.html).
 
 ## Funcionalidades
 

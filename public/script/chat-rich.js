@@ -215,10 +215,11 @@ function audioPlayer(data) {
   return player;
 }
 
-function closeMenu() { activeMenu?.remove(); activeMenu = null; }
+let activeMenuOwner = null;
+function closeMenu() { activeMenu?.remove(); activeMenu = null; activeMenuOwner = null; }
 function openMenu(element, data) {
   closeMenu();
-  const menu = document.createElement('div'); menu.className = 'message-actions'; activeMenu = menu;
+  const menu = document.createElement('div'); menu.className = 'message-actions'; activeMenu = menu; activeMenuOwner = element;
   const action = (label, callback) => {
     const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
     button.addEventListener('click', () => { closeMenu(); callback(); }); menu.append(button);
@@ -254,7 +255,17 @@ function openMenu(element, data) {
     catch (error) { window.alert(error.message); }
   });
   action('Informações', () => window.alert(`${data.user.username} · ${new Date(data.createdAt).toLocaleString('pt-BR')} · ${data.type || 'TEXT'}`));
-  element.append(menu);
+  // A mensagem fica dentro do histórico rolável. Renderizar o menu no body
+  // evita que ele seja cortado pelas bordas do histórico ou pelo teclado.
+  document.body.append(menu);
+  menu.style.position = 'fixed';
+  const anchor = element.querySelector('.message-menu-button')?.getBoundingClientRect() || element.getBoundingClientRect();
+  const bounds = menu.getBoundingClientRect();
+  const viewport = window.visualViewport;
+  const visibleTop = viewport?.offsetTop || 0;
+  const visibleBottom = visibleTop + (viewport?.height || window.innerHeight);
+  menu.style.left = `${Math.max(8, Math.min(anchor.right - bounds.width, window.innerWidth - bounds.width - 8))}px`;
+  menu.style.top = `${Math.max(visibleTop + 8, Math.min(anchor.bottom + 6, visibleBottom - bounds.height - 8))}px`;
 }
 
 export function enhanceMessage(element, data, header, content) {
@@ -277,7 +288,7 @@ export function enhanceMessage(element, data, header, content) {
   }
   const button = document.createElement('button'); button.type = 'button'; button.className = 'message-menu-button';
   button.textContent = '⋯'; button.setAttribute('aria-label', 'Ações da mensagem');
-  button.addEventListener('click', () => activeMenu?.parentElement === element ? closeMenu() : openMenu(element, data));
+  button.addEventListener('click', () => activeMenuOwner === element ? closeMenu() : openMenu(element, data));
   header.append(button);
   element.addEventListener('contextmenu', event => {
     if (event.target.closest('button, input, audio, a')) return;
@@ -475,6 +486,9 @@ export function initializeRichChat(addMessage) {
     catch (error) { $('sticker-status').textContent = error.message; }
   });
   document.addEventListener('click', event => { if (activeMenu && !event.target.closest('.message-actions, .message-menu-button')) closeMenu(); });
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && activeMenu) { const owner = activeMenuOwner; closeMenu(); owner?.querySelector('.message-menu-button')?.focus(); } });
+  dom.messages.addEventListener('scroll', closeMenu, { passive: true });
+  window.addEventListener('resize', closeMenu);
   state.socket.on('chat-reactions', ({ id, reactions }) => {
     const element = [...dom.messages.querySelectorAll('.message')].find(item => item.dataset.messageId === id);
     if (element) updateReactions(element, reactions);

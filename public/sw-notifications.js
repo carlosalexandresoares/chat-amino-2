@@ -6,8 +6,9 @@ self.addEventListener('push', event => {
     for (const client of clients) client.postMessage({ type: 'notifications-updated' });
     if (clients.some(client => client.visibilityState === 'visible')) return;
     const href = typeof data.href === 'string' && /^\/(?!\/)/.test(data.href) ? data.href : '/notifications.html';
-    await self.registration.showNotification(String(data.title || 'Chat Amino 2'), {
+    await self.registration.showNotification(String(data.title || 'Purpverse'), {
       body: String(data.body || 'Você tem uma nova notificação.'),
+      icon: '/image/purpverse-dark.png',
       tag: data.id ? `chat-amino-${data.id}` : undefined,
       data: { href },
     });

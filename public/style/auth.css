@@ -73,7 +73,7 @@ a { color: inherit; }
   letter-spacing: -.4px;
   text-decoration: none;
 }
-.auth-brand-icon, .auth-mobile-brand span {
+.auth-brand-icon, .auth-mobile-brand .pv-logo {
   display: grid;
   place-items: center;
   width: 34px;

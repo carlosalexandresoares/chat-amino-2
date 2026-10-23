@@ -99,7 +99,7 @@ async function openExternalPip() {
     opened.addEventListener('pagehide', () => {
       if (pipWindow === opened) restoreExternalPip();
     }, { once: true });
-    opened.document.title = 'Projeção · Chat Amino 2';
+    opened.document.title = 'Projeção · Purpverse';
     const style = opened.document.createElement('style');
     style.textContent = `*{box-sizing:border-box}body{margin:0;background:#14182a;color:#fff;font:13px system-ui,sans-serif}
       header{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:42px;padding:6px 10px;background:#23233b}

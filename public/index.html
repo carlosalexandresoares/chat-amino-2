@@ -8,7 +8,7 @@
     content="width=device-width, initial-scale=1.0, viewport-fit=cover"
   />
 
-  <title>Chat Amino 2</title>
+  <title>Purpverse</title>
 
   <link
     rel="stylesheet"
@@ -27,6 +27,12 @@
     type="module"
     src="script/script.js?v=33"
   ></script>
+  <link rel="icon" type="image/png" href="/image/purpverse-dark.png">
+  <meta name="theme-color" content="#180D2B">
+  <meta name="description" content="Purpverse: comunidades, conversas, publicações, eventos e projeções.">
+  <link rel="stylesheet" href="/style/purpverse.css?v=1">
+  <script src="/script/purpverse-shell.js?v=1"></script>
+  <script src="/script/purpverse-home.js?v=1" defer></script>
 </head>
 
 <body class="rooms-mode chat-shell">
@@ -36,7 +42,7 @@
   <section class="rooms-screen" id="rooms-screen">
     <div class="rooms-container">
       <nav class="rooms-topbar" aria-label="Navegação principal">
-        <a class="rooms-brand" href="/index.html"><span class="brand-mark">✳</span> Chat Amino <span class="brand-version">2</span></a>
+        <a class="rooms-brand" href="/index.html"><span class="pv-logo" aria-hidden="true"></span><span class="pv-brand-name">Purpverse</span></a>
         <a class="rooms-profile-link" href="/perfil.html">Meu perfil <span aria-hidden="true">↗</span></a>
         <a class="rooms-profile-link notification-link" href="/notifications.html" aria-label="Notificações">🔔 <span class="notification-badge hidden">0</span></a>
         <a class="rooms-profile-link site-admin-link hidden" href="/admin.html">Administração</a>
@@ -61,6 +67,19 @@
           <div class="hero-art-caption"><span class="status-dot"></span> Conversas acontecendo agora</div>
         </div>
       </header>
+
+      <section class="pv-home" aria-label="Início da comunidade">
+        <div class="pv-home-title"><div><span class="section-kicker">SEU UNIVERSO SOCIAL</span><h2>Seu espaço, em movimento.</h2></div><a href="/feed.html" class="pv-button pv-button--quiet">Abrir feed ↗</a></div>
+        <div class="pv-home-grid">
+          <section class="pv-card pv-home-feed" aria-labelledby="pv-home-feed-title"><div class="pv-card-head"><h3 id="pv-home-feed-title">Publicações recentes</h3><a href="/feed.html">Ver feed</a></div><div id="pv-home-posts" class="pv-home-list"><div class="pv-skeleton"></div><div class="pv-skeleton"></div></div></section>
+          <div class="pv-home-side">
+            <section class="pv-card" aria-labelledby="pv-home-events-title"><div class="pv-card-head"><h3 id="pv-home-events-title">Próximos eventos</h3><a href="/events.html">Ver agenda</a></div><div id="pv-home-events" class="pv-home-list"><div class="pv-skeleton"></div></div></section>
+            <section class="pv-card" aria-labelledby="pv-home-projections-title"><div class="pv-card-head"><h3 id="pv-home-projections-title">Projeções ao vivo</h3><a href="/index.html?sala=geral#projections">Abrir player</a></div><div id="pv-home-projections" class="pv-home-list"><div class="pv-skeleton"></div></div></section>
+            <section class="pv-card" aria-labelledby="pv-home-friends-title"><div class="pv-card-head"><h3 id="pv-home-friends-title">Pessoas que você segue</h3><a href="/feed.html?mode=following">Acompanhar</a></div><div id="pv-home-friends" class="pv-home-list"><div class="pv-skeleton"></div></div></section>
+            <div class="pv-home-shortcuts"><a class="pv-card" href="/index.html?sala=geral#projections"><span>▣</span><strong>Projeções</strong><small>Assista e converse em tempo real</small></a><a class="pv-card" href="/direct.html"><span>✉</span><strong>Mensagens</strong><small>Continue suas conversas privadas</small></a></div>
+          </div>
+        </div>
+      </section>
 
       <form id="create-room-form" class="create-room-form hidden">
         <div class="form-heading"><div><span class="form-kicker">SEU ESPAÇO</span><h2>Criar novo chat</h2></div><button type="button" id="cancel-create-room" class="form-close" aria-label="Fechar">✕</button></div>
@@ -109,7 +128,7 @@
     <header class="app-header">
       <div class="room-heading">
         <span class="app-name">
-          Chat Amino 2
+          Purpverse
         </span>
 
         <h1 id="current-room-title">
@@ -459,7 +478,7 @@
       <a href="/perfil.html"><span aria-hidden="true">◉</span><small>Perfil</small></a>
     </nav>
   </div>
-  <div id="site-view" class="site-view hidden"><iframe id="site-frame" title="Outra área do Chat Amino 2"></iframe></div>
+  <div id="site-view" class="site-view hidden"><iframe id="site-frame" title="Outra área do Purpverse"></iframe></div>
   <section id="voice-dock" class="voice-dock hidden" aria-label="Chamada de voz ativa">
     <div class="voice-dock-head"><div><strong id="voice-dock-title">Na voz</strong><small id="voice-dock-count">1 participante</small></div><button id="voice-dock-mute" type="button" aria-pressed="false">🎙 Microfone</button><button id="voice-dock-expand" type="button" aria-expanded="false" aria-controls="voice-dock-body">Expandir</button><button id="voice-dock-leave" type="button">Sair</button></div>
     <div id="voice-dock-body" class="voice-dock-body hidden"><p id="voice-dock-status" role="status"></p><div id="voice-participant-list"></div><label id="voice-video-volume-wrap" class="voice-video-volume-wrap hidden">Volume do vídeo <input id="voice-video-volume" type="range" min="0" max="100" value="100"></label></div>

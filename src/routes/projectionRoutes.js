@@ -2,9 +2,33 @@ const express = require('express');
 const auth = require('../middleware/authMiddleware');
 const prisma = require('../database/prisma');
 const projection = require('../services/projectionRep');
+const { isSiteAdmin } = require('../middleware/siteAdmin');
 const { notify } = require('./reputationRoutes');
 const router = express.Router();
 router.use(auth);
+
+router.get('/active', async (req, res) => {
+  try {
+    const admin = await isSiteAdmin(req.userId);
+    const lives = await prisma.liveSession.findMany({
+      where: {
+        status: 'ACTIVE',
+        room: {
+          ...(admin ? {} : { OR: [{ id: 'geral' }, { members: { some: { userId: req.userId } } }] }),
+          sanctions: { none: { userId: req.userId, type: 'SUSPEND', revokedAt: null, expiresAt: { gt: new Date() } } },
+        },
+      },
+      orderBy: { startedAt: 'desc' },
+      take: 6,
+      select: { roomId: true, roomName: true, startedAt: true, room: { select: { name: true } } },
+    });
+    res.json({ projections: lives.map(live => ({ roomId: live.roomId,
+      roomName: live.roomName || live.room.name, startedAt: live.startedAt })) });
+  } catch (error) {
+    console.error('Erro ao listar projeções ativas:', error);
+    res.status(500).json({ message: 'Não foi possível listar as projeções ativas.' });
+  }
+});
 
 router.get('/mine', async (req, res) => {
   try {

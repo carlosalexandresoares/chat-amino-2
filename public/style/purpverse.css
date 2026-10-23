@@ -1,0 +1,384 @@
+:root {
+  color-scheme: dark;
+  --pv-bg: #180d2b;
+  --pv-surface: #241536;
+  --pv-surface-2: #302046;
+  --pv-elevated: #392453;
+  --pv-border: #654884;
+  --pv-text: #f8f1ff;
+  --pv-muted: #c6b5d8;
+  --pv-primary: #6d28d9;
+  --pv-vibrant: #a855f7;
+  --pv-lilac: #e9d5ff;
+  --pv-focus: #dbb6ff;
+  --pv-success: #69e4b0;
+  --pv-error: #ff9ba7;
+  --pv-shadow: 0 22px 60px #0a031b70;
+  --pv-radius: 20px;
+  --pv-space-1: 4px;
+  --pv-space-2: 8px;
+  --pv-space-3: 12px;
+  --pv-space-4: 16px;
+  --pv-space-6: 24px;
+  --pv-logo: url('/image/purpverse-dark.png');
+  --pv-chat-default-bg: linear-gradient(155deg, #392252, #221338);
+  --pv-chat-default-color: #180d2b;
+  --bg: var(--pv-bg);
+  --card: var(--pv-surface);
+  --text: var(--pv-text);
+  --muted: var(--pv-muted);
+  --primary: var(--pv-primary);
+  --primary-2: var(--pv-vibrant);
+  --border: var(--pv-border);
+}
+html[data-theme="light"] {
+  color-scheme: light;
+  --pv-bg: #f8f3ff;
+  --pv-surface: #fff;
+  --pv-surface-2: #f1e7fc;
+  --pv-elevated: #e9d5ff;
+  --pv-border: #c7a6e5;
+  --pv-text: #28163d;
+  --pv-muted: #654e78;
+  --pv-primary: #6d28d9;
+  --pv-vibrant: #7e22ce;
+  --pv-lilac: #5b21b6;
+  --pv-focus: #6d28d9;
+  --pv-success: #166b4c;
+  --pv-error: #ad273e;
+  --pv-shadow: 0 20px 55px #5f438130;
+  --pv-logo: url('/image/purpverse-light.png');
+  --pv-chat-default-bg: linear-gradient(155deg, #f2e5fc, #e4d2f3);
+  --pv-chat-default-color: #f8f3ff;
+}
+html { background: var(--pv-bg); scroll-behavior: smooth; }
+body { color: var(--pv-text); }
+body:not(.chat-shell) { background: radial-gradient(circle at 83% -8%, #8035c43b, transparent 35%), var(--pv-bg); }
+:where(button, input, textarea, select) { font-family: inherit; }
+:where(button, a, summary, input, textarea, select):focus-visible { outline: 3px solid var(--pv-focus) !important; outline-offset: 3px; }
+:where(input, textarea, select) { accent-color: var(--pv-vibrant); }
+::selection { background: var(--pv-primary); color: #fff; }
+html[data-theme="light"] :where(input, textarea, select) { color-scheme: light; }
+
+.pv-logo { display: inline-block; flex: none; width: 38px; height: 38px; border-radius: 11px; background: var(--pv-logo) center / cover no-repeat; box-shadow: 0 5px 18px #6d28d93b; vertical-align: middle; }
+.pv-logo--small { width: 30px; height: 30px; border-radius: 9px; }
+.pv-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--pv-text); font-weight: 900; letter-spacing: -.035em; text-decoration: none; }
+.pv-brand-name { white-space: nowrap; }
+.pv-theme-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 42px; min-height: 42px; padding: 8px 12px; border: 1px solid var(--pv-border); border-radius: 12px; color: var(--pv-text); background: var(--pv-surface-2); cursor: pointer; }
+.pv-theme-toggle:hover { background: var(--pv-elevated); }
+.pv-theme-toggle .pv-theme-label { font-size: 12px; font-weight: 800; }
+.pv-theme-toggle--small .pv-theme-label { display: none; }
+
+.pv-sidebar { position: fixed; z-index: 45; inset: 0 auto 0 0; display: flex; flex-direction: column; gap: 8px; width: 78px; padding: 18px 9px max(18px, env(safe-area-inset-bottom)); border-right: 1px solid var(--pv-border); background: var(--pv-surface); box-shadow: 7px 0 30px #08011120; }
+.pv-sidebar-brand { display: grid; place-items: center; margin-bottom: 13px; }
+.pv-sidebar-brand .pv-logo { width: 49px; height: 49px; }
+.pv-sidebar a:not(.pv-sidebar-brand), .pv-sidebar .pv-theme-toggle { display: grid; place-items: center; gap: 3px; width: 58px; min-height: 59px; padding: 7px 3px; border: 0; border-radius: 13px; color: var(--pv-muted); background: transparent; text-decoration: none; text-align: center; }
+.pv-sidebar a:hover, .pv-sidebar a[aria-current="page"], .pv-sidebar .pv-theme-toggle:hover { color: var(--pv-text); background: var(--pv-surface-2); }
+.pv-sidebar a[aria-current="page"] { box-shadow: inset 3px 0 var(--pv-vibrant); }
+.pv-sidebar-icon { font-size: 21px; line-height: 1; }
+.pv-sidebar small { font-size: 10px; font-weight: 800; }
+.pv-sidebar-spacer { flex: 1; }
+.pv-shell { padding-left: 78px !important; }
+.pv-shell .app-screen { width: 100%; }
+.pv-shell .rooms-screen { width: 100%; }
+.pv-shell .dm-shell { max-width: 1520px; }
+
+.pv-mobile-nav { display: none; }
+.mobile-bottom-nav, .dm-bottom-nav, .notification-bottom-nav { border-color: var(--pv-border) !important; background: var(--pv-surface) !important; box-shadow: 0 -10px 30px #10052027; }
+.mobile-bottom-nav a, .mobile-bottom-nav button, .dm-bottom-nav a, .notification-bottom-nav a { color: var(--pv-muted) !important; }
+.mobile-bottom-nav [aria-current="page"], .mobile-bottom-nav .active, .dm-bottom-nav [aria-current="page"], .notification-bottom-nav [aria-current="page"] { color: var(--pv-text) !important; background: var(--pv-surface-2) !important; }
+
+.pv-card, .pv-skeleton { border: 1px solid var(--pv-border); border-radius: var(--pv-radius); background: var(--pv-surface); box-shadow: var(--pv-shadow); }
+.pv-card { padding: 20px; }
+.pv-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 10px 17px; border: 1px solid transparent; border-radius: 12px; background: var(--pv-primary); color: #fff; font-weight: 800; text-decoration: none; cursor: pointer; }
+.pv-button:hover { background: var(--pv-vibrant); }
+.pv-button--quiet { border-color: var(--pv-border); background: var(--pv-surface-2); color: var(--pv-text); }
+.pv-badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 999px; background: var(--pv-surface-2); color: var(--pv-lilac); font-size: 11px; font-weight: 800; }
+.pv-toast, .mention-notice { border: 1px solid var(--pv-border); border-radius: 13px; background: var(--pv-surface-2); color: var(--pv-text); box-shadow: var(--pv-shadow); }
+.pv-skeleton { min-height: 60px; background: linear-gradient(100deg, var(--pv-surface) 15%, var(--pv-surface-2) 35%, var(--pv-surface) 55%); background-size: 220% 100%; animation: pv-shimmer 1.7s linear infinite; }
+@keyframes pv-shimmer { to { background-position-x: -220%; } }
+:where(dialog)[open] { max-width: calc(100vw - 24px); max-height: calc(100dvh - 24px - env(safe-area-inset-bottom)); overflow: auto; }
+:where(dialog)::backdrop { background: #10051ac7; backdrop-filter: blur(3px); }
+
+/* Authentication */
+.auth-brand .pv-logo, .auth-mobile-brand .pv-logo, .auth-preview-reply .pv-logo { background: var(--pv-logo) center / cover no-repeat; color: transparent; }
+.auth-showcase .pv-logo, .profile-nav .pv-logo { background-image: url('/image/purpverse-dark.png'); }
+.auth-brand .pv-logo, .auth-mobile-brand .pv-logo { width: 38px; height: 38px; }
+.auth-page { background: radial-gradient(circle at 8% 8%, #8034d04f, transparent 34%), radial-gradient(circle at 94% 90%, #a855f72b, transparent 34%), var(--pv-bg); }
+.auth-shell { border-color: var(--pv-border); background: var(--pv-surface); box-shadow: var(--pv-shadow); }
+.auth-showcase { background: radial-gradient(circle at 80% 5%, #bd80fa75, transparent 35%), linear-gradient(145deg, #422066, #221138 72%); }
+.auth-card { background: var(--pv-surface); color: var(--pv-text); }
+.auth-card h1, .auth-brand, .auth-mobile-brand { color: var(--pv-text); }
+.auth-showcase .auth-brand { color: #fff; }
+.auth-card-kicker, .auth-eyebrow { color: var(--pv-lilac); }
+.auth-card form button[type="submit"] { background: var(--pv-primary); color: #fff; }
+.auth-card form button[type="submit"]:hover { background: var(--pv-vibrant); }
+.auth-card-heading > .pv-theme-toggle { float: right; margin-left: 12px; }
+html[data-theme="light"] .auth-showcase .auth-brand, html[data-theme="light"] .auth-showcase-content, html[data-theme="light"] .auth-showcase-footer { color: #fff; }
+html[data-theme="light"] .auth-card :is(input, select, textarea) { border-color: var(--pv-border); color: var(--pv-text); background: var(--pv-bg); }
+html[data-theme="light"] .auth-card :is(.auth-description, .auth-link) { color: var(--pv-muted); }
+html[data-theme="light"] .auth-card label { color: var(--pv-text); }
+html[data-theme="light"] .auth-card .auth-link a { color: var(--pv-primary); }
+html[data-theme="light"] .auth-card .auth-link { border-color: var(--pv-border); }
+html[data-theme="light"] .auth-card .form-message { color: var(--pv-muted); }
+html[data-theme="light"] .auth-card .form-message.error { color: var(--pv-error); }
+html[data-theme="light"] .auth-card .form-message.success { color: var(--pv-success); }
+
+/* Shared surfaces keep existing page behaviors and selectors intact. */
+.rooms-screen, body.rooms-mode, body:not(.rooms-mode).chat-shell, .app-header, .dm-sidebar, .dm-chat-header, .dm-compose { background-color: var(--pv-bg); }
+.rooms-screen { background-image: radial-gradient(ellipse 750px 460px at 88% 2%, #8b39d535, transparent 70%) !important; }
+.pv-home { margin: 0 0 42px; }
+.pv-home-title, .pv-card-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.pv-home-title { margin-bottom: 18px; }
+.pv-home-title h2 { margin: 8px 0 0; font-size: clamp(25px, 3vw, 34px); letter-spacing: -.04em; }
+.pv-home-grid { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(300px, .8fr); gap: 18px; }
+.pv-home-side { display: grid; gap: 18px; }
+.pv-card-head { margin-bottom: 14px; }
+.pv-card-head h3 { margin: 0; font-size: 17px; }
+.pv-card-head a, .pv-home-empty-link { color: var(--pv-lilac); font-size: 12px; font-weight: 800; text-decoration: none; }
+.pv-home-list { display: grid; gap: 11px; }
+.pv-home-item { display: grid; gap: 7px; min-width: 0; padding: 15px; border: 1px solid var(--pv-border); border-radius: 14px; color: var(--pv-text); background: var(--pv-surface-2); text-decoration: none; }
+.pv-home-item:hover { border-color: var(--pv-vibrant); transform: translateY(-2px); }
+.pv-home-item strong { font-size: 14px; }
+.pv-home-item p { margin: 0; color: var(--pv-muted); font-size: 13px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pv-home-item small { color: var(--pv-lilac); font-size: 11px; font-weight: 800; }
+.pv-home-empty { margin: 0; color: var(--pv-muted); line-height: 1.5; }
+.pv-home-shortcuts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.pv-home-shortcuts a { display: grid; align-content: start; gap: 8px; color: var(--pv-text); text-decoration: none; }
+.pv-home-shortcuts a:hover { border-color: var(--pv-vibrant); }
+.pv-home-shortcuts span { color: var(--pv-vibrant); font-size: 25px; }
+.pv-home-shortcuts strong { font-size: 14px; }
+.pv-home-shortcuts small { color: var(--pv-muted); line-height: 1.4; }
+.rooms-topbar, .app-header, .feed-header, .events-topbar, .game-topbar { border-color: var(--pv-border); }
+.rooms-brand, .feed-brand, .events-brand, .game-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--pv-text); }
+.rooms-header h1 em, .rooms-kicker, .section-kicker, .feed-intro span, .profile-eyebrow, .profile-section-label { color: var(--pv-lilac); }
+.create-room-button, .main-room-card .enter-room-button, .feed-compose-actions button, .events-form button[type="submit"], #new-post-form button { background: var(--pv-primary); border-color: var(--pv-primary); color: #fff; }
+.create-room-button:hover, .main-room-card .enter-room-button:hover { background: var(--pv-vibrant); }
+.public-room-card, .discover-card, .create-room-form, .feed-compose, .feed-card, .feed-side, .event-card, .notification-row, .profile-card, .profile-bio-card, .xp-area, .game-card { border-color: var(--pv-border); background-color: var(--pv-surface); }
+.public-room-card:hover, .feed-card:hover, .event-card:hover { border-color: var(--pv-vibrant); }
+.feed-intro, .events-hero, .game-hero { border-color: var(--pv-border); background: linear-gradient(125deg, var(--pv-surface-2), var(--pv-surface)) !important; }
+.app-header, .dm-chat-header, .dm-brand { border-color: var(--pv-border); background: var(--pv-surface); }
+.app-header { min-height: 70px; height: 70px; padding: 10px 24px; }
+.app-header .chat-header-actions { display: none; }
+.app-header .mobile-header-actions { position: relative; display: block; flex: none; }
+#room-options-toggle { width: 42px; height: 42px; border: 1px solid var(--pv-border); border-radius: 12px; background: var(--pv-surface-2); color: var(--pv-text); font-size: 26px; line-height: 1; cursor: pointer; }
+.room-options-menu { position: absolute; z-index: 80; top: 48px; right: 0; width: min(260px, calc(100vw - 24px)); max-height: calc(100dvh - 110px); overflow-y: auto; padding: 6px; border: 1px solid var(--pv-border); border-radius: 15px; background: var(--pv-surface); box-shadow: var(--pv-shadow); }
+.room-options-menu :is(button, a) { display: block; width: 100%; min-height: 42px; padding: 10px 12px; border: 0; border-radius: 9px; background: transparent; color: var(--pv-text); font: inherit; font-size: 13px; text-align: left; text-decoration: none; cursor: pointer; }
+.room-options-menu :is(button, a):hover { background: var(--pv-surface-2); }
+.room-options-menu .pv-theme-toggle { display: flex; align-items: center; justify-content: flex-start; gap: 8px; }
+.chat-header-actions .manage-room-button, .room-options-menu, .dm-options, .dm-tabs button.active { background: var(--pv-surface-2); border-color: var(--pv-border); }
+.dm-shell { border-color: var(--pv-border); }
+.dm-brand a:first-child { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.dm-sidebar, .dm-compose { border-color: var(--pv-border); background: var(--pv-surface); }
+.dm-messages { background: linear-gradient(150deg, #392252, #201235); }
+.dm-message { border: 1px solid #d6c8e4; background: #fff; color: #23132f; }
+.dm-message.mine { border-color: #c89bf3; background: #d6b4fa; color: #21112f; }
+.messages { scrollbar-color: var(--pv-border) transparent; }
+.message { max-width: min(82%, 580px); }
+.message .bubble, .message-content { border-radius: 17px; }
+.app-screen .message.user { background: var(--pv-primary); color: #fff; }
+.app-screen .message.bot { background: #f8efff; color: #28163d; }
+.app-screen .container-chat { border-color: var(--pv-border); background: var(--pv-surface); }
+.app-screen .container-chat input { border-color: var(--pv-border); background: var(--pv-surface-2); color: var(--pv-text); }
+.app-screen .container-chat input::placeholder { color: var(--pv-muted); }
+.app-screen .composer-icon { border-color: var(--pv-border); background: var(--pv-surface-2); color: var(--pv-text); }
+.app-screen .live-panel, .app-screen .live-panel.active { border-color: var(--pv-border); background: var(--pv-surface); color: var(--pv-text); }
+.app-screen .live-description { color: var(--pv-muted); }
+.app-screen .live-button { border-color: var(--pv-border); background: var(--pv-surface-2); color: var(--pv-text); }
+.app-screen .live-button-primary { border-color: var(--pv-primary); background: var(--pv-primary); color: #fff; }
+.app-screen .live-button-danger { border-color: #b23c62; background: #9d3156; color: #fff; }
+.app-screen :is(.voice-section, .playlist-section, .playlist-item, .voice-room-card) { border-color: var(--pv-border); background-color: var(--pv-surface-2); color: var(--pv-text); }
+.room-info-dialog, .profile-dialog, .feed-dialog, .event-dialog, .dm-dialog, .projection-dialog { border-color: var(--pv-border); background: var(--pv-surface); color: var(--pv-text); }
+
+html[data-theme="light"] body, html[data-theme="light"] body.rooms-mode, html[data-theme="light"] body:not(.rooms-mode).chat-shell, html[data-theme="light"] .rooms-screen { color: var(--pv-text); background-color: var(--pv-bg); }
+html[data-theme="light"] :is(.rooms-header h1, .rooms-section-title h2, .public-room-information h2, .feed-intro h1, .feed-card h2, .event-card h2, .profile-content h1, .profile-post-heading h2, .app-header h1, .dm-heading h1) { color: var(--pv-text); }
+html[data-theme="light"] :is(.rooms-header p, .public-room-information > p, .feed-intro p, .feed-side p, .event-card p, #profile-bio, .profile-email, .dm-empty, .rooms-section-title p) { color: var(--pv-muted); }
+html[data-theme="light"] :is(.rooms-profile-link, .manage-room-button, .leave-room-button, .back-link, .profile-nav a, .room-options-menu button, .room-options-menu a) { color: var(--pv-text); border-color: var(--pv-border); background: var(--pv-surface-2); }
+html[data-theme="light"] :is(.create-room-form input, .create-room-form textarea, .feed-compose textarea, .feed-dialog textarea, .dm-compose input, .dm-search-label input, .profile-dialog input, .profile-dialog textarea, .profile-dialog select) { color: var(--pv-text); border-color: var(--pv-border); background: var(--pv-surface); }
+html[data-theme="light"] :is(.dm-row, .feed-header nav a, .events-topbar nav a, .game-topbar nav a, .profile-stats strong) { color: var(--pv-text); }
+html[data-theme="light"] :is(.dm-brand a, .dm-chat-header a) { color: var(--pv-text); }
+html[data-theme="light"] .dm-messages { background: linear-gradient(160deg, #f3e9fb, #e9d9f7); }
+html[data-theme="light"] .profile-nav { background: linear-gradient(180deg, #28133fbd, transparent); }
+html[data-theme="light"] .room-info-dialog { background: var(--pv-surface); color: var(--pv-text); }
+html[data-theme="light"] :is(.feed-compose, .feed-card, .feed-side, .event-card, .notification-row, .notification-settings, .game-card, .game-transaction, .game-section-nav, .admin-content, .admin-row, .edit-card, .image-field, .profile-stats > div, .profile-stats > button, .profile-bio-card, .xp-area, .profile-post, #new-post-form) { border-color: var(--pv-border); background: var(--pv-surface); color: var(--pv-text); }
+html[data-theme="light"] :is(.profile-stats > div, .profile-stats > button, .image-field, .admin-row, .game-transaction, .notification-settings, #new-post-form) { background: var(--pv-surface-2); }
+html[data-theme="light"] :is(.game-card.unlocked, .game-card.complete, .notification-row.unread) { background: var(--pv-surface-2); }
+html[data-theme="light"] :is(.feed-compose label, .feed-card strong, .game-card h3, .game-section-heading h2, .admin-header h1, .admin-row-info strong, .image-field legend, .url-label, .bio-field > label, .profile-section-label, .notification-copy strong, .notification-settings summary, .room-info-dialog h2, .room-info-dialog h3) { color: var(--pv-text); }
+html[data-theme="light"] :is(.feed-card p, .game-card p, .game-card small, .game-hero p, .game-section-heading p, .admin-header p, .admin-count, .admin-row-info small, .heading p, .image-field p, .file-name, .notification-copy p, .notification-copy time, .notification-settings p, .profile-stats span, .profile-post p, .room-info-dialog p, .room-info-member) { color: var(--pv-muted); }
+html[data-theme="light"] :is(.feed-compose textarea, .feed-dialog textarea, .feed-dialog select, .events-toolbar select, .events-form input, .events-form select, .admin-search input, .image-field input[type="url"], .bio-field textarea, .notification-settings select, .dm-message-search input, .dm-message-search select, .voice-create-form input) { border-color: var(--pv-border); background: var(--pv-bg); color: var(--pv-text); }
+html[data-theme="light"] :is(.notification-filters button, .admin-tabs button, .game-section-nav a, .dm-tabs button, .dm-options button, .dm-heading button, .dm-chat-header button, .profile-dialog button, .room-info-heading button) { border-color: var(--pv-border); background: var(--pv-surface-2); color: var(--pv-text); }
+html[data-theme="light"] :is(.feed-tabs, .feed-shared, .feed-comment, .event-participants, .game-balance, .profile-actions, .connections-dialog, .connection-row, .posts-empty, .profile-dialog, .dm-dialog, .feed-dialog, .event-dialog, .projection-dialog) { border-color: var(--pv-border); background: var(--pv-surface-2); color: var(--pv-text); }
+html[data-theme="light"] :is(.feed-tabs button, .feed-card-actions button, .feed-comment button, .feed-more, .feed-side a, .profile-actions a, .profile-actions button, .connection-row, .connection-details strong, .feed-card-heading a, .feed-shared, .game-card-footer strong) { color: var(--pv-text); }
+html[data-theme="light"] :is(.feed-card-actions button, .feed-comment button, .feed-more, .profile-actions a, .profile-actions button) { border-color: var(--pv-border); background: var(--pv-surface); }
+html[data-theme="light"] :is(.feed-card-heading small, .feed-card-heading time, .feed-comment small, .profile-post time, .posts-empty, .connection-details small, .game-balance span, .game-balance small, .event-card-foot span, .event-card time) { color: var(--pv-muted); }
+html[data-theme="light"] :is(#new-post-form textarea, .profile-post p, .feed-content, .feed-comment p) { color: var(--pv-text); }
+html[data-theme="light"] .feed-tabs button[aria-selected="true"] { background: var(--pv-primary); color: #fff; }
+html[data-theme="light"] .profile-post { border-color: var(--pv-border); background: var(--pv-surface); }
+html[data-theme="light"] .profile-post > a { color: var(--pv-primary); }
+html[data-theme="light"] .notifications-shell :is(.notification-filters button, .notification-actions label, .notification-row, .notification-settings, .device-row, .preference-row) { color: var(--pv-text); }
+html[data-theme="light"] .notification-row .notification-icon { background: var(--pv-elevated); }
+html[data-theme="light"] .notification-row :is(.row-actions button, .device-row button) { color: var(--pv-primary); }
+html[data-theme="light"] .notifications-shell .eyebrow { color: var(--pv-primary); }
+html[data-theme="light"] :is(.game-card-icon, .game-progress, .xp-bar) { background: var(--pv-elevated); }
+html[data-theme="light"] :is(.game-section-heading span, .game-kicker, .profile-section-label, .profile-eyebrow, .events-hero > span) { color: var(--pv-primary); }
+html[data-theme="light"] :is(.heading .eyebrow, .admin-kicker) { color: var(--pv-primary); }
+html[data-theme="light"] :is(.feed-dialog label, .event-dialog label, .dm-dialog label, .profile-dialog label, .connections-dialog h2) { color: var(--pv-text); }
+html[data-theme="light"] :is(.notification-filters button.active, .admin-tabs button.active, .dm-tabs button.active) { border-color: var(--pv-primary); background: var(--pv-primary); color: #fff; }
+html[data-theme="light"] :is(.dm-row small, .dm-chat-header span, .dm-search-label, .dm-empty p, .dm-message-meta, .game-card-status, .voice-room-card small, .voice-section summary small) { color: var(--pv-muted); }
+html[data-theme="light"] .dm-row:hover, html[data-theme="light"] .dm-row.active { background: var(--pv-surface-2); }
+html[data-theme="light"] .dm-empty h2 { color: var(--pv-text); }
+html[data-theme="light"] .profile-card { background: var(--pv-surface); }
+html[data-theme="light"] .profile-avatar { border-color: var(--pv-surface); }
+html[data-theme="light"] .profile-post-heading h2 { color: var(--pv-text); }
+html[data-theme="light"] .profile-bio-card :is(h2, h3), html[data-theme="light"] .xp-area :is(h2, h3) { color: var(--pv-text); }
+html[data-theme="light"] :is(.admin-header a, .page-header a, .back-link, .file-picker, .game-section-nav a, .notification-actions button, .push-controls button, .load-more, .game-card-footer button) { border-color: var(--pv-border); background: var(--pv-surface-2); color: var(--pv-text); }
+html[data-theme="light"] :is(.save-button, .admin-search button) { background: var(--pv-primary); color: #fff; }
+html[data-theme="light"] :is(.app-screen .live-header h2, .app-screen .live-host strong, .app-screen .playlist-header h3, .app-screen .voice-section summary, .app-screen .voice-room-card strong) { color: var(--pv-text); }
+html[data-theme="light"] :is(.app-screen .playlist-item-info span, .app-screen .live-host-label, .app-screen .voice-section small) { color: var(--pv-muted); }
+html[data-theme="light"] :is(.app-screen .playlist-item, .app-screen .voice-section, .app-screen .voice-room-card, .app-screen .reply-composer, .app-screen .sticker-panel) { background: var(--pv-surface-2); color: var(--pv-text); }
+html[data-theme="light"] .app-screen .message.user { background: var(--pv-primary); color: #fff; }
+html[data-theme="light"] .app-screen .message.bot { background: #fff; color: var(--pv-text); }
+html[data-theme="light"] .app-screen .room-stats { color: var(--pv-success); }
+html[data-theme="light"] .room-options-menu { background: var(--pv-surface); }
+html[data-theme="light"] .room-options-menu :is(button, a) { background: transparent; color: var(--pv-text); }
+html[data-theme="light"] .room-options-menu :is(button, a):hover { background: var(--pv-surface-2); }
+html[data-theme="light"] body:has(main > nav + h1) :is(section, .notice) { border-color: var(--pv-border); background: var(--pv-surface); }
+html[data-theme="light"] body:has(main > nav + h1) :is(p, li) { color: var(--pv-muted); }
+html[data-theme="light"] body:has(main > nav + h1) a { color: var(--pv-primary); }
+
+@media (max-width: 900px) {
+  .pv-sidebar { display: none; }
+  .pv-shell { padding-left: 0 !important; }
+  .pv-home-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 621px) {
+  .app-header .room-heading { position: relative; }
+  .app-header .room-info-trigger { position: absolute; inset: 0; display: block; width: 100%; border: 0; background: transparent; cursor: pointer; }
+}
+@media (max-width: 620px) {
+  .pv-mobile-nav { position: fixed; z-index: 40; inset: auto 0 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); min-height: calc(60px + env(safe-area-inset-bottom)); padding: 3px max(5px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left)); border-top: 1px solid var(--pv-border); background: var(--pv-surface); }
+  .pv-mobile-nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; border-radius: 11px; color: var(--pv-muted); font-size: 19px; text-decoration: none; }
+  .pv-mobile-nav a[aria-current="page"] { color: var(--pv-text); background: var(--pv-surface-2); }
+  .pv-mobile-nav small { font-size: 10px; font-weight: 800; }
+  body.pv-extra-nav { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  body.mobile-keyboard-open .pv-mobile-nav { display: none; }
+  body.mobile-keyboard-open .notification-bottom-nav, body.mobile-keyboard-open .dm-bottom-nav { display: none; }
+  .pv-theme-toggle { min-height: 38px; }
+  .rooms-header { min-height: 0; }
+  .rooms-header { padding: 24px 0 28px; }
+  .rooms-header h1 { margin: 12px 0; font-size: clamp(34px, 9vw, 48px); line-height: 1.08; letter-spacing: -.05em; }
+  .rooms-header p { margin: 0; font-size: 15px; line-height: 1.5; }
+  .rooms-header .hero-actions { margin-top: 20px; }
+  .rooms-topbar { justify-content: flex-start; gap: 8px; }
+  .rooms-topbar .rooms-profile-link:not(.notification-link) { display: none; }
+  .rooms-topbar .notification-link { margin-left: auto; }
+  .rooms-topbar .pv-theme-toggle { flex: none; }
+  .feed-header nav a[href="/index.html"], .feed-header nav a[href="/perfil.html"], .events-topbar nav a[href="/feed.html"], .game-topbar nav a[href="/feed.html"] { display: none; }
+  .feed-header nav, .events-topbar nav, .game-topbar nav { margin-left: auto; }
+  .feed-header, .events-topbar, .game-topbar { gap: 8px; }
+  .pv-home-title { align-items: end; }
+  .pv-home-title .pv-button { padding: 8px 10px; font-size: 11px; white-space: nowrap; }
+  .pv-home-title h2 { font-size: 24px; }
+  .pv-card { padding: 15px; }
+  .pv-home-shortcuts { gap: 10px; }
+  .public-room-card, .feed-card, .event-card { border-radius: 17px; }
+  .app-header { min-height: calc(60px + env(safe-area-inset-top)); height: calc(60px + env(safe-area-inset-top)); padding-top: calc(8px + env(safe-area-inset-top)); padding-right: max(14px, env(safe-area-inset-right)); padding-left: max(14px, env(safe-area-inset-left)); }
+  .rooms-topbar, .feed-header, .events-topbar, .game-topbar, .dm-brand, .notifications-header, .page-header, .admin-header { padding-top: calc(12px + env(safe-area-inset-top)); }
+  .profile-nav { padding-top: calc(14px + env(safe-area-inset-top)); }
+  .dm-message { max-width: 88%; }
+  :where(dialog)[open] { width: min(100%, calc(100vw - 20px)); max-height: calc(100dvh - 20px - env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } .pv-skeleton { animation: none; } }
+
+/* Layout and touch audit: keep controls usable across page families. */
+.pv-shell :is(.feed-layout, .game-page, .events-page, .notifications-shell, .profile-page, .edit-page, .dm-shell, .rooms-container) { min-width: 0; }
+.pv-shell :is(.pv-card, .feed-card, .event-card, .game-card, .notification-row, .profile-card, .dm-message, .message) { overflow-wrap: anywhere; }
+.pv-shell :is(.feed-card, .event-card, .profile-card, .game-card) img:not(.feed-avatar img) { max-width: 100%; }
+.pv-shell :is(.feed-dialog, .event-dialog, .dm-dialog, .profile-dialog, .room-info-dialog, .wallpaper-dialog, .content-report-dialog, .projection-dialog, .pip-help-dialog)[open] {
+  box-sizing: border-box;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.pv-shell :is(.feed-dialog, .event-dialog, .dm-dialog, .profile-dialog, .room-info-dialog, .wallpaper-dialog, .content-report-dialog, .projection-dialog, .pip-help-dialog) :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) { max-width: 100%; min-width: 0; }
+.room-options-menu, .message-actions { max-width: calc(100vw - 16px); }
+.message-actions { width: min(220px, calc(100vw - 16px)); max-height: min(65dvh, 440px); overflow-y: auto; }
+.message-actions button { min-height: 40px; }
+.app-screen .message { min-width: 0; }
+.app-screen .message :is(img, video, audio) { max-width: 100%; }
+.app-screen .message-menu-button { display: grid; place-items: center; flex: none; min-width: 36px; min-height: 36px; padding: 0; font-size: 20px; opacity: 1; }
+.app-screen .message-audio button, .app-screen .message-reactions button { min-width: 36px; min-height: 36px; }
+.app-screen .message-audio input[type="range"] { min-width: 70px; }
+.app-screen .message-sticker { object-fit: contain; }
+.app-screen .message.sticker-message .message-header { padding: 4px 8px; border-radius: 12px; background: var(--pv-surface); color: var(--pv-text); }
+.app-screen .message.sticker-message .message-header a { color: inherit; }
+.app-screen .sticker-panel { min-width: 0; }
+.app-screen .sticker-tile :is(.favorite, .sticker-remove) { min-width: 32px; min-height: 32px; }
+.app-screen .sticker-filters :is(input, select), .app-screen .sticker-create :is(input, button), .app-screen .wallpaper-options button { min-height: 42px; }
+.app-screen .room-info-heading button, .app-screen .wallpaper-head button, .app-screen .sticker-panel-header button, .app-screen .reply-composer button { display: grid; place-items: center; min-width: 42px; min-height: 42px; }
+.app-screen .community-tool-tabs button, .app-screen .live-header-actions .live-button, .app-screen .message-actions button { min-height: 40px; }
+.app-screen .manage-room-panel { max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
+.app-screen .manage-room-heading button { min-width: 40px; min-height: 40px; }
+.dm-shell :is(.dm-heading button, .dm-chat-header button, .dm-options button, .dm-request-actions button, .dm-message-actions button, .dm-reply button, .dm-dialog-head button) { min-height: 40px; min-width: 40px; }
+.dm-shell .dm-message-search :is(input, select, button), .dm-shell .dm-tabs button { min-height: 42px; }
+.dm-shell .dm-compose button, .dm-shell .dm-upload { width: 42px; height: 42px; }
+.dm-shell .dm-message :is(img, video, audio) { max-width: 100%; }
+.dm-sidebar:has(#dm-list:empty) #dm-list { flex: 0; }
+.dm-sidebar:has(#dm-list:empty) #dm-list-status:not(:empty) { margin: 20px 16px; padding: 20px 16px; border: 1px dashed var(--pv-border); border-radius: 14px; background: var(--pv-surface-2); color: var(--pv-muted); text-align: center; line-height: 1.5; }
+.notification-filters button, .notification-actions button, .notification-settings button, .notification-row button { min-height: 42px; }
+.notification-settings :is(select, input:not([type="checkbox"])) { min-height: 42px; }
+.notification-settings summary { padding: 10px 0; }
+.game-section-nav a, .game-card-footer button, .game-more { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; }
+.feed-card-actions button, .feed-comment button, .feed-comment-form button, .feed-more, .events-toolbar :is(button, select), .event-card button { min-height: 42px; }
+.edit-page .remove-image { min-height: 42px; padding: 8px 0; }
+.edit-page .file-picker { min-height: 44px; display: grid; place-items: center; }
+.pv-home .pv-card-head a { display: inline-flex; align-items: center; min-height: 36px; padding: 4px 0 4px 8px; }
+
+@media (max-width: 620px) {
+  .pv-shell :is(.feed-layout, .game-page, .events-page, .notifications-shell, .profile-page, .edit-page) { padding-bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .app-screen .message { max-width: min(88%, 580px); padding: 10px 12px; font-size: 14px; line-height: 1.45; }
+  .app-screen .message-header { min-width: 0; }
+  .app-screen .message-user-info { flex: 1; }
+  .app-screen .message-time { white-space: nowrap; }
+  .app-screen .message-level { font-size: 10px; }
+  .app-screen .sticker-panel { max-height: min(38dvh, 300px); padding: 12px; }
+  .app-screen .chat-area { position: relative; }
+  .app-screen .sticker-panel:not(.hidden) { position: absolute; z-index: 8; right: 0; bottom: var(--pv-composer-height, 61px); left: 0; max-height: min(42dvh, 340px); box-shadow: 0 -12px 32px #0a031b80; }
+  .app-screen .sticker-grid { grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); }
+  .app-screen .container-chat { min-width: 0; }
+  .app-screen .container-chat input { min-width: 0; }
+  .app-screen .community-tool-panel { max-height: min(32dvh, 260px); }
+  .app-screen .room-options-menu { max-height: calc(100dvh - 84px - env(safe-area-inset-top)); }
+  .app-screen .youtube-container.mini-mode.active { max-height: min(45dvh, 320px); }
+  .dm-shell .dm-sidebar, .dm-shell .dm-main { min-height: 0; }
+  .dm-shell .dm-brand a[href="/perfil.html"] { display: none; }
+  .dm-shell .dm-brand .notification-link { display: grid; place-items: center; flex: none; min-width: 42px; min-height: 42px; }
+  .dm-shell .dm-brand .pv-brand-name { overflow: hidden; text-overflow: ellipsis; }
+  .dm-shell .dm-chat-header { gap: 8px; }
+  .dm-shell .dm-chat-header a { min-width: 0; }
+  .dm-shell .dm-message { max-width: 90%; }
+  .dm-shell .dm-compose { gap: 6px; }
+  .dm-shell .dm-compose input { min-height: 42px; }
+  .notifications-header { min-width: 0; }
+  .notifications-header > div { min-width: 0; flex: 1; }
+  .notifications-header h1 { font-size: clamp(19px, 6vw, 25px); overflow-wrap: anywhere; }
+  .notification-filters { min-width: 0; max-width: 100%; scrollbar-width: none; }
+  .notification-filters::-webkit-scrollbar { display: none; }
+  .notification-actions { flex-wrap: wrap; }
+  .notification-row { min-width: 0; flex-wrap: wrap; }
+  .notification-row .row-actions { margin-left: 50px; flex-direction: row; }
+  .preference-row, .device-row { flex-wrap: wrap; }
+  .preference-row label { white-space: normal; }
+  .pv-home-title { align-items: flex-start; }
+  .pv-home-title h2 { overflow-wrap: anywhere; }
+}
+@media (max-width: 420px) {
+  .notifications-header .back-link[href="/perfil.html"] { display: none; }
+  .notifications-header .back-link { flex: none; min-height: 42px; display: inline-flex; align-items: center; }
+  .notifications-header .pv-theme-toggle { flex: none; }
+  .pv-home-title { flex-wrap: wrap; }
+  .pv-home-title .pv-button { min-height: 40px; }
+  .pv-home-shortcuts { grid-template-columns: minmax(0, 1fr); }
+  .app-screen .app-header { padding-right: 8px; padding-left: 8px; }
+}
