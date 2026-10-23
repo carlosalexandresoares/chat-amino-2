@@ -1,10 +1,10 @@
 :root {
   color-scheme: dark;
-  --pv-bg: #180d2b;
-  --pv-surface: #241536;
-  --pv-surface-2: #302046;
-  --pv-elevated: #392453;
-  --pv-border: #654884;
+  --pv-bg: #0b0716;
+  --pv-surface: #180d2b;
+  --pv-surface-2: #24143a;
+  --pv-elevated: #352052;
+  --pv-border: #633b8c;
   --pv-text: #f8f1ff;
   --pv-muted: #c6b5d8;
   --pv-primary: #6d28d9;
@@ -20,9 +20,9 @@
   --pv-space-3: 12px;
   --pv-space-4: 16px;
   --pv-space-6: 24px;
-  --pv-logo: url('/image/purpverse-dark.png');
-  --pv-chat-default-bg: linear-gradient(155deg, #392252, #221338);
-  --pv-chat-default-color: #180d2b;
+  --pv-logo: url('/image/purp-mascot.png');
+  --pv-chat-default-bg: radial-gradient(circle at 14% 19%, #f3d4ff99 0 1px, transparent 2px), radial-gradient(circle at 75% 12%, #dd9aff80 0 1px, transparent 2px), radial-gradient(circle at 87% 72%, #e6c7ff8c 0 1px, transparent 2px), radial-gradient(ellipse at 75% 10%, #5e1d9245, transparent 48%), linear-gradient(155deg, #1c0d32, #0b0718 75%);
+  --pv-chat-default-color: #0b0718;
   --bg: var(--pv-bg);
   --card: var(--pv-surface);
   --text: var(--pv-text);
@@ -47,8 +47,8 @@ html[data-theme="light"] {
   --pv-success: #166b4c;
   --pv-error: #ad273e;
   --pv-shadow: 0 20px 55px #5f438130;
-  --pv-logo: url('/image/purpverse-light.png');
-  --pv-chat-default-bg: linear-gradient(155deg, #f2e5fc, #e4d2f3);
+  --pv-logo: url('/image/purp-mascot.png');
+  --pv-chat-default-bg: radial-gradient(circle at 12% 18%, #b57bdb80 0 1px, transparent 2px), radial-gradient(ellipse at 75% 10%, #d5b5ef88, transparent 50%), linear-gradient(155deg, #f8f1fe, #ecdef7);
   --pv-chat-default-color: #f8f3ff;
 }
 html { background: var(--pv-bg); scroll-behavior: smooth; }
@@ -60,10 +60,11 @@ body:not(.chat-shell) { background: radial-gradient(circle at 83% -8%, #8035c43b
 ::selection { background: var(--pv-primary); color: #fff; }
 html[data-theme="light"] :where(input, textarea, select) { color-scheme: light; }
 
-.pv-logo { display: inline-block; flex: none; width: 38px; height: 38px; border-radius: 11px; background: var(--pv-logo) center / cover no-repeat; box-shadow: 0 5px 18px #6d28d93b; vertical-align: middle; }
+.pv-logo { display: inline-block; flex: none; width: 38px; height: 38px; background: var(--pv-logo) center / contain no-repeat; filter: drop-shadow(0 0 10px #a855f777); vertical-align: middle; }
 .pv-logo--small { width: 30px; height: 30px; border-radius: 9px; }
 .pv-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--pv-text); font-weight: 900; letter-spacing: -.035em; text-decoration: none; }
-.pv-brand-name { white-space: nowrap; }
+.pv-brand-name { color: var(--pv-text); font-family: "Trebuchet MS", "Segoe UI", sans-serif; font-style: italic; font-weight: 900; letter-spacing: -.065em; white-space: nowrap; }
+.pv-brand-name::after { content: "✦"; display: inline-block; margin-left: 6px; color: var(--pv-vibrant); font-size: .52em; font-style: normal; vertical-align: top; }
 .pv-theme-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 42px; min-height: 42px; padding: 8px 12px; border: 1px solid var(--pv-border); border-radius: 12px; color: var(--pv-text); background: var(--pv-surface-2); cursor: pointer; }
 .pv-theme-toggle:hover { background: var(--pv-elevated); }
 .pv-theme-toggle .pv-theme-label { font-size: 12px; font-weight: 800; }
@@ -102,7 +103,7 @@ html[data-theme="light"] :where(input, textarea, select) { color-scheme: light; 
 
 /* Authentication */
 .auth-brand .pv-logo, .auth-mobile-brand .pv-logo, .auth-preview-reply .pv-logo { background: var(--pv-logo) center / cover no-repeat; color: transparent; }
-.auth-showcase .pv-logo, .profile-nav .pv-logo { background-image: url('/image/purpverse-dark.png'); }
+.auth-showcase .pv-logo, .profile-nav .pv-logo { background-image: var(--pv-logo); }
 .auth-brand .pv-logo, .auth-mobile-brand .pv-logo { width: 38px; height: 38px; }
 .auth-page { background: radial-gradient(circle at 8% 8%, #8034d04f, transparent 34%), radial-gradient(circle at 94% 90%, #a855f72b, transparent 34%), var(--pv-bg); }
 .auth-shell { border-color: var(--pv-border); background: var(--pv-surface); box-shadow: var(--pv-shadow); }
@@ -158,10 +159,14 @@ html[data-theme="light"] .auth-card .form-message.success { color: var(--pv-succ
 .public-room-card:hover, .feed-card:hover, .event-card:hover { border-color: var(--pv-vibrant); }
 .feed-intro, .events-hero, .game-hero { border-color: var(--pv-border); background: linear-gradient(125deg, var(--pv-surface-2), var(--pv-surface)) !important; }
 .app-header, .dm-chat-header, .dm-brand { border-color: var(--pv-border); background: var(--pv-surface); }
-.app-header { min-height: 70px; height: 70px; padding: 10px 24px; }
+.app-header { min-height: 78px; height: auto; padding: 12px 24px; }
+.app-screen .room-heading { display: grid; align-content: center; gap: 3px; min-width: 0; }
+.app-screen .room-heading .app-name { line-height: 1; }
+.app-screen .room-heading h1 { margin: 0; line-height: 1.12; }
+.app-screen .room-stats { margin: 0; font-size: 13px; line-height: 1.3; }
 .app-header .chat-header-actions { display: none; }
 .app-header .mobile-header-actions { position: relative; display: block; flex: none; }
-#room-options-toggle { width: 42px; height: 42px; border: 1px solid var(--pv-border); border-radius: 12px; background: var(--pv-surface-2); color: var(--pv-text); font-size: 26px; line-height: 1; cursor: pointer; }
+#room-options-toggle { width: 44px; height: 44px; border: 1px solid var(--pv-border); border-radius: 12px; background: var(--pv-surface-2); color: var(--pv-text); font-size: 26px; line-height: 1; cursor: pointer; }
 .room-options-menu { position: absolute; z-index: 80; top: 48px; right: 0; width: min(260px, calc(100vw - 24px)); max-height: calc(100dvh - 110px); overflow-y: auto; padding: 6px; border: 1px solid var(--pv-border); border-radius: 15px; background: var(--pv-surface); box-shadow: var(--pv-shadow); }
 .room-options-menu :is(button, a) { display: block; width: 100%; min-height: 42px; padding: 10px 12px; border: 0; border-radius: 9px; background: transparent; color: var(--pv-text); font: inherit; font-size: 13px; text-align: left; text-decoration: none; cursor: pointer; }
 .room-options-menu :is(button, a):hover { background: var(--pv-surface-2); }
@@ -246,6 +251,56 @@ html[data-theme="light"] body:has(main > nav + h1) :is(section, .notice) { borde
 html[data-theme="light"] body:has(main > nav + h1) :is(p, li) { color: var(--pv-muted); }
 html[data-theme="light"] body:has(main > nav + h1) a { color: var(--pv-primary); }
 
+@media (min-width: 901px) {
+  .rooms-header { min-height: 0; grid-template-columns: minmax(0, 1.15fr) minmax(250px, .85fr); gap: 24px; padding: 28px 0 34px; }
+  .rooms-header h1 { max-width: 620px; margin: 12px 0; font-size: clamp(38px, 4vw, 54px); line-height: 1.08; letter-spacing: -.045em; }
+  .rooms-header p { max-width: 570px; margin: 0; font-size: 15px; line-height: 1.5; }
+  .rooms-header .hero-actions { margin-top: 18px; gap: 12px; }
+  .rooms-header .create-room-button { min-height: 44px; padding: 11px 18px; }
+  .hero-art { width: min(320px, 100%); height: 230px; }
+  .hero-orbit-one { width: 190px; height: 190px; }
+  .hero-orbit-two { width: 280px; height: 280px; }
+  .hero-bubble-one { width: 120px; height: 120px; border-radius: 32px; font-size: 55px; }
+  .hero-bubble-two { width: 60px; height: 60px; top: 8px; right: 9px; border-radius: 20px; font-size: 27px; }
+  .hero-bubble-three { width: 56px; height: 56px; bottom: 14px; left: 12px; border-radius: 18px; font-size: 25px; }
+  .hero-art-caption { bottom: -4px; }
+  .pv-home-title { margin-bottom: 14px; }
+  .profile-page { padding: 24px clamp(20px, 3vw, 44px) 64px; }
+  .profile-card { width: min(1040px, 100%); }
+  .profile-banner { height: 220px; }
+  .profile-content { padding: 0 clamp(28px, 4vw, 56px) 48px; }
+  .profile-post { padding: 20px 24px; }
+  .profile-actions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .profile-actions :is(a, button) { width: 100%; }
+  .profile-quick-actions :is(a, button) { min-height: 44px; padding: 10px 16px; font-size: 14px; }
+  .app-screen .community-tool-tabs { gap: 8px; padding: 8px 14px; }
+  .app-screen .community-tool-tabs button { min-height: 42px; padding: 9px 14px; font-size: 13px; }
+  .app-screen .voice-section summary { display: flex; align-items: center; min-height: 44px; font-size: 14px; }
+  .app-screen .live-button { min-height: 42px; padding: 9px 13px; font-size: 13px; }
+  .app-screen .live-description { font-size: 13px; line-height: 1.45; }
+  .app-screen .container-chat input { font-size: 15px; }
+}
+
+@media (min-width: 1200px) {
+  .pv-sidebar { width: 188px; padding: 18px 12px max(18px, env(safe-area-inset-bottom)); }
+  .pv-sidebar-brand { justify-content: start; padding-left: 8px; }
+  .pv-sidebar-brand::after { content: "Purp ✦"; color: var(--pv-text); font-family: "Trebuchet MS", "Segoe UI", sans-serif; font-size: 18px; font-style: italic; font-weight: 900; letter-spacing: -.06em; }
+  .pv-sidebar a:not(.pv-sidebar-brand), .pv-sidebar .pv-theme-toggle { display: flex; justify-content: flex-start; gap: 12px; width: 100%; min-height: 48px; padding: 10px 12px; text-align: left; }
+  .pv-sidebar-icon { flex: none; width: 24px; text-align: center; }
+  .pv-sidebar small { font-size: 13px; }
+  .pv-sidebar .pv-theme-toggle .pv-theme-label { display: inline; }
+  .pv-shell { padding-left: 188px !important; }
+}
+
+.profile-post { border-color: var(--pv-border); background: var(--pv-surface-2); color: var(--pv-text); }
+.profile-post time { color: var(--pv-muted); font-size: 12px; }
+.profile-post p { color: var(--pv-text); font-size: 16px; }
+.profile-post > a { margin-top: 12px; font-size: 14px; }
+.profile-post > strong { display: block; margin-top: 10px; }
+.profile-post > button { min-height: 44px; margin: 10px 8px 0 0; padding: 9px 15px; font-size: 14px; vertical-align: middle; }
+.profile-actions { gap: 10px; }
+.profile-actions :is(a, button) { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; font-size: 14px; }
+
 @media (max-width: 900px) {
   .pv-sidebar { display: none; }
   .pv-shell { padding-left: 0 !important; }
@@ -264,11 +319,11 @@ html[data-theme="light"] body:has(main > nav + h1) a { color: var(--pv-primary);
   body.mobile-keyboard-open .pv-mobile-nav { display: none; }
   body.mobile-keyboard-open .notification-bottom-nav, body.mobile-keyboard-open .dm-bottom-nav { display: none; }
   .pv-theme-toggle { min-height: 38px; }
-  .rooms-header { min-height: 0; }
-  .rooms-header { padding: 24px 0 28px; }
-  .rooms-header h1 { margin: 12px 0; font-size: clamp(34px, 9vw, 48px); line-height: 1.08; letter-spacing: -.05em; }
-  .rooms-header p { margin: 0; font-size: 15px; line-height: 1.5; }
-  .rooms-header .hero-actions { margin-top: 20px; }
+  .rooms-header { min-height: 0; padding: 18px 0 24px; }
+  .rooms-header h1 { margin: 10px 0; font-size: clamp(28px, 8vw, 36px); line-height: 1.12; letter-spacing: -.04em; }
+  .rooms-header p { margin: 0; font-size: 14px; line-height: 1.45; }
+  .rooms-header .hero-actions { margin-top: 16px; }
+  .rooms-header .create-room-button { min-height: 44px; padding: 10px 16px; font-size: 14px; }
   .rooms-topbar { justify-content: flex-start; gap: 8px; }
   .rooms-topbar .rooms-profile-link:not(.notification-link) { display: none; }
   .rooms-topbar .notification-link { margin-left: auto; }
@@ -276,13 +331,23 @@ html[data-theme="light"] body:has(main > nav + h1) a { color: var(--pv-primary);
   .feed-header nav a[href="/index.html"], .feed-header nav a[href="/perfil.html"], .events-topbar nav a[href="/feed.html"], .game-topbar nav a[href="/feed.html"] { display: none; }
   .feed-header nav, .events-topbar nav, .game-topbar nav { margin-left: auto; }
   .feed-header, .events-topbar, .game-topbar { gap: 8px; }
-  .pv-home-title { align-items: end; }
-  .pv-home-title .pv-button { padding: 8px 10px; font-size: 11px; white-space: nowrap; }
-  .pv-home-title h2 { font-size: 24px; }
-  .pv-card { padding: 15px; }
+  .pv-home-title { align-items: center; margin-bottom: 12px; }
+  .pv-home-title .pv-button { padding: 8px 12px; font-size: 12px; white-space: nowrap; }
+  .pv-home-title h2 { margin-top: 4px; font-size: clamp(20px, 5.4vw, 24px); }
+  .pv-card-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .pv-card-head h3 { font-size: 15px; line-height: 1.25; }
+  .pv-card-head a { white-space: nowrap; }
+  .pv-card { padding: 16px; }
+  .pv-home-side { gap: 12px; }
+  .pv-home-item { padding: 12px; }
   .pv-home-shortcuts { gap: 10px; }
   .public-room-card, .feed-card, .event-card { border-radius: 17px; }
-  .app-header { min-height: calc(60px + env(safe-area-inset-top)); height: calc(60px + env(safe-area-inset-top)); padding-top: calc(8px + env(safe-area-inset-top)); padding-right: max(14px, env(safe-area-inset-right)); padding-left: max(14px, env(safe-area-inset-left)); }
+  .app-screen .app-header { min-height: calc(70px + env(safe-area-inset-top)); height: auto; gap: 8px; padding: calc(10px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 10px max(12px, env(safe-area-inset-left)); align-items: center; }
+  .app-screen .app-name { display: none; }
+  .app-screen .room-heading { display: grid; gap: 3px; flex: 1 1 0; min-width: 0; padding: 0; }
+  .app-screen .room-heading h1 { width: 100%; margin: 0; overflow: hidden; font-size: clamp(18px, 4.8vw, 21px); line-height: 1.15; text-overflow: ellipsis; white-space: nowrap; }
+  .app-screen .room-stats { margin: 0; overflow: visible; font-size: 12px; line-height: 1.3; white-space: normal; }
+  .app-screen #room-options-toggle { width: 44px; height: 44px; }
   .rooms-topbar, .feed-header, .events-topbar, .game-topbar, .dm-brand, .notifications-header, .page-header, .admin-header { padding-top: calc(12px + env(safe-area-inset-top)); }
   .profile-nav { padding-top: calc(14px + env(safe-area-inset-top)); }
   .dm-message { max-width: 88%; }
@@ -317,7 +382,8 @@ html[data-theme="light"] body:has(main > nav + h1) a { color: var(--pv-primary);
 .app-screen .sticker-tile :is(.favorite, .sticker-remove) { min-width: 32px; min-height: 32px; }
 .app-screen .sticker-filters :is(input, select), .app-screen .sticker-create :is(input, button), .app-screen .wallpaper-options button { min-height: 42px; }
 .app-screen .room-info-heading button, .app-screen .wallpaper-head button, .app-screen .sticker-panel-header button, .app-screen .reply-composer button { display: grid; place-items: center; min-width: 42px; min-height: 42px; }
-.app-screen .community-tool-tabs button, .app-screen .live-header-actions .live-button, .app-screen .message-actions button { min-height: 40px; }
+.app-screen .community-tool-tabs button, .app-screen .live-header-actions .live-button { min-height: 44px; }
+.app-screen .message-actions button { min-height: 40px; }
 .app-screen .manage-room-panel { max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); }
 .app-screen .manage-room-heading button { min-width: 40px; min-height: 40px; }
 .dm-shell :is(.dm-heading button, .dm-chat-header button, .dm-options button, .dm-request-actions button, .dm-message-actions button, .dm-reply button, .dm-dialog-head button) { min-height: 40px; min-width: 40px; }
@@ -349,7 +415,7 @@ html[data-theme="light"] body:has(main > nav + h1) a { color: var(--pv-primary);
   .app-screen .container-chat { min-width: 0; }
   .app-screen .container-chat input { min-width: 0; }
   .app-screen .community-tool-panel { max-height: min(32dvh, 260px); }
-  .app-screen .room-options-menu { max-height: calc(100dvh - 84px - env(safe-area-inset-top)); }
+  .app-screen .room-options-menu { top: calc(100% + 14px); max-height: calc(100dvh - 84px - env(safe-area-inset-top)); }
   .app-screen .youtube-container.mini-mode.active { max-height: min(45dvh, 320px); }
   .dm-shell .dm-sidebar, .dm-shell .dm-main { min-height: 0; }
   .dm-shell .dm-brand a[href="/perfil.html"] { display: none; }

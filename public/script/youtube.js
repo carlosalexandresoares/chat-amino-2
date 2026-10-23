@@ -205,7 +205,7 @@ function togglePlayer(visible) {
 export function initializeYouTube() {
   setPipResyncHandler(() => requestCurrentVideo(true));
   dom.closeYT.addEventListener("click", () => togglePlayer(false));
-  dom.btnYoutube.addEventListener("click", () => togglePlayer(!playerVisible()));
+  dom.btnYoutube?.addEventListener("click", () => togglePlayer(!playerVisible()));
   dom.togglePlayerButton.addEventListener("click", () => togglePlayer(!playerVisible()));
   dom.viewerSound.addEventListener("click", () => {
     if (!state.playerReady || !state.player || state.isLiveHost) return;

@@ -8,11 +8,11 @@
     content="width=device-width, initial-scale=1.0, viewport-fit=cover"
   />
 
-  <title>Purpverse</title>
+  <title>Purp</title>
 
   <link
     rel="stylesheet"
-    href="style/style.css?v=23"
+    href="style/style.css?v=24"
   />
   <link rel="stylesheet" href="/style/notification-badge.css?v=1">
   <link rel="stylesheet" href="/style/community.css?v=4">
@@ -25,14 +25,15 @@
 
   <script
     type="module"
-    src="script/script.js?v=33"
+    src="script/script.js?v=37"
   ></script>
-  <link rel="icon" type="image/png" href="/image/purpverse-dark.png">
-  <meta name="theme-color" content="#180D2B">
-  <meta name="description" content="Purpverse: comunidades, conversas, publicações, eventos e projeções.">
-  <link rel="stylesheet" href="/style/purpverse.css?v=1">
-  <script src="/script/purpverse-shell.js?v=1"></script>
-  <script src="/script/purpverse-home.js?v=1" defer></script>
+  <link rel="icon" type="image/png" href="/image/purp-mascot.png">
+  <meta name="theme-color" content="#0B0716">
+  <meta name="description" content="Purp: comunidades, conversas, publicações, eventos e projeções.">
+  <link rel="stylesheet" href="/style/purpverse.css?v=5">
+  <link rel="stylesheet" href="/style/purp-chat.css?v=2">
+  <script src="/script/purpverse-shell.js?v=3"></script>
+  <script src="/script/purpverse-home.js?v=2" defer></script>
 </head>
 
 <body class="rooms-mode chat-shell">
@@ -42,7 +43,7 @@
   <section class="rooms-screen" id="rooms-screen">
     <div class="rooms-container">
       <nav class="rooms-topbar" aria-label="Navegação principal">
-        <a class="rooms-brand" href="/index.html"><span class="pv-logo" aria-hidden="true"></span><span class="pv-brand-name">Purpverse</span></a>
+        <a class="rooms-brand" href="/index.html"><span class="pv-logo" aria-hidden="true"></span><span class="pv-brand-name">Purp</span></a>
         <a class="rooms-profile-link" href="/perfil.html">Meu perfil <span aria-hidden="true">↗</span></a>
         <a class="rooms-profile-link notification-link" href="/notifications.html" aria-label="Notificações">🔔 <span class="notification-badge hidden">0</span></a>
         <a class="rooms-profile-link site-admin-link hidden" href="/admin.html">Administração</a>
@@ -50,9 +51,9 @@
 
       <header class="rooms-header">
         <div class="rooms-hero-copy">
-          <span class="rooms-kicker"><span class="status-dot"></span> SUA COMUNIDADE COMEÇA AQUI</span>
+          <span class="rooms-kicker"><span class="status-dot"></span> ENTRE NO PURP</span>
           <h1>Encontre sua próxima <em>conversa.</em></h1>
-          <p>Entre no chat principal ou crie um espaço com a sua cara. Convide pessoas, compartilhe ideias e viva o momento.</p>
+          <p>Entre no chat, crie sua comunidade e encontre gente para conversar.</p>
           <div class="hero-actions">
             <button type="button" id="show-create-room" class="create-room-button"><span aria-hidden="true">＋</span> Criar meu chat</button>
             <span class="hero-note">Grátis, público e feito por você</span>
@@ -127,8 +128,9 @@
   >
     <header class="app-header">
       <div class="room-heading">
+        <span class="chat-room-mascot pv-logo" aria-hidden="true"></span>
         <span class="app-name">
-          Purpverse
+          Purp
         </span>
 
         <h1 id="current-room-title">
@@ -198,18 +200,6 @@
     <dialog id="content-report-dialog" class="content-report-dialog"><form method="dialog"><h2>Denunciar conteúdo</h2><p id="content-report-target"></p><label>Motivo<select id="content-report-reason"><option value="SPAM">Spam</option><option value="HARASSMENT">Assédio</option><option value="INAPPROPRIATE">Conteúdo inadequado</option><option value="SCAM">Golpe</option><option value="OTHER">Outro</option></select></label><label>Descrição opcional<textarea id="content-report-details" maxlength="500"></textarea></label><p id="content-report-status" role="status"></p><button type="button" id="content-report-send">Enviar denúncia</button><button type="submit">Cancelar</button></form></dialog>
 
     <div class="container">
-      <aside class="container-lateral">
-        <ul>
-          <li>
-            <img
-              src="image/logo-yt.png"
-              alt="Mostrar ou ocultar o vídeo"
-              id="btn-youtube"
-            />
-          </li>
-        </ul>
-      </aside>
-
       <main class="chat-area">
         <section id="community-tools" class="community-tools" aria-label="Recursos da comunidade">
           <div class="community-tool-tabs"><button type="button" data-community-tab="pins">📌 Fixadas</button><button type="button" data-community-tab="polls">◉ Enquetes</button><button type="button" data-community-tab="search">⌕ Buscar</button></div>
@@ -465,7 +455,7 @@
             <button type="button" id="sticker-toggle" class="composer-icon" aria-label="Abrir figurinhas">▧</button>
             <input type="text" id="chat-dig" placeholder="Digite sua mensagem..." autocomplete="off" maxlength="1000" />
             <button type="button" id="record-audio" class="composer-icon" aria-label="Gravar áudio">🎙</button>
-            <button type="submit" id="enviar" aria-label="Enviar mensagem"><img src="image/button-enviar.jpg" alt="" /></button>
+            <button type="submit" id="enviar" aria-label="Enviar mensagem"><span aria-hidden="true">➤</span></button>
           </div>
         </form>
         <dialog id="wallpaper-dialog" class="wallpaper-dialog" aria-labelledby="wallpaper-title"><div class="wallpaper-head"><h2 id="wallpaper-title">Fundo do chat</h2><button type="button" id="wallpaper-close" aria-label="Fechar">×</button></div><p>Este fundo aparece somente para você neste chat.</p><div class="wallpaper-options"><button type="button" data-wallpaper-preset="geometry">Geométrico</button><button type="button" data-wallpaper-preset="twilight">Crepúsculo</button><button type="button" data-wallpaper-preset="night">Noite</button><button type="button" data-wallpaper-preset="minimal">Minimalista</button></div><div class="wallpaper-colors"><button type="button" data-wallpaper-color="#111827" aria-label="Preto"></button><button type="button" data-wallpaper-color="#374151" aria-label="Cinza escuro"></button><button type="button" data-wallpaper-color="#1e3a8a" aria-label="Azul"></button><button type="button" data-wallpaper-color="#581c87" aria-label="Roxo"></button><button type="button" data-wallpaper-color="#14532d" aria-label="Verde"></button><button type="button" data-wallpaper-color="#ffffff" aria-label="Branco"></button><label>Outra cor <input id="wallpaper-color" type="color" value="#66727b"></label></div><label class="wallpaper-upload">Imagem do dispositivo <input id="wallpaper-file" type="file" accept="image/png,image/jpeg,image/webp"></label><label>Posição horizontal <input id="wallpaper-x" type="range" min="0" max="100" value="50"></label><label>Posição vertical <input id="wallpaper-y" type="range" min="0" max="100" value="50"></label><label>Escurecimento <input id="wallpaper-darkness" type="range" min="0" max="100" value="0"></label><label>Sobreposição <input id="wallpaper-overlay" type="range" min="0" max="100" value="0"></label><div class="wallpaper-actions"><button type="button" id="wallpaper-reset">Restaurar padrão</button><button type="button" id="wallpaper-save">Aplicar fundo</button></div><p id="wallpaper-status" role="status"></p></dialog>
@@ -478,7 +468,7 @@
       <a href="/perfil.html"><span aria-hidden="true">◉</span><small>Perfil</small></a>
     </nav>
   </div>
-  <div id="site-view" class="site-view hidden"><iframe id="site-frame" title="Outra área do Purpverse"></iframe></div>
+  <div id="site-view" class="site-view hidden"><iframe id="site-frame" title="Outra área do Purp"></iframe></div>
   <section id="voice-dock" class="voice-dock hidden" aria-label="Chamada de voz ativa">
     <div class="voice-dock-head"><div><strong id="voice-dock-title">Na voz</strong><small id="voice-dock-count">1 participante</small></div><button id="voice-dock-mute" type="button" aria-pressed="false">🎙 Microfone</button><button id="voice-dock-expand" type="button" aria-expanded="false" aria-controls="voice-dock-body">Expandir</button><button id="voice-dock-leave" type="button">Sair</button></div>
     <div id="voice-dock-body" class="voice-dock-body hidden"><p id="voice-dock-status" role="status"></p><div id="voice-participant-list"></div><label id="voice-video-volume-wrap" class="voice-video-volume-wrap hidden">Volume do vídeo <input id="voice-video-volume" type="range" min="0" max="100" value="100"></label></div>

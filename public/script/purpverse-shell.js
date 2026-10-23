@@ -5,8 +5,8 @@
   document.documentElement.dataset.theme = saved === 'light' || saved === 'dark' ? saved : preferred;
   function syncBrowserChrome() {
     const light = document.documentElement.dataset.theme === 'light';
-    document.querySelector('link[rel="icon"]')?.setAttribute('href', light ? '/image/purpverse-light.png' : '/image/purpverse-dark.png');
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', light ? '#f8f3ff' : '#180d2b');
+    document.querySelector('link[rel="icon"]')?.setAttribute('href', '/image/purp-mascot.png');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', light ? '#f8f3ff' : '#0b0716');
   }
   syncBrowserChrome();
 
@@ -80,7 +80,7 @@
     const brand = document.createElement('a');
     brand.href = '/index.html';
     brand.className = 'pv-sidebar-brand';
-    brand.setAttribute('aria-label', 'Purpverse, início');
+    brand.setAttribute('aria-label', 'Purp, início');
     brand.innerHTML = '<span class="pv-logo" aria-hidden="true"></span>';
     sidebar.append(brand);
     destinations.forEach(destination => sidebar.append(link(destination)));

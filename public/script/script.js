@@ -1,7 +1,7 @@
 import state from "./state.js";
 import { loadAuthenticatedUser } from "./auth.js?v=2";
 import { initializeChat } from "./chat.js?v=14";
-import { initializeYouTube, stopTimeUpdater } from "./youtube.js?v=9";
+import { initializeYouTube, stopTimeUpdater } from "./youtube.js?v=10";
 import { initializeLive } from "./live.js?v=10";
 import { initializeMiniPlayer, openSitePage } from './mini-player.js?v=9';
 import { initializeMentions } from './mentions.js?v=1';
@@ -146,7 +146,7 @@ function showRoomsScreen() {
   document.body.classList.add("rooms-mode");
   roomsScreen.classList.remove("hidden");
   appScreen.classList.add("hidden");
-  document.title = "Comunidades | Purpverse";
+  document.title = "Comunidades | Purp";
   syncRoomsNavigation();
 }
 
@@ -158,7 +158,7 @@ function syncRoomsNavigation() {
   communitiesLink.toggleAttribute("aria-current", communities);
   if (!communities) chatsLink.setAttribute("aria-current", "page");
   else communitiesLink.setAttribute("aria-current", "page");
-  if (communities) requestAnimationFrame(() => document.getElementById("communities").scrollIntoView({ block: "start" }));
+  if (communities) requestAnimationFrame(() => document.getElementById("communities").scrollIntoView({ block: "start", behavior: "instant" }));
 }
 window.addEventListener("hashchange", syncRoomsNavigation);
 
@@ -177,7 +177,7 @@ function showChatScreen(room) {
   appScreen.classList.remove("hidden");
   roomTitle.textContent = `${room.category || "💬"} ${room.name}`;
   updateRoomStats(room);
-  document.title = `${room.name} | Purpverse`;
+  document.title = `${room.name} | Purp`;
   if (window.location.hash === "#projections" && !appScreen.classList.contains("mobile-projections-open")) projectionsTab.click();
 }
 

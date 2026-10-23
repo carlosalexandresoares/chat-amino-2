@@ -17,7 +17,7 @@ import {
   stopPlayer,
   stopTimeUpdater,
   updatePlayerButton,
-} from "./youtube.js?v=9";
+} from "./youtube.js?v=10";
 
 function setLiveFormMessage(
   message,

@@ -51,26 +51,31 @@
     }
   }
   function init() {
-    fill('pv-home-posts', '/api/social/feed?mode=forYou', (parent, data) => {
+    const loading = [];
+    loading.push(fill('pv-home-posts', '/api/social/feed?mode=forYou', (parent, data) => {
       const posts = data.posts?.slice(0, 2) || [];
       if (!posts.length) return empty(parent, 'Ainda não há publicações por aqui.', '/feed.html', 'Conhecer o feed ↗');
       posts.forEach(post => item(parent, { href: `/feed.html?post=${encodeURIComponent(post.id)}`, title: post.user?.username || 'Comunidade', detail: short(post.content || post.sharedPost?.content), meta: post.room?.name || 'Publicação no perfil' }));
-    }, 'Feed indisponível no momento.');
-    fill('pv-home-events', '/api/events?page=1', (parent, data) => {
+    }, 'Feed indisponível no momento.'));
+    loading.push(fill('pv-home-events', '/api/events?page=1', (parent, data) => {
       const events = data.events?.slice(0, 2) || [];
       if (!events.length) return empty(parent, 'Nenhum evento próximo.', '/events.html', 'Explorar eventos ↗');
       events.forEach(event => item(parent, { href: `/events.html?eventId=${encodeURIComponent(event.id)}`, title: event.title, detail: `${event.room?.name || 'Comunidade'} · ${date(event.startsAt)}`, meta: event.type === 'PROJECTION' ? 'Projeção' : 'Evento' }));
-    }, 'Agenda indisponível no momento.');
-    fill('pv-home-projections', '/api/projections/active', (parent, data) => {
+    }, 'Agenda indisponível no momento.'));
+    loading.push(fill('pv-home-projections', '/api/projections/active', (parent, data) => {
       const projections = data.projections?.slice(0, 3) || [];
       if (!projections.length) return empty(parent, 'Nenhuma projeção ao vivo agora.', '/index.html?sala=geral#projections', 'Ir para projeções ↗');
       projections.forEach(projection => item(parent, { href: `/index.html?sala=${encodeURIComponent(projection.roomId)}#projections`, title: projection.roomName, detail: 'Assistindo juntos agora', meta: `Ao vivo · desde ${date(projection.startedAt)}` }));
-    }, 'Projeções indisponíveis no momento.');
-    fill('pv-home-friends', '/api/social/feed?mode=following', (parent, data) => {
+    }, 'Projeções indisponíveis no momento.'));
+    loading.push(fill('pv-home-friends', '/api/social/feed?mode=following', (parent, data) => {
       const posts = data.posts?.slice(0, 2) || [];
       if (!posts.length) return empty(parent, 'Acompanhe pessoas para ver a atividade delas aqui.', '/feed.html', 'Descobrir pessoas ↗');
       posts.forEach(post => item(parent, { href: `/feed.html?post=${encodeURIComponent(post.id)}`, title: post.user?.username || 'Pessoa', detail: short(post.content || post.sharedPost?.content, 90), meta: post.room?.name || 'Novo post' }));
-    }, 'Atividade indisponível no momento.');
+    }, 'Atividade indisponível no momento.'));
+    Promise.all(loading).then(() => {
+      if (location.hash === '#communities' && document.body.classList.contains('rooms-mode'))
+        byId('communities')?.scrollIntoView({ block: 'start', behavior: 'instant' });
+    });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();

@@ -72,7 +72,7 @@ function updateAvatar(user) {
 function renderProfile(user) {
   viewedUser = user;
   $("profile-load-message").classList.add("hidden");
-  document.title = `${user.username} | Purpverse`;
+  document.title = `${user.username} | Purp`;
   $("profile-username").textContent = user.username;
   $("profile-level").textContent = `LV ${user.level}`;
   $("profile-title").textContent = user.title;
