@@ -10,14 +10,29 @@ const path = require("path");
 const authRoutes = require("./routes/authRoutes");
 const roomRoutes = require("./routes/roomRoutes");
 const socialRoutes = require("./routes/socialRoutes");
+const socialFeedRoutes = require('./routes/socialFeedRoutes');
+const gamificationRoutes = require('./routes/gamificationRoutes');
+const gamification = require('./services/gamification');
 const reputation = require('./services/reputation');
 const reputationRoutes = require('./routes/reputationRoutes');
 const projectionRep = require('./services/projectionRep');
 const projectionRoutes = require('./routes/projectionRoutes');
 const chatMessages = require('./services/chatMessages');
 const chatRoutes = require('./routes/chatRoutes');
+const directRoutes = require('./routes/directRoutes');
 const siteAdminRoutes = require('./routes/siteAdminRoutes');
 const chatMedia = require('./services/chatMedia');
+const direct = require('./services/direct');
+const { loadSocketUser } = require('./services/socketUser');
+const notificationRoutes = require('./routes/notificationRoutes');
+const communityRoutes = require('./routes/communityRoutes');
+const eventRoutes = require('./routes/eventRoutes');
+const eventReminders = require('./services/eventReminders');
+const moderationRoutes = require('./routes/moderationRoutes');
+const moderation = require('./services/moderation');
+const antiSpam = require('./services/antiSpam');
+const { createVoiceService } = require('./services/voiceRooms');
+const notifications = require('./services/notifications');
 
 const app = express();
 
@@ -31,9 +46,16 @@ app.use(express.static(path.join(__dirname, "../public")));
 app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api", socialRoutes);
+app.use('/api/social', socialFeedRoutes);
+app.use('/api/gamification', gamificationRoutes);
 app.use('/api', reputationRoutes.router);
 app.use('/api/projections', projectionRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/direct', directRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/community', communityRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/moderation', moderationRoutes);
 app.use('/api/admin', siteAdminRoutes);
 setInterval(() => chatMedia.cleanupOrphans(prisma).catch(error =>
   console.error('Erro na limpeza de arquivos do chat:', error)), 3600000).unref();
@@ -45,6 +67,17 @@ app.get("/healthz", (req, res) => {
   });
 });
 
+app.get('/readyz', async (_req, res) => {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'replace-with-a-long-random-secret')
+    return res.status(503).json({ status: 'unavailable' });
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return res.json({ status: 'ready' });
+  } catch {
+    return res.status(503).json({ status: 'unavailable' });
+  }
+});
+
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -54,14 +87,56 @@ const io = new Server(server, {
   },
 });
 app.set("io", io);
+void eventReminders.sendDueReminders(io).catch(error => console.error('Erro nos lembretes de eventos:', error));
+setInterval(() => eventReminders.sendDueReminders(io).catch(error =>
+  console.error('Erro nos lembretes de eventos:', error)), 300000).unref();
 
 function emitRoomPresence(roomId) {
   const users = new Set();
   for (const socketId of io.sockets.adapter.rooms.get(roomId) || []) {
     const userId = io.sockets.sockets.get(socketId)?.user?.id;
-    if (userId) users.add(userId);
+    if (userId && io.sockets.sockets.get(socketId)?.user?.presenceStatus !== 'INVISIBLE') users.add(userId);
   }
   io.to(roomId).emit("room-presence", { roomId, onlineCount: users.size });
+}
+app.set('refreshPresence', userId => {
+  const rooms = new Set();
+  for (const socket of io.sockets.sockets.values()) if (socket.user?.id === userId) {
+    for (const roomId of socket.rooms) if (roomId !== socket.id && !roomId.startsWith('user:')) rooms.add(roomId);
+  }
+  for (const roomId of rooms) emitRoomPresence(roomId);
+});
+
+async function publishChatNotifications(saved, roomId, actor) {
+  const href = `/index.html?sala=${encodeURIComponent(roomId)}&mensagem=${encodeURIComponent(saved.id)}`;
+  const mentionedIds = new Set((saved.mentions || []).map(item => item.user.id));
+  for (const recipientId of mentionedIds) if (recipientId !== actor.id) {
+    await notifications.publish({ recipientId, actorId: actor.id, kind: 'MENTION',
+      sourceKey: `mention:${saved.id}:${recipientId}`, title: 'Você foi mencionado',
+      body: `${actor.username} mencionou você em uma mensagem.`, href, io });
+  }
+  const parentAuthorId = saved.replyTo?.userId;
+  if (parentAuthorId && parentAuthorId !== actor.id && !mentionedIds.has(parentAuthorId)) {
+    await notifications.publish({ recipientId: parentAuthorId, actorId: actor.id, kind: 'CHAT_REPLY',
+      sourceKey: `reply:${saved.id}:${parentAuthorId}`, title: 'Responderam sua mensagem',
+      body: `${actor.username} respondeu sua mensagem.`, href, io });
+  }
+}
+
+async function publishProjectionStart(liveId, roomId, roomName, host) {
+  if (roomId === 'geral') return;
+  let cursor;
+  for (;;) {
+    const members = await prisma.roomMember.findMany({ where: { roomId }, orderBy: { id: 'asc' }, take: 100,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}), select: { id: true, userId: true } });
+    if (!members.length) return;
+    await notifications.publishBatch({ recipientIds: members.map(item => item.userId), actorId: host.id,
+      kind: 'PROJECTION_START', sourcePrefix: `projection:${liveId}`,
+      title: 'Projeção iniciada', body: `${host.username} iniciou uma projeção em ${roomName}.`,
+      href: `/index.html?sala=${encodeURIComponent(roomId)}#projections`, io });
+    if (members.length < 100) return;
+    cursor = members.at(-1).id;
+  }
 }
 
 const projectionSettles = new Map();
@@ -105,6 +180,10 @@ setInterval(() => {
   enquanto o servidor está ligado.
 */
 const liveStates = {};
+const voice = createVoiceService({ io, prisma, getActiveLive: roomId =>
+  liveStates[roomId]?.active ? liveStates[roomId].liveId : null });
+app.set('removeVoiceUser', voice.removeUser);
+app.set('removeInvisibleVoiceUser', voice.removeInvisible);
 const closingRooms = new Map();
 
 function currentLiveTime(liveState) {
@@ -142,7 +221,7 @@ async function endLiveSession(roomId) {
   const live = await prisma.liveSession.findFirst({
     where: { roomId, status: "ACTIVE" },
     orderBy: { startedAt: "desc" },
-    select: { id: true, currentTime: true },
+    select: { id: true, currentTime: true, hostId: true },
   });
   if (!live) {
     delete liveStates[roomId];
@@ -154,6 +233,9 @@ async function endLiveSession(roomId) {
     liveStates[roomId] ? currentLiveTime(liveStates[roomId]) : live.currentTime);
   delete liveStates[roomId];
   if (finished) io.to(roomId).emit("live-ended", { id: live.id });
+  if (finished) void voice.unlinkProjection(live.id, roomId)
+    .catch(error => console.error('Falha ao desvincular voz da projeção:', error));
+  if (finished) void gamification.syncAchievements(live.hostId, io).catch(error => console.error('Falha ao conferir conquistas:', error));
   return finished;
 }
 app.set("endLiveSession", endLiveSession);
@@ -505,8 +587,7 @@ io.use(async (socket, next) => {
       Se o usuário já recebeu hoje,
       nenhum XP adicional será concedido.
     */
-    const currentUser = await prisma.user.findUnique({ where: { id: existingUser.id },
-      select: { id: true, username: true, avatar: true, xp: true, level: true, isSiteAdmin: true } });
+    const currentUser = await loadSocketUser(prisma, existingUser.id);
     if (!currentUser) {
       return next(
         new Error(
@@ -519,20 +600,33 @@ io.use(async (socket, next) => {
 
     return next();
   } catch (error) {
-    console.error(
-      "Erro de autenticação do Socket.IO:",
-      error.message
-    );
-
-    return next(
-      new Error(
-        "Token inválido ou expirado."
-      )
-    );
+    if (error instanceof jwt.JsonWebTokenError) {
+      const authError = new Error("Token inválido ou expirado.");
+      authError.data = { code: 'AUTH_INVALID' };
+      return next(authError);
+    }
+    console.error("Erro ao conectar Socket.IO:", error);
+    const serverError = new Error("O chat está temporariamente indisponível. Tente novamente em instantes.");
+    serverError.data = { code: 'SERVER_UNAVAILABLE' };
+    return next(serverError);
   }
 });
 
 io.on("connection", (socket) => {
+  voice.attach(socket);
+  socket.join(`user:${socket.user.id}`);
+  socket.on('direct-typing', async ({ conversationId, typing } = {}) => {
+    if (typeof conversationId !== 'string' || conversationId.length > 60 || typeof typing !== 'boolean') return;
+    try {
+      const conversation = await direct.access(socket.user.id, conversationId);
+      if (!conversation || conversation.status !== 'ACTIVE' || await direct.blocked(conversation.userAId, conversation.userBId)) return;
+      const recipient = await prisma.user.findUnique({ where: { id: direct.otherId(conversation, socket.user.id) }, select: { id: true, directPrivacy: true } });
+      if (!recipient || !await direct.canRequest(socket.user.id, recipient)) return;
+      io.to(`user:${recipient.id}`).emit('direct-typing', {
+        conversationId, userId: socket.user.id, typing,
+      });
+    } catch (error) { console.error('Erro no indicador de digitação:', error); }
+  });
   console.log(
     `Usuário conectado: ${socket.user.username} (${socket.id})`
   );
@@ -572,6 +666,10 @@ io.on("connection", (socket) => {
 
         if (!existingRoom || (normalizedRoomId !== "geral" && !existingRoom.ownerId)) {
           socket.emit("chat-error", { message: "Esta sala não existe mais." });
+          return;
+        }
+        if (await moderation.activeSanction(normalizedRoomId, socket.user.id, ['SUSPEND'])) {
+          socket.emit('chat-error', { message: 'Sua participação nesta comunidade está suspensa temporariamente.' });
           return;
         }
 
@@ -803,11 +901,26 @@ io.on("connection", (socket) => {
 
           return;
         }
+        if (await moderation.activeSanction(normalizedRoomId, socket.user.id)) {
+          socket.emit('chat-error', { message: 'Você está temporariamente silenciado nesta comunidade.' });
+          return;
+        }
 
         const safeClientKey = typeof clientKey === 'string' && /^[a-f0-9-]{36}$/i.test(clientKey)
           ? `${socket.user.id}:${clientKey}` : null;
         if (safeClientKey && await prisma.message.findUnique({ where: { clientKey: safeClientKey }, select: { id: true } })) return;
+        const allowedMessage = antiSpam.allowMessage(socket.user.id, normalizedRoomId, normalizedMessage);
+        if (!allowedMessage.allowed) {
+          socket.emit('chat-error', { message: allowedMessage.message });
+          return;
+        }
         const safeReplyId = typeof replyToId === 'string' && replyToId.length < 100 ? replyToId : null;
+        const mentionNames = [...normalizedMessage.matchAll(/@\{([^}\n]{3,100})\}|@([\p{L}\p{N}_]{3,100})/gu)]
+          .map(match => (match[1] || match[2]).trim()).filter(Boolean);
+        if (mentionNames.length > 5) {
+          socket.emit('chat-error', { message: 'Use no máximo 5 menções por mensagem.' });
+          return;
+        }
 
         /*
           Salva a mensagem e concede XP
@@ -834,6 +947,16 @@ io.on("connection", (socket) => {
                   select: chatMessages.messageSelect,
                 });
 
+              const mentioned = mentionNames.length && chatMessages.messageSelect.mentions ? await transaction.roomMember.findMany({
+                where: { roomId: normalizedRoomId, userId: { not: socket.user.id },
+                  user: { OR: [...new Set(mentionNames)].map(username => ({ username: { equals: username, mode: 'insensitive' } })) } },
+                select: { userId: true, user: { select: { id: true, username: true } } }, take: 5,
+              }) : [];
+              if (mentioned.length) {
+                await transaction.chatMention.createMany({ data: mentioned.map(item => ({ messageId: savedMessage.id, userId: item.userId })) });
+                savedMessage.mentions = mentioned.map(item => ({ user: item.user }));
+              }
+
               const xpResult = await reputation.messageAward(transaction, socket.user.id,
                 savedMessage.id, normalizedMessage);
 
@@ -854,6 +977,8 @@ io.on("connection", (socket) => {
         if (result.xpResult.realActivity) socket.realActivityAt = Date.now();
 
         emitXpToUser(socket.user.id, result.xpResult, "MESSAGE_SENT");
+        if (result.xpResult.gainedXp) void gamification.syncAchievements(socket.user.id, io)
+          .catch(error => console.error('Falha ao conferir conquistas:', error));
 
         const messageData = chatMessages.format(result.savedMessage);
         messageData.user.level = result.xpResult.user.level;
@@ -865,6 +990,11 @@ io.on("connection", (socket) => {
           "chat-message",
           messageData
         );
+        for (const mention of messageData.mentions || []) io.to(`user:${mention.id}`).emit('chat-mention', {
+          roomId: normalizedRoomId, messageId: messageData.id, from: socket.user.username,
+        });
+        void publishChatNotifications(result.savedMessage, normalizedRoomId, socket.user)
+          .catch(error => console.error('Erro ao notificar mensagem do chat:', error));
       } catch (error) {
         if (error?.code === 'P2002') return;
         console.error(
@@ -886,10 +1016,13 @@ io.on("connection", (socket) => {
     try {
       const id = normalizeRoomId(roomId);
       if (!socket.rooms.has(id) || !['AUDIO', 'STICKER'].includes(type)) throw new Error('Entre na sala para enviar esta mensagem.');
+      if (await moderation.activeSanction(id, socket.user.id)) throw new Error('Você está temporariamente silenciado nesta comunidade.');
       const safeKey = typeof clientKey === 'string' && /^[a-f0-9-]{36}$/i.test(clientKey) ? `${socket.user.id}:${clientKey}` : null;
       if (!safeKey) throw new Error('Identificador de mensagem inválido.');
       const existing = await prisma.message.findUnique({ where: { clientKey: safeKey }, select: { id: true } });
       if (existing) return callback?.({ success: true, id: existing.id, duplicate: true });
+      const allowedMedia = antiSpam.allowMessage(socket.user.id, id, `${type}:${type === 'AUDIO' ? mediaId : stickerId}`);
+      if (!allowedMedia.allowed) throw new Error(allowedMedia.message);
       let assetId;
       if (type === 'AUDIO') {
         const asset = await prisma.chatAsset.findFirst({ where: { id: mediaId, kind: 'AUDIO', ownerId: socket.user.id,
@@ -923,6 +1056,8 @@ io.on("connection", (socket) => {
         return row;
       });
       io.to(id).emit('chat-message', chatMessages.format(saved));
+      void publishChatNotifications(saved, id, socket.user)
+        .catch(error => console.error('Erro ao notificar resposta do chat:', error));
       callback?.({ success: true, id: saved.id });
     } catch (error) {
       if (error?.code === 'P2002') return callback?.({ success: true, duplicate: true });
@@ -1021,6 +1156,7 @@ io.on("connection", (socket) => {
               id: true,
               roomId: true,
               hostId: true,
+              roomName: true,
               startedAt: true,
             },
           });
@@ -1063,6 +1199,8 @@ io.on("connection", (socket) => {
           "live-started",
           liveData
         );
+        void publishProjectionStart(live.id, normalizedRoomId, live.roomName, socket.user)
+          .catch(error => console.error('Erro ao notificar projeção:', error));
 
         return callback?.({
           success: true,
@@ -1565,7 +1703,8 @@ io.on("connection", (socket) => {
   socket.on(
     "disconnecting",
     () => {
-      const roomIds = [...socket.rooms].filter((roomId) => roomId !== socket.id);
+      const roomIds = [...socket.rooms].filter((roomId) => roomId !== socket.id &&
+        !roomId.startsWith('user:') && !roomId.startsWith('voice:'));
       for (const roomId of roomIds) if (liveStates[roomId]) settleProjection(roomId)
         .catch(error => console.error('Erro ao registrar saída da projeção:', error));
       setImmediate(() => roomIds.forEach((roomId) => {
@@ -1611,6 +1750,15 @@ const PORT =
   process.env.PORT || 3000;
 
 async function startServer() {
+  try {
+    await prisma.chatMention.count();
+  } catch (error) {
+    if (error.code === 'P2021') {
+      // Mantém o histórico e o envio de mensagens disponíveis até a migração ser aplicada.
+      delete chatMessages.messageSelect.mentions;
+      console.warn('Migração de menções pendente; chat iniciado sem notificações de menção.');
+    } else console.error('Erro ao verificar migração de menções:', error);
+  }
   try {
     const orphaned = await prisma.liveSession.findMany({ where: { status: 'ACTIVE' }, select: { roomId: true } });
     for (const live of orphaned) await endLiveSession(live.roomId);

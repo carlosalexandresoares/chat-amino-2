@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Eventos | Chat Amino 2</title>
+  <link rel="stylesheet" href="/style/events.css?v=3">
+  <link rel="stylesheet" href="/style/mobile-app.css?v=3">
+  <link rel="stylesheet" href="/style/notification-badge.css?v=1">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/script/notification-badge.js?v=2" defer></script>
+  <script type="module" src="/script/events.js?v=4"></script>
+</head>
+<body class="events-page-body">
+  <header class="events-topbar"><a href="/index.html" class="events-brand">✳ Chat Amino <span>2</span></a><nav aria-label="Acesso rápido"><a href="/feed.html">Feed</a><a href="/gamification.html">Conquistas</a><a href="/notifications.html" class="notification-link" aria-label="Notificações">🔔 <span class="notification-badge hidden">0</span></a></nav></header>
+  <main class="events-page">
+    <section class="events-hero"><span>ENCONTROS DA COMUNIDADE</span><h1>Próximos eventos</h1><p>Encontre projeções, sessões de anime, campeonatos, quizzes e encontros marcados nas suas comunidades.</p></section>
+    <p id="events-status" role="status" aria-live="polite"></p>
+    <div class="events-toolbar">
+      <label for="events-room">Comunidade<select id="events-room"><option value="">Todas as minhas comunidades</option></select></label>
+      <button id="events-create-toggle" type="button" class="hidden">Criar evento</button>
+    </div>
+    <form id="events-create-form" class="events-form hidden">
+      <h2>Organizar evento</h2>
+      <div class="events-form-grid">
+        <label>Comunidade<select name="roomId" id="event-room" required></select></label>
+        <label>Tipo<select name="type" required><option value="PROJECTION">Projeção</option><option value="ANIME">Sessão de anime</option><option value="TOURNAMENT">Campeonato</option><option value="QUIZ">Quiz</option><option value="MEETUP">Encontro</option><option value="CUSTOM">Personalizado</option></select></label>
+        <label>Organizador<select name="organizerId" id="event-organizer" required></select></label>
+        <label>Título<input name="title" minlength="3" maxlength="120" required></label>
+        <label>Data e horário<input name="startsAt" type="datetime-local" required></label>
+        <label>Fuso horário<select name="timeZone" id="event-timezone" required></select></label>
+        <label>Capacidade máxima <small>(opcional)</small><input name="capacity" type="number" min="1" max="10000" placeholder="Sem limite"></label>
+        <label class="wide">Descrição<textarea name="description" maxlength="2000" rows="4" placeholder="O que vai acontecer?"></textarea></label>
+        <label class="wide">URL da capa <small>(opcional, HTTPS)</small><input name="coverUrl" type="url" placeholder="https://..."></label>
+      </div>
+      <p>O organizador precisa participar da comunidade. As inscrições ficam abertas até o início.</p>
+      <button type="submit">Publicar evento</button>
+    </form>
+    <div id="events-list" class="events-list"></div>
+    <button id="events-more" type="button" class="events-more hidden">Carregar mais eventos</button>
+  </main>
+  <dialog id="event-dialog" class="event-dialog" aria-labelledby="event-dialog-title">
+    <div class="event-dialog-heading"><h2 id="event-dialog-title">Evento</h2><button id="event-dialog-close" type="button" aria-label="Fechar">×</button></div>
+    <div id="event-dialog-content"></div>
+  </dialog>
+  <nav class="mobile-bottom-nav" aria-label="Navegação principal">
+    <a href="/index.html"><span aria-hidden="true">▤</span><small>Chats</small></a>
+    <a href="/index.html#communities"><span aria-hidden="true">◎</span><small>Comunidades</small></a>
+    <a href="/index.html?sala=geral#projections"><span aria-hidden="true">▣</span><small>Projeções</small></a>
+    <a href="/perfil.html"><span aria-hidden="true">◉</span><small>Perfil</small></a>
+  </nav>
+</body>
+</html>

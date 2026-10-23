@@ -9,6 +9,11 @@ let revision = 0;
 async function request(path, options = {}) {
   const response = await fetch(path, { ...options, headers: { Authorization: `Bearer ${token}`, ...options.headers } });
   const data = await response.json();
+  if (response.status === 401) {
+    localStorage.removeItem('authToken');
+    location.replace('/login.html');
+    throw new Error('Sua sessão expirou. Entre novamente.');
+  }
   if (!response.ok) throw new Error(data.message || 'Não foi possível completar a ação.');
   return data;
 }
@@ -38,6 +43,38 @@ function row(label, detail, href, onDelete, deletable = true) {
   return item;
 }
 
+function moderationRow(item) {
+  const card = document.createElement('article'); card.className = 'admin-row';
+  const info = document.createElement('div'); info.className = 'admin-row-info';
+  const title = document.createElement('strong');
+  title.textContent = tab === 'reports' ? `${item.kind} · ${item.reason} · ${item.room?.name || 'Plataforma'}` :
+    `${item.action} · ${item.roomId || 'Plataforma'}`;
+  const detail = document.createElement('small');
+  detail.textContent = tab === 'reports' ?
+    `${item.reporter?.username || 'Conta excluída'} · ${item.evidence || item.targetId} · ${item.details || ''}` :
+    `${item.actor?.username || 'Conta excluída'} · ${item.targetUser?.username || item.targetId || ''} · ${item.reason || ''}`;
+  info.append(title, detail); card.append(info);
+  if (tab === 'reports') {
+    const actions = document.createElement('div'); actions.className = 'admin-row-actions';
+    for (const [label, status] of [['Resolver', 'RESOLVED'], ['Descartar', 'DISMISSED']]) {
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = label;
+      button.addEventListener('click', async () => {
+        const note = prompt('Conclusão para auditoria (mínimo 3 caracteres):');
+        if (!note) return;
+        button.disabled = true;
+        try {
+          await request(`/api/moderation/reports/${encodeURIComponent(item.id)}`, { method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status, note }) });
+          await load(true); $('admin-status').textContent = 'Denúncia concluída.';
+        } catch (error) { $('admin-status').textContent = error.message; button.disabled = false; }
+      });
+      actions.append(button);
+    }
+    card.append(actions);
+  }
+  return card;
+}
+
 async function load(reset = false) {
   if (reset) { revision += 1; page = 1; $('admin-list').replaceChildren(); }
   const currentRevision = revision;
@@ -46,8 +83,18 @@ async function load(reset = false) {
   $('admin-more').disabled = true;
   const query = new URLSearchParams({ page: String(currentPage), search });
   try {
-    const data = await request(`/api/admin/${currentTab}?${query}`);
+    const moderationTab = currentTab === 'reports' || currentTab === 'actions';
+    const data = await request(moderationTab ? `/api/moderation/${currentTab}?${query}` :
+      `/api/admin/${currentTab}?${query}`);
     if (currentRevision !== revision) return;
+    if (moderationTab) {
+      $('admin-count').textContent = currentTab === 'reports' ? 'Denúncias abertas' : 'Ações recentes';
+      if (!data[currentTab].length && currentPage === 1) $('admin-list').textContent = 'Nenhum registro encontrado.';
+      for (const item of data[currentTab]) $('admin-list').append(moderationRow(item));
+      $('admin-more').classList.toggle('hidden', !data.hasMore);
+      page = currentPage + 1;
+      return;
+    }
     $('admin-count').textContent = `${data.total} ${tab === 'rooms' ? 'chat(s)' : 'perfil(is)'} encontrado(s)`;
     if (!data.total) $('admin-list').textContent = 'Nenhum resultado encontrado.';
     for (const item of data[tab]) {
@@ -76,6 +123,7 @@ else request('/api/auth/me').then(({ user }) => {
     tab = button.dataset.adminTab;
     page = 1; search = '';
     $('admin-search').value = '';
+    $('admin-search-form').classList.toggle('hidden', tab === 'reports' || tab === 'actions');
     $('admin-search').placeholder = tab === 'rooms' ? 'Buscar chat pelo nome' : 'Buscar perfil por nome ou e-mail';
     document.querySelectorAll('[data-admin-tab]').forEach(item => item.classList.toggle('active', item === button));
     $('admin-status').textContent = '';

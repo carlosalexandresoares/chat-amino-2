@@ -1,0 +1,3 @@
+.notification-link{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:5px;color:#edddff;text-decoration:none}
+.notification-badge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 4px;border-radius:10px;background:#d16bb9;color:#1e1027;font-size:10px;font-weight:900;line-height:1}
+.notification-badge.hidden{display:none}

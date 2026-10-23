@@ -46,11 +46,6 @@ export async function loadAuthenticatedUser() {
     state.currentUser =
       data.user;
 
-    console.log(
-      "Usuário autenticado:",
-      state.currentUser
-    );
-
     state.socket.connect();
   } catch (error) {
     console.error(

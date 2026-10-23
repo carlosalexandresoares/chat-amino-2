@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Notificações | Chat Amino 2</title>
+  <link rel="stylesheet" href="/style/notifications.css?v=1">
+  <link rel="stylesheet" href="/style/notification-badge.css?v=1">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/script/notification-badge.js?v=2" defer></script>
+  <script type="module" src="/script/notifications.js?v=2"></script>
+</head>
+<body>
+  <main class="notifications-shell">
+    <header class="notifications-header">
+      <a href="/index.html" class="back-link">← Chats</a>
+      <div><span class="eyebrow">CHAT AMINO 2</span><h1>Notificações</h1></div>
+      <a href="/perfil.html" class="back-link">Perfil</a>
+    </header>
+    <div class="notifications-toolbar">
+      <nav id="notification-filters" class="notification-filters" aria-label="Filtrar notificações">
+        <button type="button" data-category="" class="active" aria-pressed="true">Todas</button>
+        <button type="button" data-category="SOCIAL" aria-pressed="false">Social</button>
+        <button type="button" data-category="CHAT" aria-pressed="false">Chat</button>
+        <button type="button" data-category="DIRECT" aria-pressed="false">Privadas</button>
+        <button type="button" data-category="PROJECTION" aria-pressed="false">Projeções</button>
+        <button type="button" data-category="EVENT" aria-pressed="false">Eventos</button>
+        <button type="button" data-category="ACHIEVEMENT" aria-pressed="false">Conquistas</button>
+        <button type="button" data-category="ADMIN" aria-pressed="false">Avisos</button>
+      </nav>
+      <div class="notification-actions"><label><input id="unread-only" type="checkbox"> Não lidas</label><button id="mark-all-read" type="button">Marcar todas como lidas</button></div>
+    </div>
+    <p id="notification-status" role="status"></p>
+    <section id="notification-list" class="notification-list" aria-label="Lista de notificações"></section>
+    <button id="load-more-notifications" type="button" class="load-more hidden">Carregar mais</button>
+    <details class="notification-settings">
+      <summary>Preferências e dispositivos</summary>
+      <p>Escolha os avisos que deseja receber. Ative Push em cada categoria após inscrever este dispositivo.</p>
+      <div id="notification-preferences" class="preference-list"></div>
+      <div class="push-controls"><button id="enable-push" type="button">Ativar notificações neste dispositivo</button><button id="disable-push" type="button" class="hidden">Desativar neste dispositivo</button></div>
+      <p id="push-status" role="status"></p>
+      <h2>Dispositivos inscritos</h2>
+      <div id="push-devices" class="device-list"></div>
+    </details>
+  </main>
+  <nav class="notification-bottom-nav" aria-label="Navegação principal">
+    <a href="/index.html">▤<small>Chats</small></a><a href="/index.html#communities">◎<small>Comunidades</small></a>
+    <a href="/index.html?sala=geral#projections">▣<small>Projeções</small></a><a href="/perfil.html">◉<small>Perfil</small></a>
+  </nav>
+</body>
+</html>

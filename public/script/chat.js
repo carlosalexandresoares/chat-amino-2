@@ -1,6 +1,6 @@
 import state from "./state.js";
 import dom from "./dom.js";
-import { initializeRichChat, enhanceMessage, replyToId, clearReply } from './chat-rich.js?v=6';
+import { initializeRichChat, enhanceMessage, replyToId, clearReply, navigateTo } from './chat-rich.js?v=10';
 
 /*
   Fila das notificações de XP.
@@ -497,8 +497,18 @@ function addMessage(messageData, { prepend = false } = {}) {
     "message-text"
   );
 
-  textElement.textContent =
-    messageData.message;
+  const mentionMap = new Map((messageData.mentions || []).map(user => [user.username.toLocaleLowerCase(), user]));
+  const mentionPattern = /@(?:\{([^}\n]+)\}|([\p{L}\p{N}_]+))/gu;
+  let offset = 0;
+  for (const match of messageData.message.matchAll(mentionPattern)) {
+    const user = mentionMap.get((match[1] || match[2]).toLocaleLowerCase());
+    if (!user) continue;
+    textElement.append(document.createTextNode(messageData.message.slice(offset, match.index)));
+    const link = document.createElement('a'); link.className = 'chat-mention';
+    link.href = `/perfil.html?id=${encodeURIComponent(user.id)}`; link.textContent = match[0];
+    textElement.append(link); offset = match.index + match[0].length;
+  }
+  textElement.append(document.createTextNode(messageData.message.slice(offset)));
 
   messageElement.append(
     headerElement,
@@ -538,6 +548,8 @@ export function initializeChat() {
       dom.messages.innerHTML = "";
 
       history.forEach(addMessage);
+      const messageId = new URLSearchParams(location.search).get('mensagem');
+      if (messageId && state.roomId) void navigateTo(messageId);
     }
   );
 
@@ -545,6 +557,16 @@ export function initializeChat() {
     "chat-message",
     addMessage
   );
+  state.socket.on('chat-mention', payload => {
+    if (payload.roomId !== state.roomId) return;
+    const notice = document.createElement('button'); notice.type = 'button'; notice.className = 'mention-notice';
+    notice.textContent = `${payload.from} mencionou você. Toque para ver.`;
+    notice.addEventListener('click', () => {
+      dom.messages.querySelector(`[data-message-id="${CSS.escape(payload.messageId)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      notice.remove();
+    });
+    document.body.append(notice); setTimeout(() => notice.remove(), 8000);
+  });
 
   /*
     Recebe qualquer recompensa de XP.

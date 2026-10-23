@@ -1,7 +1,7 @@
 import state from "./state.js";
 import dom from "./dom.js";
 import { initializeProjectionUi, syncProjectionUi, onProjectionEnded } from './projection-ui.js';
-import { syncMiniPlayer, projectionFinished } from './mini-player.js?v=7';
+import { syncMiniPlayer, projectionFinished } from './mini-player.js?v=8';
 
 import {
   showElement,

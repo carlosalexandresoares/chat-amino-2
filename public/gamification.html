@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Conquistas e loja | Chat Amino 2</title>
+  <link rel="stylesheet" href="/style/gamification.css?v=2">
+  <link rel="stylesheet" href="/style/mobile-app.css?v=3">
+  <link rel="stylesheet" href="/style/notification-badge.css?v=1">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/script/notification-badge.js?v=2" defer></script>
+  <script type="module" src="/script/gamification.js?v=1"></script>
+</head>
+<body class="game-page-body">
+  <header class="game-topbar"><a class="game-brand" href="/index.html">✳ Chat Amino <span>2</span></a><nav aria-label="Acesso rápido"><a href="/feed.html">Feed</a><a href="/perfil.html">Meu perfil</a><a href="/notifications.html" class="notification-link" aria-label="Notificações">🔔 <span class="notification-badge hidden">0</span></a></nav></header>
+  <main class="game-page">
+    <div class="game-hero"><div><span class="game-kicker">SUA JORNADA</span><h1>Conquistas e recompensas</h1><p>Participe das comunidades no seu ritmo. Colete moedas em missões e conquistas para personalizar seu perfil.</p></div><div class="game-balance"><span>Saldo</span><strong id="coin-balance">—</strong><small>Moedas virtuais · sem valor monetário</small></div></div>
+    <p id="game-status" role="status" aria-live="polite">Carregando sua jornada...</p>
+    <nav class="game-section-nav" aria-label="Seções"><a href="#missions">Missões</a><a href="#achievements">Conquistas</a><a href="#shop">Loja</a><a href="#inventory">Inventário</a><a href="#history">Histórico</a></nav>
+    <section id="missions" class="game-section"><div class="game-section-heading"><div><span>PROGRESSO</span><h2>Missões</h2></div><p>As missões mudam diariamente e semanalmente no horário de Brasília.</p></div><div id="mission-list" class="game-grid"></div></section>
+    <section id="achievements" class="game-section"><div class="game-section-heading"><div><span>GALERIA</span><h2>Conquistas e medalhas</h2></div><p>Suas medalhas continuam no perfil mesmo depois de coletar a recompensa.</p></div><div id="achievement-list" class="game-grid"></div></section>
+    <section id="shop" class="game-section"><div class="game-section-heading"><div><span>PERSONALIZE</span><h2>Loja de cosméticos</h2></div><p>As compras são feitas só com moedas virtuais. Cada item pode ser adquirido uma vez.</p></div><div id="shop-list" class="game-grid"></div></section>
+    <section id="inventory" class="game-section"><div class="game-section-heading"><div><span>SEUS ITENS</span><h2>Inventário</h2></div><p>Equipe uma moldura, um título e um tema de perfil por vez.</p></div><div id="inventory-list" class="game-grid"></div></section>
+    <section id="history" class="game-section"><div class="game-section-heading"><div><span>TRANSPARÊNCIA</span><h2>Histórico de moedas</h2></div><p>Créditos e compras registrados na sua conta.</p></div><div id="coin-history" class="game-history"></div><button id="history-more" type="button" class="game-more hidden">Carregar mais transações</button></section>
+  </main>
+  <nav class="mobile-bottom-nav" aria-label="Navegação principal">
+    <a href="/index.html"><span aria-hidden="true">▤</span><small>Chats</small></a>
+    <a href="/index.html#communities"><span aria-hidden="true">◎</span><small>Comunidades</small></a>
+    <a href="/index.html?sala=geral#projections"><span aria-hidden="true">▣</span><small>Projeções</small></a>
+    <a href="/perfil.html"><span aria-hidden="true">◉</span><small>Perfil</small></a>
+  </nav>
+</body>
+</html>

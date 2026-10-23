@@ -11,10 +11,12 @@
 
   <title>Meu perfil</title>
 
-  <link rel="stylesheet" href="/style/profile.css?v=5">
-  <link rel="stylesheet" href="/style/mobile-app.css?v=1">
+  <link rel="stylesheet" href="/style/profile.css?v=9">
+  <link rel="stylesheet" href="/style/mobile-app.css?v=3">
+  <link rel="stylesheet" href="/style/notification-badge.css?v=1">
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/script/perfil.js?v=7" defer></script>
+  <script src="/script/notification-badge.js?v=2" defer></script>
+  <script src="/script/perfil.js?v=14" defer></script>
 </head>
 
 <body>
@@ -23,6 +25,7 @@
     <section class="profile-card">
       <nav class="profile-nav" aria-label="Navegação do perfil">
         <a href="/index.html">← Voltar aos chats</a>
+        <a href="/notifications.html" class="notification-link" aria-label="Notificações">🔔 <span class="notification-badge hidden">0</span></a>
         <a href="/admin.html" id="site-admin-link" class="hidden">Administração</a>
         <span>✳ CHAT AMINO 2</span>
       </nav>
@@ -52,9 +55,16 @@
             <span id="profile-level">LV 1</span>
           </div>
           <span id="profile-title" class="ninja-title"></span>
+          <span id="profile-special-title" class="profile-special-title hidden"></span>
+          <span id="profile-presence" class="profile-presence"></span>
           <a href="/editar-perfil.html" class="edit-profile-button hidden" id="edit-profile-button">Editar perfil</a>
           <button type="button" id="follow-button" class="follow-button hidden">Seguir</button>
+          <a id="direct-message-link" class="edit-profile-button hidden" href="/direct.html">Mensagem</a>
+          <button type="button" id="profile-block-button" class="follow-button hidden">Bloquear</button>
+          <button type="button" id="profile-report-button" class="follow-button hidden">Denunciar</button>
         </div>
+
+        <div class="profile-medals"><div id="profile-medal-list" aria-label="Medalhas conquistadas"></div><a href="/gamification.html">Conquistas, missões e loja ↗</a></div>
 
         <div class="profile-stats">
           <div><strong id="profile-posts-count">0</strong><span>Posts</span></div>
@@ -66,6 +76,20 @@
           <span class="profile-section-label">SOBRE MIM</span>
           <p id="profile-bio">Este usuário ainda não adicionou uma biografia.</p>
         </div>
+
+        <section id="profile-privacy" class="profile-bio-card hidden" aria-label="Privacidade e conta">
+          <span class="profile-section-label">PRIVACIDADE E CONTA</span>
+          <label for="profile-visibility">Visibilidade do perfil</label>
+          <select id="profile-visibility"><option value="PUBLIC">Público</option><option value="PRIVATE">Privado</option></select>
+          <button type="button" id="profile-visibility-save" class="follow-button">Salvar privacidade</button>
+          <p>Um perfil privado só pode ser aberto por você e pela administração. Sua identidade em chats compartilhados continua visível.</p>
+          <button type="button" id="profile-delete-open" class="follow-button">Excluir minha conta</button>
+          <p id="profile-admin-delete-note" class="hidden">Para excluir uma conta administradora, solicite primeiro a transferência da administração geral.</p>
+          <p id="profile-privacy-status" role="status"></p>
+        </section>
+
+        <dialog id="profile-report-dialog" class="profile-dialog"><form method="dialog"><h2>Denunciar perfil</h2><label>Motivo<select id="profile-report-reason"><option value="SPAM">Spam</option><option value="HARASSMENT">Assédio</option><option value="INAPPROPRIATE">Conteúdo inadequado</option><option value="SCAM">Golpe</option><option value="OTHER">Outro</option></select></label><label>Descrição opcional<textarea id="profile-report-details" maxlength="500"></textarea></label><p id="profile-report-status" role="status"></p><button type="button" id="profile-report-send">Enviar denúncia</button><button type="submit">Cancelar</button></form></dialog>
+        <dialog id="profile-delete-dialog" class="profile-dialog"><form method="dialog"><h2>Excluir minha conta</h2><p>Posts, mensagens e mídias serão excluídos. Comunidades sem coadministrador também serão excluídas. Esta ação não pode ser desfeita.</p><label>Confirme com sua senha<input type="password" id="profile-delete-password" autocomplete="current-password"></label><p id="profile-delete-status" role="status"></p><button type="button" id="profile-delete-confirm">Excluir definitivamente</button><button type="submit">Cancelar</button></form></dialog>
 
         <div class="xp-area">
           <div class="xp-header">
@@ -116,6 +140,12 @@
         </section>
 
         <div class="profile-actions">
+          <a href="/gamification.html">Conquistas e loja</a>
+          <a href="/events.html">Eventos</a>
+          <a href="/feed.html">Feed social</a>
+          <a href="/direct.html">Mensagens privadas</a>
+          <a href="/rules.html">Regras</a>
+          <a href="/privacy.html">Privacidade</a>
           <a href="/index.html">
             Ver chats
           </a>

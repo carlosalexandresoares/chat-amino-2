@@ -12,19 +12,24 @@
 
   <link
     rel="stylesheet"
-    href="style/style.css?v=21"
+    href="style/style.css?v=23"
   />
+  <link rel="stylesheet" href="/style/notification-badge.css?v=1">
+  <link rel="stylesheet" href="/style/community.css?v=4">
+  <link rel="stylesheet" href="/style/voice.css?v=1">
+  <link rel="stylesheet" href="/style/moderation.css?v=1">
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/script/notification-badge.js?v=2" defer></script>
 
 
   <script
     type="module"
-    src="script/script.js?v=21"
+    src="script/script.js?v=33"
   ></script>
 </head>
 
-<body class="rooms-mode">
+<body class="rooms-mode chat-shell">
   <!-- =========================================
        TELA DE SALAS PÚBLICAS
   ========================================== -->
@@ -33,6 +38,7 @@
       <nav class="rooms-topbar" aria-label="Navegação principal">
         <a class="rooms-brand" href="/index.html"><span class="brand-mark">✳</span> Chat Amino <span class="brand-version">2</span></a>
         <a class="rooms-profile-link" href="/perfil.html">Meu perfil <span aria-hidden="true">↗</span></a>
+        <a class="rooms-profile-link notification-link" href="/notifications.html" aria-label="Notificações">🔔 <span class="notification-badge hidden">0</span></a>
         <a class="rooms-profile-link site-admin-link hidden" href="/admin.html">Administração</a>
       </nav>
 
@@ -62,14 +68,28 @@
         <input id="room-name" name="name" required minlength="3" maxlength="50" placeholder="Ex.: Clube dos criativos" />
         <label for="room-description">Descrição</label>
         <textarea id="room-description" name="description" maxlength="200" placeholder="Qual é a ideia deste espaço?"></textarea>
+        <label for="room-topic">Categoria</label>
+        <select id="room-topic" name="topic"></select>
         <label for="room-banner">Imagem de capa <span class="optional">(opcional)</span></label>
         <input id="room-banner" name="banner" type="url" placeholder="https://..." />
         <p id="create-room-error" role="alert"></p>
         <div class="create-room-actions"><button type="submit">Criar chat <span aria-hidden="true">↗</span></button></div>
       </form>
 
-      <div class="rooms-section-title" id="communities"><div><span class="section-kicker">EXPLORE</span><h2>Chats públicos</h2></div><p id="rooms-total">Carregando...</p></div>
+      <div class="rooms-section-title" id="communities"><div><span class="section-kicker">EXPLORE</span><h2>Comunidades</h2></div><p id="rooms-total">Carregando...</p></div>
+      <a class="direct-entry" href="/direct.html">✉ Mensagens privadas</a>
+      <a class="direct-entry" href="/feed.html">✧ Feed social</a>
+      <a class="direct-entry" href="/events.html">◷ Próximos eventos</a>
+      <form id="discover-form" class="discover-controls" role="search">
+        <label>Buscar<input id="discover-search" type="search" maxlength="80" placeholder="Nome ou descrição"></label>
+        <label>Categoria<select id="discover-topic"></select></label>
+        <label>Ordenar<select id="discover-sort"><option value="popular">Populares</option><option value="forYou">Para você</option><option value="recent">Recentes</option><option value="growing">Em crescimento</option><option value="activity">Mais ativas</option></select></label>
+        <label class="discover-favorites"><input id="discover-favorites" type="checkbox"> Favoritas</label>
+        <button type="submit">Explorar</button>
+      </form>
+      <details class="discover-interests"><summary>Escolher meus interesses</summary><p>Selecione categorias para encontrar comunidades em “Para você”.</p><form id="discover-interests-form"><div id="discover-interests-options"></div><button type="submit">Salvar interesses</button><span id="discover-interests-status" role="status"></span></form></details>
       <div class="public-rooms-grid" id="public-rooms-grid"><p class="rooms-loading">Carregando chats...</p></div>
+      <button id="discover-more" type="button" class="discover-more hidden">Carregar mais</button>
     </div>
     <nav class="mobile-bottom-nav rooms-bottom-nav" aria-label="Navegação principal">
       <a href="/index.html" aria-current="page"><span aria-hidden="true">▤</span><small>Chats</small></a>
@@ -100,23 +120,34 @@
       </div>
 
       <div class="chat-header-actions">
+        <a href="/notifications.html" class="manage-room-button notification-link" aria-label="Notificações">🔔 <span class="notification-badge hidden">0</span></a>
+        <a href="/direct.html" class="manage-room-button">Mensagens privadas</a>
+        <a href="/feed.html" class="manage-room-button">Feed social</a>
+        <a href="/events.html" class="manage-room-button room-events-link">Eventos</a>
         <a href="/perfil.html" class="manage-room-button">Meu perfil</a>
         <a href="/admin.html" class="manage-room-button site-admin-link hidden">Administração</a>
         <button type="button" id="wallpaper-open" class="manage-room-button" aria-label="Personalizar fundo do chat">▦ Fundo</button>
         <button type="button" id="manage-room" class="manage-room-button hidden">⚙ Gerenciar chat</button>
+        <button type="button" class="manage-room-button" data-report-room>Denunciar comunidade</button>
         <button type="button" id="leave-room" class="leave-room-button">Todos os chats</button>
       </div>
       <div class="mobile-header-actions">
         <button type="button" id="room-options-toggle" aria-label="Opções da sala" aria-expanded="false" aria-controls="room-options-menu">⋮</button>
         <div id="room-options-menu" class="room-options-menu hidden" role="menu">
+          <a href="/notifications.html" class="notification-link" role="menuitem">🔔 Notificações <span class="notification-badge hidden">0</span></a>
           <button type="button" data-room-action="wallpaper-open" role="menuitem">Personalizar fundo</button>
           <button type="button" data-room-action="manage-room" class="hidden" role="menuitem">Gerenciar chat</button>
+          <button type="button" data-report-room role="menuitem">Denunciar comunidade</button>
           <a href="/admin.html" class="site-admin-link hidden" role="menuitem">Administração</a>
+          <a href="/direct.html" role="menuitem">Mensagens privadas</a>
+          <a href="/feed.html" role="menuitem">Feed social</a>
+          <a href="/events.html" class="room-events-link" role="menuitem">Eventos da comunidade</a>
           <button type="button" data-room-action="room-info-open" role="menuitem">Configurações da sala</button>
           <button type="button" data-room-action="leave-room" role="menuitem">Sair do chat</button>
         </div>
       </div>
     </header>
+    <p id="chat-connection-status" class="chat-connection-status hidden" role="status" aria-live="polite"></p>
     <dialog id="room-info-dialog" class="room-info-dialog" aria-labelledby="room-info-title">
       <div class="room-info-heading"><h2 id="room-info-title">Informações da sala</h2><button type="button" id="room-info-close" aria-label="Fechar">×</button></div>
       <p id="room-info-description"></p>
@@ -130,12 +161,22 @@
       <form id="manage-room-form" class="manage-room-form">
         <label for="manage-room-name">Nome do chat</label><input id="manage-room-name" name="name" minlength="3" maxlength="50" required />
         <label for="manage-room-description">Descrição</label><textarea id="manage-room-description" name="description" maxlength="200"></textarea>
+        <label for="manage-room-topic">Categoria</label><select id="manage-room-topic" name="topic"></select>
         <label for="manage-room-banner">URL da capa</label><input id="manage-room-banner" name="banner" type="url" placeholder="https://..." />
         <button type="submit">Salvar alterações</button>
       </form>
       <div id="manage-members-section"><h3>Participantes e equipe</h3><p class="manage-help">O administrador principal escolhe coadmins. Administradores e coadmins podem remover membros; só o administrador principal pode remover coadmins.</p><div id="manage-room-members"></div></div>
+      <section id="manage-moderation-section" class="manage-moderation-section" aria-label="Moderação da comunidade">
+        <h3>Moderação</h3>
+        <div class="moderation-tabs"><button type="button" data-moderation-tab="reports" aria-pressed="true">Denúncias</button><button type="button" data-moderation-tab="sanctions" aria-pressed="false">Restrições</button><button type="button" data-moderation-tab="actions" aria-pressed="false">Auditoria</button></div>
+        <div id="moderation-list"></div><button type="button" id="moderation-more" class="hidden">Carregar mais</button>
+        <form id="moderation-action-form"><h4>Aplicar ação</h4><label>Participante<select id="moderation-user-id" required><option value="">Escolha um participante</option></select></label><label>Ação<select id="moderation-action"><option value="WARN">Advertir</option><option value="MUTE">Silenciar temporariamente</option><option value="SUSPEND">Suspender temporariamente</option><option value="REVOKE_MUTE">Remover silêncio</option><option value="REVOKE_SUSPEND">Remover suspensão</option></select></label><label>Duração em minutos<input id="moderation-duration" type="number" min="5" max="10080" value="60"></label><label>Motivo<textarea id="moderation-reason" minlength="3" maxlength="500" required></textarea></label><button type="submit">Aplicar ação</button></form>
+        <p id="moderation-status" role="status"></p>
+      </section>
       <p id="manage-room-message" role="status"></p>
     </section>
+
+    <dialog id="content-report-dialog" class="content-report-dialog"><form method="dialog"><h2>Denunciar conteúdo</h2><p id="content-report-target"></p><label>Motivo<select id="content-report-reason"><option value="SPAM">Spam</option><option value="HARASSMENT">Assédio</option><option value="INAPPROPRIATE">Conteúdo inadequado</option><option value="SCAM">Golpe</option><option value="OTHER">Outro</option></select></label><label>Descrição opcional<textarea id="content-report-details" maxlength="500"></textarea></label><p id="content-report-status" role="status"></p><button type="button" id="content-report-send">Enviar denúncia</button><button type="submit">Cancelar</button></form></dialog>
 
     <div class="container">
       <aside class="container-lateral">
@@ -151,6 +192,26 @@
       </aside>
 
       <main class="chat-area">
+        <section id="community-tools" class="community-tools" aria-label="Recursos da comunidade">
+          <div class="community-tool-tabs"><button type="button" data-community-tab="pins">📌 Fixadas</button><button type="button" data-community-tab="polls">◉ Enquetes</button><button type="button" data-community-tab="search">⌕ Buscar</button></div>
+          <div id="community-tool-panel" class="community-tool-panel hidden">
+            <section id="community-pins" class="community-tool-section hidden"><h2>Mensagens fixadas</h2><div id="community-pin-list"></div><p id="community-pin-status" role="status"></p></section>
+            <section id="community-polls" class="community-tool-section hidden"><h2>Enquetes</h2><form id="poll-create-form" class="poll-create-form"><label>Pergunta<input id="poll-question" maxlength="240" required placeholder="O que a comunidade acha?"></label><label>Opções, uma por linha<textarea id="poll-options" rows="3" placeholder="Opção 1&#10;Opção 2" required></textarea></label><label>Encerrar em<input id="poll-closes-at" type="datetime-local" required></label><label><input id="poll-multiple" type="checkbox"> Permitir várias escolhas</label><label><input id="poll-change" type="checkbox" checked> Permitir alterar voto</label><button type="submit">Criar enquete</button></form><p id="community-poll-status" role="status"></p><div id="community-poll-list"></div><button id="community-poll-more" type="button" class="hidden">Carregar mais enquetes</button></section>
+            <section id="community-search" class="community-tool-section hidden"><h2>Buscar no histórico</h2><form id="community-search-form" role="search"><input id="community-search-query" type="search" placeholder="Palavra-chave" aria-label="Palavra-chave"><input id="community-search-author" type="search" placeholder="Autor" aria-label="Autor"><select id="community-search-type" aria-label="Tipo"><option value="">Todos os tipos</option><option value="TEXT">Texto</option><option value="AUDIO">Áudio</option><option value="STICKER">Figurinha</option></select><label>De<input id="community-search-from" type="date"></label><label>Até<input id="community-search-to" type="date"></label><button type="submit">Buscar</button></form><p id="community-search-status" role="status"></p><div id="community-search-results"></div><button id="community-search-more" type="button" class="hidden">Carregar mais resultados</button></section>
+          </div>
+        </section>
+        <details id="voice-section" class="voice-section">
+          <summary><span aria-hidden="true">🎙</span> Voz da comunidade <small id="voice-room-count"></small></summary>
+          <div class="voice-section-content">
+            <form id="voice-create-form" class="voice-create-form hidden">
+              <label>Nome da sala <input id="voice-room-name" maxlength="60" minlength="3" placeholder="Ex.: Conversa da comunidade" required></label>
+              <label id="voice-link-wrap" class="voice-link-wrap hidden"><input id="voice-link-projection" type="checkbox"> Vincular à projeção ativa</label>
+              <button type="submit">Criar sala de voz</button>
+            </form>
+            <div id="voice-room-list" class="voice-room-list"></div>
+            <p id="voice-section-status" role="status"></p>
+          </div>
+        </details>
         <section
           class="live-panel"
           id="live-panel"
@@ -378,6 +439,7 @@
           class="container-chat"
           id="chat-form"
         >
+          <div id="mention-suggestions" class="mention-suggestions hidden" role="listbox" aria-label="Sugerir participantes"></div>
           <div id="reply-composer" class="reply-composer hidden"><span id="reply-composer-text"></span><button type="button" id="reply-cancel" aria-label="Cancelar resposta">×</button></div>
           <div id="audio-compose" class="audio-compose hidden"><strong id="audio-status">Gravando...</strong><span id="audio-timer">0:00</span><audio id="audio-preview" controls class="hidden"></audio><button type="button" id="audio-cancel">Cancelar</button><button type="button" id="audio-send" class="hidden">Enviar áudio</button></div>
           <div class="composer-row">
@@ -398,6 +460,10 @@
     </nav>
   </div>
   <div id="site-view" class="site-view hidden"><iframe id="site-frame" title="Outra área do Chat Amino 2"></iframe></div>
+  <section id="voice-dock" class="voice-dock hidden" aria-label="Chamada de voz ativa">
+    <div class="voice-dock-head"><div><strong id="voice-dock-title">Na voz</strong><small id="voice-dock-count">1 participante</small></div><button id="voice-dock-mute" type="button" aria-pressed="false">🎙 Microfone</button><button id="voice-dock-expand" type="button" aria-expanded="false" aria-controls="voice-dock-body">Expandir</button><button id="voice-dock-leave" type="button">Sair</button></div>
+    <div id="voice-dock-body" class="voice-dock-body hidden"><p id="voice-dock-status" role="status"></p><div id="voice-participant-list"></div><label id="voice-video-volume-wrap" class="voice-video-volume-wrap hidden">Volume do vídeo <input id="voice-video-volume" type="range" min="0" max="100" value="100"></label></div>
+  </section>
   <div id="mini-player-notice" class="mini-player-notice hidden" role="status"></div>
   <dialog id="pip-help-dialog" class="pip-help-dialog" aria-labelledby="pip-help-title">
     <h2 id="pip-help-title">Vídeo sobre outros aplicativos</h2>

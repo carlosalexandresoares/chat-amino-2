@@ -1,9 +1,13 @@
 import state from "./state.js";
-import { loadAuthenticatedUser } from "./auth.js";
-import { initializeChat } from "./chat.js?v=9";
+import { loadAuthenticatedUser } from "./auth.js?v=2";
+import { initializeChat } from "./chat.js?v=14";
 import { initializeYouTube, stopTimeUpdater } from "./youtube.js?v=9";
-import { initializeLive } from "./live.js?v=9";
-import { initializeMiniPlayer, openSitePage } from './mini-player.js?v=7';
+import { initializeLive } from "./live.js?v=10";
+import { initializeMiniPlayer, openSitePage } from './mini-player.js?v=9';
+import { initializeMentions } from './mentions.js?v=1';
+import { initializeCommunity, loadDiscover, loadTopics } from './community.js?v=5';
+import { initializeVoice } from './voice.js?v=1';
+import { initializeModeration, setModerationMembers } from './moderation-ui.js?v=2';
 
 const roomsScreen = document.getElementById("rooms-screen");
 const appScreen = document.getElementById("app-screen");
@@ -23,6 +27,8 @@ const roomInfoDialog = document.getElementById("room-info-dialog");
 const roomOptionsToggle = document.getElementById("room-options-toggle");
 const roomOptionsMenu = document.getElementById("room-options-menu");
 const projectionsTab = document.getElementById("mobile-projections-tab");
+const connectionStatus = document.getElementById("chat-connection-status");
+window.ChatNotificationBadge?.attachSocket(state.socket);
 
 function closeRoomOptions() {
   roomOptionsMenu.classList.add("hidden");
@@ -136,7 +142,7 @@ function showRoomsScreen() {
   document.body.classList.add("rooms-mode");
   roomsScreen.classList.remove("hidden");
   appScreen.classList.add("hidden");
-  document.title = "Chats públicos | Chat Amino 2";
+  document.title = "Comunidades | Chat Amino 2";
   syncRoomsNavigation();
 }
 
@@ -153,11 +159,15 @@ function syncRoomsNavigation() {
 window.addEventListener("hashchange", syncRoomsNavigation);
 
 function updateRoomStats(room) {
-  membersCount.textContent = `${room.membersCount ?? 0} participantes`;
+  const count = room.membersCount ?? 0;
+  membersCount.textContent = `${count} ${count === 1 ? 'participante' : 'participantes'}`;
   onlineCount.textContent = `${room.onlineCount ?? 0} online agora`;
 }
 
 function showChatScreen(room) {
+  document.querySelectorAll('.room-events-link').forEach(link => {
+    link.href = `/events.html?roomId=${encodeURIComponent(state.roomId || room.id || 'geral')}`;
+  });
   document.body.classList.remove("rooms-mode");
   roomsScreen.classList.add("hidden");
   appScreen.classList.remove("hidden");
@@ -167,80 +177,23 @@ function showChatScreen(room) {
   if (window.location.hash === "#projections" && !appScreen.classList.contains("mobile-projections-open")) projectionsTab.click();
 }
 
-function roomCard(room) {
-  const card = document.createElement("article");
-  card.className = `public-room-card${room.isMain ? " main-room-card" : ""}`;
-  const cover = document.createElement("div");
-  cover.className = "public-room-cover";
-  if (room.banner) cover.style.backgroundImage = `url("${room.banner.replaceAll('"', '%22')}")`;
-  else cover.textContent = room.category || "💬";
-  const body = document.createElement("div");
-  body.className = "public-room-information";
-  const title = document.createElement("h2");
-  title.textContent = room.name;
-  if (room.isMain) {
-    const badge = document.createElement("span");
-    badge.className = "main-room-badge";
-    badge.textContent = "Chat principal";
-    title.append(" ", badge);
-  }
-  const description = document.createElement("p");
-  description.textContent = room.description || "Entre e participe da conversa.";
-  const counts = document.createElement("p");
-  counts.className = "room-card-counts";
-  counts.textContent = `${room.membersCount} participantes · ${room.onlineCount} online agora`;
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className = "enter-room-button";
-  button.textContent = "Entrar";
-  button.addEventListener("click", () => enterRoom(room.id));
-  body.append(title, description, counts, button);
-  card.append(cover, body);
-  return card;
-}
-
 async function loadRooms() {
   try {
-    const response = await fetch("/api/rooms", {
-      headers: { Authorization: `Bearer ${state.token}` },
-    });
-    if (!response.ok) throw new Error("Não foi possível carregar os chats.");
-    const { rooms } = await response.json();
-    roomsById.clear();
-    grid.replaceChildren();
-    for (const room of rooms) {
-      roomsById.set(room.id, room);
-      grid.append(roomCard(room));
-    }
-    if (rooms.length === 1) {
-      const discover = document.createElement("div");
-      discover.className = "discover-card";
-      const icon = document.createElement("span");
-      icon.textContent = "✳";
-      const title = document.createElement("h3");
-      title.textContent = "O próximo chat pode ser seu.";
-      const copy = document.createElement("p");
-      copy.textContent = "Crie um espaço para a sua comunidade e escolha quem ajuda a cuidar dele.";
-      const button = document.createElement("button");
-      button.type = "button";
-      button.textContent = "Criar meu chat ↗";
-      button.addEventListener("click", () => {
-        document.getElementById("show-create-room").click();
-        form.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
-      discover.append(icon, title, copy, button);
-      grid.append(discover);
-    }
-    document.getElementById("rooms-total").textContent =
-      `${rooms.length} ${rooms.length === 1 ? "chat disponível" : "chats disponíveis"}`;
     if (state.roomId) {
-      const selected = roomsById.get(state.roomId);
-      if (selected) showChatScreen(selected);
-      else {
+      const response = await fetch(`/api/rooms/${encodeURIComponent(state.roomId)}/summary`, {
+        headers: { Authorization: `Bearer ${state.token}` },
+      });
+      if (response.status === 404) {
         state.roomId = null;
         showRoomsScreen();
+        void loadDiscover();
+        return;
       }
-    } else showRoomsScreen();
+      if (!response.ok) throw new Error('Não foi possível carregar o chat.');
+      const { room } = await response.json();
+      roomsById.set(room.id, room);
+      showChatScreen(room);
+    } else { showRoomsScreen(); void loadDiscover(); }
   } catch (error) {
     grid.textContent = error.message;
     if (state.roomId) {
@@ -319,7 +272,9 @@ async function loadAdmin() {
   document.getElementById("manage-room-name").value = room.name;
   document.getElementById("manage-room-description").value = room.description || "";
   document.getElementById("manage-room-banner").value = room.banner || "";
+  document.getElementById("manage-room-topic").value = room.topic || 'GERAL';
   renderMembers(members, role);
+  setModerationMembers(members);
   document.getElementById("manage-members-section").classList.remove("hidden");
 }
 
@@ -393,13 +348,18 @@ document.getElementById("leave-room").addEventListener("click", () => {
 });
 
 initializeChat();
+initializeMentions(state);
 initializeYouTube();
 initializeMiniPlayer();
 initializeLive();
+initializeCommunity();
+initializeVoice();
+initializeModeration();
 
 state.socket.on("connect", () => {
+  connectionStatus.textContent = "";
+  connectionStatus.classList.add("hidden");
   if (state.roomId) state.socket.emit("join-room", state.roomId);
-  else state.socket.disconnect();
 });
 state.socket.on("room-presence", ({ roomId, onlineCount: count }) => {
   const room = roomsById.get(roomId);
@@ -441,10 +401,17 @@ state.socket.on('account-deleted', payload => {
   window.location.replace('/login.html');
 });
 state.socket.on("connect_error", (error) => {
-  if (state.roomId) alert(`Erro ao conectar ao chat: ${error.message}`);
+  if (!state.roomId) return;
+  if (error.data?.code === 'AUTH_INVALID') {
+    localStorage.removeItem('authToken');
+    window.location.replace('/login.html');
+    return;
+  }
+  connectionStatus.textContent = error.message || 'Não foi possível conectar ao chat. Tentando novamente...';
+  connectionStatus.classList.remove('hidden');
 });
 
-loadRooms().then(loadAuthenticatedUser).then(() => {
+loadTopics().catch(error => console.error('Falha ao carregar categorias:', error)).then(loadRooms).then(loadAuthenticatedUser).then(() => {
   document.querySelectorAll('.site-admin-link').forEach(link => link.classList.toggle('hidden', !state.currentUser?.isSiteAdmin));
 });
 window.setInterval(() => {

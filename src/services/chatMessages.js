@@ -2,12 +2,13 @@ const prisma = require('../database/prisma');
 const reputation = require('./reputation');
 
 const authorSelect = { id: true, username: true, avatar: true, level: true, xp: true };
-const replySelect = { id: true, content: true, type: true, deletedAt: true,
+const replySelect = { id: true, userId: true, content: true, type: true, deletedAt: true,
   user: { select: { username: true } } };
 const messageSelect = { id: true, clientKey: true, content: true, type: true, mediaId: true,
   createdAt: true, deletedAt: true, roomId: true, replyToId: true,
   user: { select: authorSelect }, media: { select: { duration: true, mimeType: true } },
   replyTo: { select: replySelect }, reactions: { select: { emoji: true, userId: true } } };
+messageSelect.mentions = { select: { user: { select: { id: true, username: true } } } };
 
 function format(message) {
   const unavailable = Boolean(message.deletedAt);
@@ -23,6 +24,7 @@ function format(message) {
       deleted: Boolean(message.replyTo.deletedAt),
     } : { id: message.replyToId, user: '', message: 'Mensagem indisponível', deleted: true } : null,
     reactions: message.reactions || [],
+    mentions: (message.mentions || []).map(item => item.user),
     user: { id: message.user.id, username: message.user.username, avatar: message.user.avatar,
       level: message.user.level, title: reputation.progress(message.user.xp).title },
     createdAt: message.createdAt.toISOString() };
@@ -34,6 +36,8 @@ async function load(id, db = prisma) {
 }
 
 async function roomAccess(userId, roomId) {
+  if (await prisma.communitySanction.findFirst({ where: { roomId, userId, type: 'SUSPEND',
+    revokedAt: null, expiresAt: { gt: new Date() } }, select: { id: true } })) return false;
   const room = await prisma.room.findUnique({ where: { id: roomId }, select: { id: true, ownerId: true } });
   if (!room) return false;
   if (room.ownerId === userId) return true;

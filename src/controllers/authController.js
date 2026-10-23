@@ -2,12 +2,15 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const prisma = require("../database/prisma");
 const { imageMime, imageUrl, validExternalUrl, MAX_AVATAR_BYTES, MAX_BANNER_BYTES } = require('../services/profileImage');
+const antiSpam = require('../services/antiSpam');
 
 async function register(req, res) {
   try {
-    const username = req.body.username?.trim();
-    const email = req.body.email?.trim().toLowerCase();
-    const password = req.body.password;
+    if (!antiSpam.allowAuth(`register:${req.socket.remoteAddress}`, 20, 15 * 60000))
+      return res.status(429).json({ message: 'Muitas contas criadas. Tente mais tarde.' });
+    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
     if (!username || !email || !password) {
       return res.status(400).json({
@@ -16,17 +19,21 @@ async function register(req, res) {
       });
     }
 
-    if (username.length < 3) {
+    if (username.length < 3 || username.length > 30) {
       return res.status(400).json({
         success: false,
-        message: "O nome de usuário precisa ter pelo menos 3 caracteres."
+        message: "O nome de usuário deve ter entre 3 e 30 caracteres."
       });
     }
 
-    if (password.length < 6) {
+    if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ success: false, message: 'E-mail inválido.' });
+    }
+
+    if (password.length < 6 || Buffer.byteLength(password, 'utf8') > 72) {
       return res.status(400).json({
         success: false,
-        message: "A senha precisa ter pelo menos 6 caracteres."
+        message: "A senha deve ter pelo menos 6 caracteres e no máximo 72 bytes."
       });
     }
 
@@ -41,7 +48,8 @@ async function register(req, res) {
           },
           { email }
         ]
-      }
+      },
+      select: { id: true },
     });
 
     if (userExists) {
@@ -58,7 +66,8 @@ async function register(req, res) {
         username,
         email,
         password: passwordHash
-      }
+      },
+      select: { id: true, username: true, email: true, level: true, xp: true, isSiteAdmin: true }
     });
 
     return res.status(201).json({
@@ -85,8 +94,12 @@ async function register(req, res) {
 
 async function login(req, res) {
   try {
-    const email = req.body.email?.trim().toLowerCase();
-    const password = req.body.password;
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+
+    if (!antiSpam.allowAuth(`login-ip:${req.socket.remoteAddress}`, 200, 15 * 60000) ||
+        (email && email.length <= 254 && !antiSpam.allowAuth(`login-email:${email}`, 10, 15 * 60000)))
+      return res.status(429).json({ message: 'Muitas tentativas. Aguarde antes de entrar novamente.' });
 
     if (!email || !password) {
       return res.status(400).json({
@@ -95,10 +108,16 @@ async function login(req, res) {
       });
     }
 
+    if (email.length > 254 || password.length > 1024) {
+      return res.status(400).json({ success: false, message: 'Credenciais inválidas.' });
+    }
+
     const user = await prisma.user.findUnique({
       where: {
         email
-      }
+      },
+      select: { id: true, username: true, email: true, password: true, avatar: true,
+        banner: true, bio: true, level: true, xp: true, isSiteAdmin: true }
     });
 
     if (!user) {
@@ -181,6 +200,7 @@ async function me(req, res) {
         xp: true,
         level: true,
         isSiteAdmin: true,
+        profileVisibility: true,
         createdAt: true
       }
     });

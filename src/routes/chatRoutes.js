@@ -20,6 +20,18 @@ const fail = (res, error, fallback) => {
   res.status(error.status || 500).json({ message: error.status ? error.message : fallback });
 };
 const validRoomId = value => typeof value === 'string' && /^[a-z0-9_-]{1,50}$/.test(value);
+router.get('/rooms/:roomId/mentions', async (req, res) => {
+  try {
+    const roomId = req.params.roomId;
+    const search = String(req.query.search || '').trim().slice(0, 50);
+    if (!validRoomId(roomId) || !await chat.roomAccess(req.userId, roomId)) return res.status(403).json({ message: 'Sem acesso à sala.' });
+    if (search.length < 2) return res.json({ users: [] });
+    const members = await prisma.roomMember.findMany({ where: { roomId, userId: { not: req.userId },
+      user: { username: { contains: search, mode: 'insensitive' } } }, take: 8,
+      select: { user: { select: { id: true, username: true, avatar: true } } } });
+    res.json({ users: members.map(item => item.user) });
+  } catch (error) { fail(res, error, 'Não foi possível buscar pessoas.'); }
+});
 router.get('/config', (_req, res) => res.json({ maxAudioSeconds: media.MAX_AUDIO_SECONDS, uploadsAvailable: media.configured }));
 async function uploadLimit(userId, kind, count, hours) {
   const used = await prisma.chatAsset.count({ where: { ownerId: userId, kind,
@@ -61,8 +73,13 @@ router.delete('/messages/:id', async (req, res) => {
     const message = await prisma.message.findUnique({ where: { id: req.params.id }, select: { userId: true, roomId: true, type: true, deletedAt: true } });
     if (!message || (message.userId !== req.userId && !await isSiteAdmin(req.userId))) return res.status(403).json({ message: 'Você só pode excluir suas mensagens.' });
     if (!message.deletedAt) {
-      await prisma.message.update({ where: { id: req.params.id }, data: { deletedAt: new Date(), content: '',
-        ...(message.type === 'AUDIO' ? { mediaId: null } : {}) } });
+      const removedPins = await prisma.$transaction(async tx => {
+        await tx.message.update({ where: { id: req.params.id }, data: { deletedAt: new Date(), content: '',
+          ...(message.type === 'AUDIO' ? { mediaId: null } : {}) } });
+        return (await tx.pinnedMessage.deleteMany({ where: { messageId: req.params.id } })).count;
+      });
+      if (removedPins)
+        req.app.get('io').to(message.roomId).emit('room-pins-updated', { roomId: message.roomId });
       req.app.get('io').to(message.roomId).emit('chat-message-deleted', { id: req.params.id });
     }
     res.json({ deleted: true });

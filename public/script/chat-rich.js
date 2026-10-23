@@ -1,6 +1,7 @@
 import state from './state.js';
 import dom from './dom.js';
 import { initializeWallpaper } from './wallpaper.js?v=2';
+import { reportContent } from './moderation-ui.js?v=2';
 
 const $ = id => document.getElementById(id);
 const mediaUrls = new Map();
@@ -151,7 +152,7 @@ function initializeSwipeReply() {
   window.addEventListener('blur', () => restore());
 }
 
-async function navigateTo(id) {
+export async function navigateTo(id) {
   let target = [...dom.messages.querySelectorAll('.message')].find(element => element.dataset.messageId === id);
   if (!target) {
     try {
@@ -232,7 +233,21 @@ function openMenu(element, data) {
     } catch (error) { window.alert(error.message); }
   });
   if (data.type === 'TEXT' && !data.deleted) action('Copiar texto', () => navigator.clipboard.writeText(data.message).catch(() => {}));
+  if (!data.deleted && (state.currentUser?.isSiteAdmin || ['OWNER', 'CO_ADMIN'].includes(state.roomRole)))
+    action('Fixar mensagem', async () => {
+      try {
+        const response = await fetch(`/api/community/rooms/${encodeURIComponent(state.roomId)}/pins/${encodeURIComponent(data.id)}`, {
+          method: 'PUT', headers: { Authorization: `Bearer ${state.token}` },
+        });
+        if (!response.ok) throw new Error((await response.json().catch(() => ({}))).message || 'Não foi possível fixar.');
+      } catch (error) { window.alert(error.message); }
+    });
   if (!data.deleted) for (const emoji of ['❤️', '😂', '👍', '😮', '😢', '🔥']) action(`Reagir ${emoji}`, () => react(data.id, emoji));
+  if (!data.deleted && data.user.id !== state.currentUser?.id) {
+    action('Denunciar mensagem', () => reportContent('MESSAGE', data.id));
+    if (data.type === 'STICKER' && data.mediaId)
+      action('Denunciar figurinha', () => reportContent('STICKER', data.mediaId));
+  }
   if ((data.user.id === state.currentUser?.id || state.currentUser?.isSiteAdmin) && !data.deleted) action('Excluir mensagem', async () => {
     if (!confirm('Excluir esta mensagem?')) return;
     try { await api(`/messages/${encodeURIComponent(data.id)}`, { method: 'DELETE' }); }

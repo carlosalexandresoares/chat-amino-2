@@ -28,6 +28,7 @@ enum ChatAssetKind {
   AUDIO
   STICKER
   WALLPAPER
+  DIRECT_IMAGE
 }
 
 enum PlaylistItemStatus {
@@ -37,12 +38,113 @@ enum PlaylistItemStatus {
   REMOVED
 }
 
+enum DirectStatus {
+  PENDING
+  ACTIVE
+  DECLINED
+}
+
+enum DirectMessageType {
+  TEXT
+  AUDIO
+  STICKER
+  IMAGE
+}
+
+enum DirectPrivacy {
+  EVERYONE
+  FOLLOWERS
+  FOLLOWING
+  NOBODY
+}
+
+enum PresenceStatus {
+  ONLINE
+  AWAY
+  BUSY
+  INVISIBLE
+}
+
+enum NotificationCategory {
+  SOCIAL
+  CHAT
+  DIRECT
+  PROJECTION
+  EVENT
+  ACHIEVEMENT
+  ADMIN
+}
+
+enum NotificationKind {
+  FOLLOW
+  POST_LIKE
+  POST_COMMENT
+  POST_FEATURED
+  CHAT_REPLY
+  MENTION
+  DIRECT_MESSAGE
+  PROJECTION_START
+  EVENT_REMINDER
+  ACHIEVEMENT_UNLOCKED
+  ADMIN_WARNING
+}
+
+enum MissionCadence {
+  DAILY
+  WEEKLY
+}
+
+enum CosmeticType {
+  FRAME
+  TITLE
+  PROFILE_THEME
+}
+
+enum CommunityEventType {
+  PROJECTION
+  ANIME
+  TOURNAMENT
+  QUIZ
+  MEETUP
+  CUSTOM
+}
+
+enum CommunityEventStatus {
+  SCHEDULED
+  CANCELLED
+}
+
+enum VoiceRoomStatus {
+  OPEN
+  CLOSED
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum ModerationReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+enum CommunitySanctionType {
+  MUTE
+  SUSPEND
+}
+
 model User {
   id       String @id @default(cuid())
   username String @unique
   email    String @unique
   password String
   isSiteAdmin Boolean @default(false)
+  directPrivacy DirectPrivacy @default(EVERYONE)
+  presenceStatus PresenceStatus @default(ONLINE)
+  profileVisibility ProfileVisibility @default(PUBLIC)
+  statusText String? @db.VarChar(100)
 
   avatar String?
   banner String?
@@ -50,6 +152,7 @@ model User {
 
   xp    Int @default(0)
   level Int @default(1)
+  coinBalance Int @default(0)
   @@index([xp, id])
 
   lastDailyXpAt DateTime?
@@ -79,6 +182,321 @@ model User {
   stickerFavorites StickerFavorite[]
   chatAppearances ChatAppearance[]
   reactions MessageReaction[]
+  directConversationsA DirectConversation[] @relation("DirectUserA")
+  directConversationsB DirectConversation[] @relation("DirectUserB")
+  directRequests DirectConversation[] @relation("DirectRequester")
+  directMessages DirectMessage[]
+  directSettings DirectSettings[]
+  directReactions DirectReaction[]
+  blocksMade UserBlock[] @relation("Blocker")
+  blocksReceived UserBlock[] @relation("Blocked")
+  mentionsReceived ChatMention[]
+  directReports DirectReport[]
+  notifications Notification[] @relation("NotificationRecipient")
+  notificationsSent Notification[] @relation("NotificationActor")
+  notificationPreferences NotificationPreference[]
+  pushSubscriptions PushSubscription[]
+  favoriteRooms RoomFavorite[]
+  communityInterests CommunityInterest[]
+  pinnedMessages PinnedMessage[]
+  createdPolls Poll[]
+  pollVotes PollVote[]
+  postComments PostComment[]
+  savedPosts SavedPost[]
+  hiddenPosts HiddenPost[]
+  postReports PostReport[]
+  achievements UserAchievement[]
+  missionClaims MissionClaim[]
+  coinTransactions CoinTransaction[]
+  inventory UserInventory[]
+  organizedEvents CommunityEvent[] @relation("EventOrganizer")
+  createdEvents CommunityEvent[] @relation("EventCreator")
+  eventRegistrations EventParticipant[]
+  createdVoiceRooms VoiceRoom[]
+  moderationReports ModerationReport[] @relation("ReportAuthor")
+  reportsResolved ModerationReport[] @relation("ReportResolver")
+  moderationActions ModerationAction[] @relation("ModerationActor")
+  moderationActionsTarget ModerationAction[] @relation("ModerationTarget")
+  sanctions CommunitySanction[] @relation("SanctionTarget")
+  sanctionsIssued CommunitySanction[] @relation("SanctionActor")
+}
+
+model ModerationReport {
+  id String @id @default(cuid())
+  reporterId String?
+  kind String @db.VarChar(20)
+  targetId String @db.VarChar(100)
+  subjectUserId String?
+  roomId String?
+  reason String @db.VarChar(40)
+  details String? @db.VarChar(500)
+  evidence String? @db.VarChar(500)
+  status ModerationReportStatus @default(OPEN)
+  resolvedById String?
+  resolutionNote String? @db.VarChar(500)
+  createdAt DateTime @default(now())
+  resolvedAt DateTime?
+  reporter User? @relation("ReportAuthor", fields: [reporterId], references: [id], onDelete: SetNull)
+  resolvedBy User? @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  room Room? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  @@unique([reporterId, kind, targetId])
+  @@index([roomId, status, createdAt])
+  @@index([status, createdAt])
+}
+
+model ModerationAction {
+  id String @id @default(cuid())
+  actorId String?
+  targetUserId String?
+  roomId String?
+  action String @db.VarChar(40)
+  targetType String? @db.VarChar(20)
+  targetId String? @db.VarChar(100)
+  reason String? @db.VarChar(500)
+  createdAt DateTime @default(now())
+  actor User? @relation("ModerationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  targetUser User? @relation("ModerationTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+  room Room? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  @@index([roomId, createdAt])
+  @@index([createdAt])
+}
+
+model CommunitySanction {
+  id String @id @default(cuid())
+  roomId String
+  userId String
+  actorId String?
+  type CommunitySanctionType
+  reason String @db.VarChar(500)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation("SanctionTarget", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("SanctionActor", fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([roomId, userId, type, expiresAt])
+  @@index([expiresAt])
+}
+
+model Achievement {
+  id String @id @db.VarChar(60)
+  title String @db.VarChar(100)
+  description String @db.VarChar(240)
+  metric String @db.VarChar(60)
+  target Int
+  medal String @db.VarChar(10)
+  coinReward Int @default(0)
+  users UserAchievement[]
+}
+
+model UserAchievement {
+  userId String
+  achievementId String @db.VarChar(60)
+  unlockedAt DateTime @default(now())
+  coinsClaimedAt DateTime?
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  @@id([userId, achievementId])
+  @@index([unlockedAt])
+}
+
+model Mission {
+  id String @id @db.VarChar(60)
+  title String @db.VarChar(100)
+  description String @db.VarChar(240)
+  metric String @db.VarChar(60)
+  target Int
+  coinReward Int
+  cadence MissionCadence
+  active Boolean @default(true)
+  claims MissionClaim[]
+}
+
+model MissionClaim {
+  userId String
+  missionId String @db.VarChar(60)
+  periodKey String @db.VarChar(10)
+  claimedAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  @@id([userId, missionId, periodKey])
+  @@index([userId, periodKey])
+}
+
+model CoinTransaction {
+  id String @id @default(cuid())
+  userId String
+  amount Int
+  balanceAfter Int
+  reason String @db.VarChar(60)
+  sourceKey String @unique @db.VarChar(160)
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt, id])
+}
+
+model CosmeticItem {
+  id String @id @db.VarChar(60)
+  type CosmeticType
+  title String @db.VarChar(100)
+  description String @db.VarChar(240)
+  rarity String @db.VarChar(30)
+  cssToken String @db.VarChar(60)
+  price Int
+  active Boolean @default(true)
+  owners UserInventory[]
+  @@index([active, type, price])
+}
+
+model UserInventory {
+  userId String
+  itemId String @db.VarChar(60)
+  acquiredAt DateTime @default(now())
+  equipped Boolean @default(false)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  item CosmeticItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  @@id([userId, itemId])
+  @@index([userId, equipped])
+}
+
+model Notification {
+  id String @id @default(cuid())
+  recipientId String
+  actorId String?
+  category NotificationCategory
+  kind NotificationKind
+  sourceKey String @unique @db.VarChar(160)
+  title String @db.VarChar(120)
+  body String @db.VarChar(240)
+  href String @db.VarChar(500)
+  createdAt DateTime @default(now())
+  readAt DateTime?
+  recipient User @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  actor User? @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  @@index([recipientId, createdAt, id])
+  @@index([recipientId, readAt, createdAt])
+  @@index([recipientId, category, createdAt])
+}
+
+model NotificationPreference {
+  userId String
+  category NotificationCategory
+  enabled Boolean @default(true)
+  pushEnabled Boolean @default(false)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([userId, category])
+}
+
+model PushSubscription {
+  id String @id @default(cuid())
+  userId String
+  endpoint String @unique @db.VarChar(2048)
+  p256dh String @db.VarChar(256)
+  auth String @db.VarChar(256)
+  deviceLabel String? @db.VarChar(120)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, createdAt])
+}
+
+model UserBlock {
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model DirectConversation {
+  id String @id @default(cuid())
+  userAId String
+  userBId String
+  requesterId String
+  status DirectStatus @default(PENDING)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userA User @relation("DirectUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB User @relation("DirectUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  requester User @relation("DirectRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  messages DirectMessage[]
+  settings DirectSettings[]
+  reports DirectReport[]
+  @@unique([userAId, userBId])
+  @@index([userAId, updatedAt])
+  @@index([userBId, updatedAt])
+  @@index([status, requesterId])
+}
+
+model DirectSettings {
+  conversationId String
+  userId String
+  muted Boolean @default(false)
+  pinned Boolean @default(false)
+  archived Boolean @default(false)
+  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([conversationId, userId])
+  @@index([userId, archived, pinned])
+}
+
+model DirectMessage {
+  id String @id @default(cuid())
+  clientKey String? @unique
+  conversationId String
+  senderId String
+  type DirectMessageType @default(TEXT)
+  content String @default("")
+  mediaId String?
+  replyToId String?
+  createdAt DateTime @default(now())
+  deliveredAt DateTime?
+  readAt DateTime?
+  deletedAt DateTime?
+  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender User @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  media ChatAsset? @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  replyTo DirectMessage? @relation("DirectReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies DirectMessage[] @relation("DirectReplies")
+  reactions DirectReaction[]
+  @@index([conversationId, createdAt, id])
+  @@index([conversationId, senderId, createdAt])
+  @@index([conversationId, type, createdAt])
+  @@index([conversationId, senderId, readAt])
+  @@index([replyToId])
+}
+
+model DirectReaction {
+  messageId String
+  userId String
+  emoji String
+  message DirectMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([messageId, userId])
+}
+
+model DirectReport {
+  id String @id @default(cuid())
+  conversationId String
+  reporterId String
+  reason String @db.VarChar(40)
+  details String? @db.VarChar(500)
+  createdAt DateTime @default(now())
+  conversation DirectConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  @@unique([conversationId, reporterId])
+  @@index([createdAt])
+}
+
+model ChatMention {
+  messageId String
+  userId String
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([messageId, userId])
+  @@index([userId])
 }
 
 model UserImage {
@@ -111,10 +529,71 @@ model Post {
   userId String
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   likes PostLike[]
+  roomId String?
+  room Room? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  sharedPostId String?
+  sharedPost Post? @relation("PostShares", fields: [sharedPostId], references: [id], onDelete: Cascade)
+  shares Post[] @relation("PostShares")
+  comments PostComment[]
+  saves SavedPost[]
+  hiddenBy HiddenPost[]
+  reports PostReport[]
   featuredAt DateTime?
   featuredById String?
 
   @@index([userId, createdAt])
+  @@index([roomId, createdAt, id])
+  @@index([createdAt, id])
+  @@unique([userId, sharedPostId])
+}
+
+model PostComment {
+  id String @id @default(cuid())
+  postId String
+  userId String
+  parentId String?
+  content String @db.VarChar(1000)
+  createdAt DateTime @default(now())
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent PostComment? @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies PostComment[] @relation("CommentReplies")
+  @@index([postId, createdAt, id])
+  @@index([parentId, createdAt, id])
+  @@index([userId, createdAt])
+}
+
+model SavedPost {
+  postId String
+  userId String
+  createdAt DateTime @default(now())
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([postId, userId])
+  @@index([userId, createdAt, postId])
+}
+
+model HiddenPost {
+  postId String
+  userId String
+  createdAt DateTime @default(now())
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([postId, userId])
+  @@index([userId])
+}
+
+model PostReport {
+  id String @id @default(cuid())
+  postId String
+  reporterId String
+  reason String @db.VarChar(40)
+  details String? @db.VarChar(500)
+  createdAt DateTime @default(now())
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter User @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  @@unique([postId, reporterId])
+  @@index([createdAt])
 }
 
 model PostLike {
@@ -125,6 +604,7 @@ model PostLike {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@id([postId, userId])
   @@index([userId])
+  @@index([userId, createdAt])
 }
 
 model XpEvent {
@@ -136,6 +616,7 @@ model XpEvent {
   createdAt DateTime @default(now())
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@index([userId, createdAt])
+  @@index([userId, reason, createdAt])
   @@index([reason, createdAt])
   @@index([createdAt, userId])
 }
@@ -166,6 +647,7 @@ model Room {
   slug        String? @unique
   description String?
   category    String?
+  topic       String @default("GERAL") @db.VarChar(32)
   avatar      String?
   banner      String?
 
@@ -180,9 +662,19 @@ model Room {
   members  RoomMember[]
   lives    LiveSession[]
   appearances ChatAppearance[]
+  favorites RoomFavorite[]
+  pins PinnedMessage[]
+  polls Poll[]
+  posts Post[]
+  events CommunityEvent[]
+  voiceRooms VoiceRoom[]
+  moderationReports ModerationReport[]
+  moderationActions ModerationAction[]
+  sanctions CommunitySanction[]
 
   @@index([ownerId])
   @@index([category])
+  @@index([topic, createdAt])
   @@index([createdAt])
 }
 
@@ -201,6 +693,132 @@ model RoomMember {
 
   @@unique([userId, roomId])
   @@index([roomId, role])
+  @@index([userId])
+}
+
+model RoomFavorite {
+  userId String
+  roomId String
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  @@id([userId, roomId])
+  @@index([roomId])
+}
+
+model CommunityEvent {
+  id String @id @default(cuid())
+  roomId String
+  creatorId String
+  organizerId String
+  type CommunityEventType
+  status CommunityEventStatus @default(SCHEDULED)
+  title String @db.VarChar(120)
+  description String @db.VarChar(2000)
+  coverUrl String? @db.VarChar(1000)
+  startsAt DateTime
+  timeZone String @db.VarChar(64)
+  capacity Int?
+  registrationOpen Boolean @default(true)
+  scheduleVersion Int @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  creator User @relation("EventCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  organizer User @relation("EventOrganizer", fields: [organizerId], references: [id], onDelete: Cascade)
+  participants EventParticipant[]
+  @@index([status, startsAt, id])
+  @@index([roomId, startsAt, id])
+  @@index([organizerId, startsAt])
+}
+
+model EventParticipant {
+  eventId String
+  userId String
+  joinedAt DateTime @default(now())
+  attendedAt DateTime?
+  reminderEnabled Boolean @default(true)
+  remindedVersion Int?
+  event CommunityEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([eventId, userId])
+  @@index([userId, joinedAt])
+  @@index([userId, attendedAt])
+}
+
+model VoiceRoom {
+  id String @id @default(cuid())
+  roomId String
+  createdById String
+  name String @db.VarChar(60)
+  status VoiceRoomStatus @default(OPEN)
+  linkedLiveId String?
+  createdAt DateTime @default(now())
+  closedAt DateTime?
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  createdBy User @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  linkedLive LiveSession? @relation(fields: [linkedLiveId], references: [id], onDelete: SetNull)
+  @@index([roomId, status, createdAt])
+  @@index([linkedLiveId])
+}
+
+model CommunityInterest {
+  userId String
+  topic String @db.VarChar(32)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([userId, topic])
+  @@index([topic])
+}
+
+model PinnedMessage {
+  messageId String @id
+  roomId String
+  pinnedById String
+  pinnedAt DateTime @default(now())
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  pinnedBy User @relation(fields: [pinnedById], references: [id], onDelete: Cascade)
+  @@index([roomId, pinnedAt])
+}
+
+model Poll {
+  id String @id @default(cuid())
+  roomId String
+  creatorId String
+  question String @db.VarChar(240)
+  closesAt DateTime
+  allowMultiple Boolean @default(false)
+  allowChange Boolean @default(true)
+  createdAt DateTime @default(now())
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  creator User @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  options PollOption[]
+  votes PollVote[]
+  @@index([roomId, createdAt, id])
+  @@index([closesAt])
+}
+
+model PollOption {
+  id String @id @default(cuid())
+  pollId String
+  label String @db.VarChar(120)
+  position Int
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+  @@unique([pollId, position])
+  @@unique([pollId, id])
+}
+
+model PollVote {
+  pollId String
+  optionId String
+  userId String
+  createdAt DateTime @default(now())
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [pollId, optionId], references: [pollId, id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([pollId, optionId, userId])
+  @@index([pollId, userId])
   @@index([userId])
 }
 
@@ -223,8 +841,12 @@ model Message {
   replyTo Message? @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies Message[] @relation("MessageReplies")
   reactions MessageReaction[]
+  mentions ChatMention[]
+  pin PinnedMessage?
 
   @@index([roomId, createdAt])
+  @@index([roomId, userId, createdAt])
+  @@index([roomId, type, createdAt])
   @@index([userId])
   @@index([roomId, id])
   @@index([replyToId])
@@ -251,6 +873,7 @@ model ChatAsset {
   createdAt DateTime @default(now())
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   messages Message[]
+  directMessages DirectMessage[]
   sticker Sticker?
   appearances ChatAppearance[]
   @@index([ownerId, createdAt])
@@ -339,9 +962,11 @@ model LiveSession {
   playlist PlaylistItem[]
   participants ProjectionParticipant[]
   visits ProjectionVisit[]
+  voiceRooms VoiceRoom[]
 
   @@index([roomId, status])
   @@index([hostId])
+  @@index([hostId, status])
 }
 
 model ProjectionDay {

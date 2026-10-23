@@ -3,6 +3,8 @@ const prisma = require("../database/prisma");
 const auth = require("../middleware/authMiddleware");
 const projectionRep = require('../services/projectionRep');
 const { isSiteAdmin } = require('../middleware/siteAdmin');
+const { topicCodes } = require('../services/community');
+const gamification = require('../services/gamification');
 
 const router = express.Router();
 router.use(auth);
@@ -24,7 +26,7 @@ router.get("/", async (req, res) => {
       where: { OR: [{ id: "geral" }, { ownerId: { not: null } }] },
       orderBy: { createdAt: "desc" },
       select: {
-        id: true, name: true, description: true, category: true,
+        id: true, name: true, description: true, category: true, topic: true,
         banner: true, ownerId: true, createdAt: true,
         _count: { select: { members: true } },
       },
@@ -36,7 +38,7 @@ router.get("/", async (req, res) => {
       const users = new Set();
       for (const socketId of adapterRooms.get(room.id) || []) {
         const userId = onlineUsers.get(socketId)?.user?.id;
-        if (userId) users.add(userId);
+        if (userId && onlineUsers.get(socketId)?.user?.presenceStatus !== 'INVISIBLE') users.add(userId);
       }
       return {
         ...room,
@@ -52,6 +54,25 @@ router.get("/", async (req, res) => {
     console.error("Erro ao listar salas:", error);
     res.status(500).json({ message: "Não foi possível carregar as salas." });
   }
+});
+
+router.get('/:id/summary', async (req, res) => {
+  try {
+    if (req.params.id === 'geral') await ensureMainRoom();
+    const room = await prisma.room.findUnique({ where: { id: req.params.id },
+      select: { id: true, name: true, description: true, category: true, topic: true,
+        banner: true, ownerId: true, createdAt: true, _count: { select: { members: true } } } });
+    if (!room || (room.id !== 'geral' && !room.ownerId)) return res.sendStatus(404);
+    const io = req.app.get('io');
+    const online = new Set();
+    for (const socketId of io.sockets.adapter.rooms.get(room.id) || []) {
+      const user = io.sockets.sockets.get(socketId)?.user;
+      if (user && user.presenceStatus !== 'INVISIBLE') online.add(user.id);
+    }
+    res.json({ room: { ...room, membersCount: room._count.members, onlineCount: online.size,
+      isMain: room.id === 'geral', _count: undefined } });
+  } catch (error) { console.error('Erro ao carregar sala:', error);
+    res.status(500).json({ message: 'Não foi possível carregar a sala.' }); }
 });
 
 router.get("/:id/members", async (req, res) => {
@@ -77,17 +98,19 @@ router.post("/", async (req, res) => {
   const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
   const description = typeof req.body.description === "string" ? req.body.description.trim() : "";
   const banner = typeof req.body.banner === "string" ? req.body.banner.trim() : "";
+  const topic = req.body.topic || 'GERAL';
   if (name.length < 3 || name.length > 50 || description.length > 200 || banner.length > 1000) {
     return res.status(400).json({ message: "Informe um nome de 3 a 50 caracteres. A descrição aceita até 200 caracteres." });
   }
   if (banner && !/^https?:\/\//i.test(banner)) {
     return res.status(400).json({ message: "A imagem precisa ser uma URL http ou https." });
   }
+  if (!topicCodes.has(topic)) return res.status(400).json({ message: 'Categoria inválida.' });
   try {
     const room = await prisma.$transaction(async (tx) => {
       const created = await tx.room.create({
         data: {
-          name, description: description || null, banner: banner || null,
+          name, description: description || null, banner: banner || null, topic,
           ownerId: req.userId,
           members: { create: { userId: req.userId, role: "OWNER" } },
         },
@@ -96,6 +119,7 @@ router.post("/", async (req, res) => {
       return created;
     });
     res.status(201).json({ room });
+    void gamification.syncAchievements(req.userId, req.app.get('io')).catch(error => console.error('Falha ao conferir conquistas:', error));
   } catch (error) {
     console.error("Erro ao criar sala:", error);
     res.status(500).json({ message: "Não foi possível criar a sala." });
@@ -105,7 +129,7 @@ router.post("/", async (req, res) => {
 async function manageableRoom(req, res, allowCoAdmin = true) {
   const room = await prisma.room.findUnique({
     where: { id: req.params.id },
-    select: { id: true, name: true, description: true, banner: true, ownerId: true },
+    select: { id: true, name: true, description: true, banner: true, topic: true, ownerId: true },
   });
   if (!room) {
     res.status(404).json({ message: "Chat não encontrado." });
@@ -155,14 +179,15 @@ router.patch("/:id", async (req, res) => {
     const name = typeof req.body.name === "string" ? req.body.name.trim() : "";
     const description = typeof req.body.description === "string" ? req.body.description.trim() : "";
     const banner = typeof req.body.banner === "string" ? req.body.banner.trim() : "";
+    const topic = req.body.topic ?? access.room.topic;
     if (name.length < 3 || name.length > 50 || description.length > 200 || banner.length > 1000 ||
-        (banner && !/^https?:\/\//i.test(banner))) {
+        (banner && !/^https?:\/\//i.test(banner)) || !topicCodes.has(topic)) {
       return res.status(400).json({ message: "Confira nome, descrição e URL da capa." });
     }
     const room = await prisma.room.update({
       where: { id: access.room.id },
-      data: { name, description: description || null, banner: banner || null },
-      select: { id: true, name: true, description: true, banner: true },
+      data: { name, description: description || null, banner: banner || null, topic },
+      select: { id: true, name: true, description: true, banner: true, topic: true },
     });
     req.app.get("io").to(room.id).emit("room-updated", room);
     res.json({ room });
@@ -220,10 +245,19 @@ router.delete("/:id/members/:userId", async (req, res) => {
       return res.status(403).json({ message: "Você não pode remover este participante." });
     }
 
-    const deleted = await prisma.roomMember.deleteMany({
-      where: { roomId: access.room.id, userId: req.params.userId, role: target.role },
+    const deleted = await prisma.$transaction(async tx => {
+      const result = await tx.roomMember.deleteMany({
+        where: { roomId: access.room.id, userId: req.params.userId, role: target.role },
+      });
+      if (result.count) await tx.moderationAction.create({ data: { actorId: req.userId,
+        targetUserId: req.params.userId, roomId: access.room.id, action: 'REMOVE_MEMBER',
+        targetType: 'USER', targetId: req.params.userId, reason: 'Removido pela equipe da comunidade.' } });
+      return result;
     });
     if (!deleted.count) return res.status(409).json({ message: "A permissão do participante mudou. Atualize a lista." });
+    req.app.get('removeVoiceUser')?.(access.room.id, req.params.userId);
+    await prisma.eventParticipant.deleteMany({ where: { userId: req.params.userId,
+      attendedAt: null, event: { roomId: access.room.id, startsAt: { gt: new Date() } } } });
 
     const io = req.app.get("io");
     await req.app.get('settleProjection')(access.room.id);

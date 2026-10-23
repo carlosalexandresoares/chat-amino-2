@@ -11,7 +11,7 @@ button { cursor: pointer; }
 .admin-header nav { display: flex; flex-wrap: wrap; gap: 10px; }
 .admin-header a { padding: 9px 13px; border: 1px solid #685680; border-radius: 9px; color: #f6f1ff; text-decoration: none; }
 .admin-content { border: 1px solid #414260; border-radius: 18px; padding: 22px; background: #191d31; box-shadow: 0 16px 42px #0005; }
-.admin-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+.admin-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
 .admin-tabs button, .admin-search button, .admin-more { border: 1px solid #795ca8; border-radius: 9px; padding: 9px 15px; background: #2f2b4b; color: #fff; font-weight: 700; }
 .admin-tabs button.active, .admin-search button { background: #8055bf; }
 .admin-search { display: flex; gap: 8px; margin-bottom: 10px; }
@@ -24,6 +24,8 @@ button { cursor: pointer; }
 .admin-row-info small { color: #bdc6db; }
 .admin-row-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .admin-row-actions a { color: #d6bbff; font-weight: 700; text-decoration: none; }
+.admin-row-actions button { min-height: 40px; padding: 8px 11px; border: 1px solid #8f74b7; border-radius: 8px; background: #594579; color: #fff; }
+:focus-visible { outline: 2px solid #e2c5ff; outline-offset: 2px; }
 .admin-delete { padding: 8px 11px; border: 1px solid #ba6f80; border-radius: 8px; background: #542a39; color: #fff; font-weight: 700; }
 .admin-delete:disabled { opacity: .55; cursor: default; }
 .admin-more { display: block; margin: 18px auto 0; }

@@ -1,0 +1,49 @@
+.voice-section { flex: none; margin: 7px 12px; border: 1px solid #4e4a6e; border-radius: 12px; background: #22263d; color: #f4edff; }
+.voice-section summary { padding: 10px 12px; cursor: pointer; font-size: 13px; font-weight: 800; list-style-position: inside; }
+.voice-section summary small { margin-left: 6px; color: #b6c4db; font-weight: 600; }
+.voice-section-content { max-height: min(33dvh, 300px); overflow: auto; padding: 0 12px 11px; }
+.voice-create-form { display: flex; align-items: end; flex-wrap: wrap; gap: 8px; padding: 9px 0; }
+.voice-create-form label { display: grid; gap: 4px; font-size: 12px; }
+.voice-create-form input[type="text"], .voice-create-form input:not([type]) { width: min(260px, 70vw); padding: 8px 10px; border: 1px solid #605a7f; border-radius: 8px; background: #171d32; color: #fff; }
+.voice-create-form .voice-link-wrap { display: flex; align-items: center; gap: 5px; }
+.voice-create-form button, .voice-room-list button, .voice-dock button { padding: 7px 10px; border: 1px solid #8f75bb; border-radius: 8px; background: #5b4684; color: #fff; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.voice-create-form button:disabled, .voice-room-list button:disabled, .voice-dock button:disabled { opacity: .55; cursor: default; }
+.voice-room-list { display: grid; gap: 7px; }
+.voice-room-card { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 10px; border: 1px solid #474762; border-radius: 9px; background: #1a2034; }
+.voice-room-card div:first-child { display: grid; gap: 3px; min-width: 0; }
+.voice-room-card strong { font-size: 13px; overflow-wrap: anywhere; }
+.voice-room-card small { color: #b8c6da; font-size: 11px; }
+.voice-room-card .voice-room-actions { display: flex; gap: 6px; }
+#voice-section-status, #voice-dock-status { margin: 7px 0 0; min-height: 15px; color: #ffcbc7; font-size: 12px; }
+.voice-dock { position: fixed; z-index: 110; right: 16px; bottom: 16px; width: min(430px, calc(100vw - 24px)); max-height: min(70dvh, 560px); overflow: auto; padding: 11px; border: 1px solid #8668b2; border-radius: 15px; background: #20253c; color: #f9f5ff; box-shadow: 0 18px 50px #000b; }
+.voice-dock-head { display: flex; align-items: center; gap: 7px; }
+.voice-dock-head > div { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.voice-dock-head strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.voice-dock-head small { color: #b8c6d9; font-size: 11px; }
+.voice-dock-head button { flex: none; }
+.voice-dock-head #voice-dock-leave { border-color: #a46677; background: #653b4b; }
+.voice-dock-body { padding-top: 10px; }
+#voice-participant-list { display: grid; gap: 7px; max-height: 32dvh; overflow: auto; }
+.voice-participant { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 8px; border: 1px solid #414b65; border-radius: 9px; background: #182037; }
+.voice-participant.speaking { border-color: #8ae0b2; box-shadow: inset 0 0 0 1px #8ae0b250; }
+.voice-participant .voice-avatar { display: grid; place-items: center; flex: none; width: 31px; height: 31px; overflow: hidden; border-radius: 50%; background: #6549a0; font-size: 13px; font-weight: 900; }
+.voice-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.voice-participant .voice-person { flex: 1; min-width: 100px; display: grid; gap: 2px; }
+.voice-person strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.voice-person small { color: #b8c5d7; font-size: 10px; }
+.voice-participant label { display: flex; align-items: center; gap: 4px; color: #becbdb; font-size: 11px; }
+.voice-participant input[type="range"] { width: 68px; }
+.voice-participant audio { display: none; }
+.voice-video-volume-wrap { display: flex; align-items: center; gap: 9px; margin-top: 11px; color: #d3caeb; font-size: 12px; }
+.voice-video-volume-wrap input { flex: 1; }
+body.voice-active .app-screen .messages { padding-bottom: 82px; }
+@media (max-width: 620px) {
+  .voice-section { margin: 5px 8px; }
+  .voice-section summary { padding: 7px 9px; font-size: 12px; }
+  .voice-section-content { max-height: min(36dvh, 280px); }
+  .voice-dock { right: 7px; bottom: calc(62px + env(safe-area-inset-bottom)); left: 7px; width: auto; max-height: min(62dvh, 500px); padding: 8px; }
+  .voice-dock-head { gap: 5px; }
+  .voice-dock-head button { padding: 7px; font-size: 11px; }
+  body.mobile-keyboard-open .voice-dock { bottom: 4px; }
+  body.voice-active .app-screen .messages { padding-bottom: 88px; }
+}

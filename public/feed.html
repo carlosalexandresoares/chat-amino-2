@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Feed | Chat Amino 2</title>
+  <link rel="stylesheet" href="/style/feed.css?v=3">
+  <link rel="stylesheet" href="/style/mobile-app.css?v=3">
+  <link rel="stylesheet" href="/style/notification-badge.css?v=1">
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/script/notification-badge.js?v=2" defer></script>
+  <script type="module" src="/script/feed.js?v=3"></script>
+</head>
+<body class="feed-page">
+  <header class="feed-header">
+    <a class="feed-brand" href="/index.html">✳ Chat Amino <span>2</span></a>
+    <nav aria-label="Acesso rápido">
+      <a href="/index.html">Chats</a>
+      <a href="/direct.html">Mensagens</a>
+      <a href="/notifications.html" class="notification-link" aria-label="Notificações">🔔 <span class="notification-badge hidden">0</span></a>
+      <a href="/perfil.html">Perfil</a>
+    </nav>
+  </header>
+  <main class="feed-layout">
+    <section class="feed-main" aria-label="Feed social">
+      <div class="feed-intro"><span>COMUNIDADE EM MOVIMENTO</span><h1>O que está acontecendo?</h1><p>Descubra posts de pessoas e comunidades que combinam com você.</p></div>
+      <form id="feed-compose" class="feed-compose">
+        <label for="feed-content">Compartilhe uma ideia</label>
+        <textarea id="feed-content" maxlength="1000" rows="3" placeholder="O que você quer contar?" required></textarea>
+        <div class="feed-compose-actions"><label for="feed-room">Publicar em <select id="feed-room"><option value="">Meu perfil</option></select></label><button type="submit">Publicar</button></div>
+      </form>
+      <div class="feed-tabs" role="tablist" aria-label="Escolher feed">
+        <button type="button" data-feed-mode="forYou" role="tab" aria-selected="true">Para você</button>
+        <button type="button" data-feed-mode="following" role="tab" aria-selected="false">Seguindo</button>
+        <button type="button" data-feed-mode="saved" role="tab" aria-selected="false">Salvos</button>
+      </div>
+      <p id="feed-status" role="status" aria-live="polite"></p>
+      <div id="feed-list" class="feed-list"></div>
+      <button id="feed-more" type="button" class="feed-more hidden">Carregar mais posts</button>
+    </section>
+    <aside class="feed-side"><h2>Seu espaço</h2><p>Encontre pessoas, acompanhe comunidades e participe das conversas.</p><a href="/index.html#communities">Explorar comunidades ↗</a><a href="/perfil.html">Meu perfil ↗</a></aside>
+  </main>
+  <dialog id="share-dialog" class="feed-dialog"><form method="dialog"><button class="dialog-close" aria-label="Fechar">✕</button></form><h2>Compartilhar post</h2><form id="share-form"><label>Seu comentário (opcional)<textarea id="share-comment" maxlength="1000" rows="3"></textarea></label><label>Destino<select id="share-room"><option value="">Meu perfil</option></select></label><button type="submit">Compartilhar</button><p id="share-status" role="status"></p></form></dialog>
+  <dialog id="report-dialog" class="feed-dialog"><form method="dialog"><button class="dialog-close" aria-label="Fechar">✕</button></form><h2>Denunciar post</h2><form id="report-form"><label>Motivo<select id="report-reason"><option value="SPAM">Spam</option><option value="HARASSMENT">Assédio</option><option value="INAPPROPRIATE">Conteúdo inadequado</option><option value="OTHER">Outro</option></select></label><label>Detalhes (opcional)<textarea id="report-details" maxlength="500" rows="3"></textarea></label><button type="submit">Enviar denúncia</button><p id="report-status" role="status"></p></form></dialog>
+  <nav class="mobile-bottom-nav" aria-label="Navegação principal">
+    <a href="/index.html"><span aria-hidden="true">▤</span><small>Chats</small></a>
+    <a href="/index.html#communities"><span aria-hidden="true">◎</span><small>Comunidades</small></a>
+    <a href="/index.html?sala=geral#projections"><span aria-hidden="true">▣</span><small>Projeções</small></a>
+    <a href="/perfil.html"><span aria-hidden="true">◉</span><small>Perfil</small></a>
+  </nav>
+</body>
+</html>

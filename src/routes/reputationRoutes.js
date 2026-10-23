@@ -2,6 +2,7 @@ const express = require('express');
 const prisma = require('../database/prisma');
 const auth = require('../middleware/authMiddleware');
 const rep = require('../services/reputation');
+const gamification = require('../services/gamification');
 const router = express.Router();
 router.use(auth);
 
@@ -22,7 +23,10 @@ router.get('/reputation/checkin', async (req, res) => {
 router.post('/reputation/checkin', async (req, res) => {
   try {
     const result = await rep.claimCheckin(req.userId);
-    if (result.claimed) notify(req, req.userId, result, 'CHECKIN');
+    if (result.claimed) {
+      notify(req, req.userId, result, 'CHECKIN');
+      void gamification.syncAchievements(req.userId, req.app.get('io')).catch(error => console.error('Falha ao conferir conquistas:', error));
+    }
     res.status(result.claimed ? 200 : 409).json({ claimed: result.claimed, streak: result.streak, reward: result.reward, xp: result.user.xp, ...rep.progress(result.user.xp) });
   } catch (e) { console.error(e); res.status(500).json({ message: 'Não foi possível fazer check-in.' }); }
 });

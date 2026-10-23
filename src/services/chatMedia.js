@@ -28,13 +28,13 @@ const configured = Boolean(cloudinaryConfigured || s3 || localRoot);
 function problem(message, status = 400) { return Object.assign(new Error(message), { status }); }
 function requireStorage() { if (!configured) throw problem('Configure o armazenamento de arquivos do chat no servidor.', 503); }
 function localPath(key) {
-  if (!/^chat\/(audio|sticker|wallpaper)\/[a-zA-Z0-9_-]{1,64}\/[0-9a-f-]{36}\.(webm|ogg|wav|m4a|mp3|webp)$/.test(key)) {
+  if (!/^chat\/(audio|sticker|wallpaper|direct_image)\/[a-zA-Z0-9_-]{1,64}\/[0-9a-f-]{36}\.(webm|ogg|wav|m4a|mp3|webp)$/.test(key)) {
     throw problem('Arquivo inválido.');
   }
   return path.join(localRoot, ...key.split('/'));
 }
 function cloudinaryAsset(key) {
-  const match = /^cloudinary:(image|raw):(webp|webm|ogg|wav|m4a|mp3):(chat\/(?:audio|sticker|wallpaper)\/[a-zA-Z0-9_-]{1,64}\/[0-9a-f-]{36}(?:\.(?:webm|ogg|wav|m4a|mp3))?)$/.exec(key);
+  const match = /^cloudinary:(image|raw):(webp|webm|ogg|wav|m4a|mp3):(chat\/(?:audio|sticker|wallpaper|direct_image)\/[a-zA-Z0-9_-]{1,64}\/[0-9a-f-]{36}(?:\.(?:webm|ogg|wav|m4a|mp3))?)$/.exec(key);
   if (!match) throw problem('Arquivo inválido.');
   return { resourceType: match[1], format: match[2], publicId: match[3] };
 }
@@ -157,13 +157,13 @@ async function cleanupOrphans(prisma) {
   if (!configured) return;
   const abandoned = await prisma.chatAsset.findMany({ where: {
     createdAt: { lt: new Date(Date.now() - 86400000) }, messages: { none: {} },
-    sticker: { is: null }, appearances: { none: {} },
+    sticker: { is: null }, appearances: { none: {} }, directMessages: { none: {} },
   }, take: 50, select: { id: true, key: true } });
   for (const asset of abandoned) {
     try {
       await remove(asset.key);
       await prisma.chatAsset.deleteMany({ where: { id: asset.id, messages: { none: {} },
-        sticker: { is: null }, appearances: { none: {} } } });
+        sticker: { is: null }, appearances: { none: {} }, directMessages: { none: {} } } });
     } catch (error) { console.error('Falha ao limpar arquivo abandonado:', error); }
   }
 }

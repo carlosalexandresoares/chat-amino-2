@@ -60,7 +60,13 @@ router.delete('/rooms/:id', async (req, res) => {
     const room = await prisma.room.findUnique({ where: { id: req.params.id }, select: { id: true } });
     if (!room) return res.status(404).json({ message: 'Chat não encontrado.' });
     await req.app.get('endLiveSession')(room.id);
-    const deleted = await prisma.room.deleteMany({ where: { id: room.id } });
+    const deleted = await prisma.$transaction(async tx => {
+      const result = await tx.room.deleteMany({ where: { id: room.id } });
+      if (result.count) await tx.moderationAction.create({ data: { actorId: req.userId,
+        action: 'DELETE_ROOM', targetType: 'ROOM', targetId: room.id,
+        reason: 'Excluído pela administração geral.' } });
+      return result;
+    });
     if (!deleted.count) return res.status(404).json({ message: 'Chat não encontrado.' });
     const io = req.app.get('io');
     io.to(room.id).emit('room-removed', { roomId: room.id, message: 'Este chat foi excluído pela administração.' });
@@ -94,6 +100,8 @@ router.delete('/users/:id', async (req, res) => {
         await tx.room.update({ where: { id: room.id }, data: { ownerId: req.userId } });
       }
       await tx.user.delete({ where: { id: target.id } });
+      await tx.moderationAction.create({ data: { actorId: req.userId, action: 'DELETE_USER',
+        targetType: 'USER', targetId: target.id, reason: 'Excluído pela administração geral.' } });
     }, { maxWait: 10000, timeout: 60000 });
 
     const io = req.app.get('io');

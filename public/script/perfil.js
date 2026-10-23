@@ -2,6 +2,7 @@ const token = localStorage.getItem("authToken");
 if (!token) window.location.href = "/login.html";
 if (token && typeof io === 'function') {
   const profileSocket = io({ auth: { token } });
+  window.ChatNotificationBadge?.attachSocket(profileSocket);
   profileSocket.on('level-up', (data) => {
     const toast = document.getElementById('level-toast');
     toast.textContent = `Parabéns! Você alcançou o nível ${data.level} — ${data.title}!`;
@@ -47,6 +48,11 @@ async function request(url, options = {}) {
     throw new Error("O servidor ainda não carregou esta função. Reinicie-o e atualize a página.");
   }
   const data = await response.json();
+  if (response.status === 401) {
+    localStorage.removeItem('authToken');
+    location.replace('/login.html');
+    throw new Error('Sua sessão expirou. Entre novamente.');
+  }
   if (!response.ok) throw new Error(data.message || "Não foi possível completar a ação.");
   return data;
 }
@@ -70,6 +76,7 @@ function renderProfile(user) {
   $("profile-username").textContent = user.username;
   $("profile-level").textContent = `LV ${user.level}`;
   $("profile-title").textContent = user.title;
+  $('profile-presence').textContent = user.statusText || ({ ONLINE: 'Online', AWAY: 'Ausente', BUSY: 'Ocupado', INVISIBLE: 'Invisível' }[user.presenceStatus] || '');
   $("profile-xp").textContent = user.nextLevelXp === null ? `${fmt.format(user.xp)} XP` : `${fmt.format(user.xp)} / ${fmt.format(user.nextLevelXp)} XP`;
   $("profile-next-xp").textContent = user.nextLevelXp === null ? 'Nível Máximo' : `Faltam ${fmt.format(user.xpToNext)} XP para o próximo nível.`;
   $("profile-rank").textContent = `Posição geral: #${fmt.format(user.rank)}`;
@@ -87,10 +94,80 @@ function renderProfile(user) {
   $("edit-profile-button").classList.toggle("hidden", !user.isSelf);
   postForm.classList.toggle("hidden", !user.isSelf);
   followButton.classList.toggle("hidden", user.isSelf);
+  $('direct-message-link').classList.toggle('hidden', user.isSelf || user.isBlockedByMe);
+  $('direct-message-link').href = `/direct.html?user=${encodeURIComponent(user.id)}`;
+  $('profile-block-button').classList.toggle('hidden', user.isSelf);
+  $('profile-report-button').classList.toggle('hidden', user.isSelf);
+  $('profile-privacy').classList.toggle('hidden', !user.isSelf);
+  $('profile-delete-open').classList.toggle('hidden', !user.isSelf || currentUserIsSiteAdmin);
+  $('profile-admin-delete-note').classList.toggle('hidden', !user.isSelf || !currentUserIsSiteAdmin);
+  if (user.isSelf) $('profile-visibility').value = user.profileVisibility || 'PUBLIC';
+  $('profile-block-button').textContent = user.isBlockedByMe ? 'Desbloquear' : 'Bloquear';
   $("logout-button").classList.toggle("hidden", !user.isSelf);
   followButton.textContent = user.isFollowing ? "Seguindo" : "Seguir";
   followButton.classList.toggle("following", user.isFollowing);
 }
+async function loadShowcase(userId) {
+  try {
+    const data = await request(`/api/gamification/users/${encodeURIComponent(userId)}/showcase`);
+    if (viewedUser?.id !== userId) return;
+    const medals = $('profile-medal-list'); medals.replaceChildren();
+    for (const entry of data.achievements) {
+      const badge = document.createElement('span'); badge.textContent = entry.achievement.medal;
+      badge.title = entry.achievement.title; badge.setAttribute('aria-label', entry.achievement.title);
+      medals.append(badge);
+    }
+    if (!data.achievements.length) medals.textContent = 'Nenhuma medalha ainda';
+    const frame = data.equipped.find(item => item.type === 'FRAME');
+    const theme = data.equipped.find(item => item.type === 'PROFILE_THEME');
+    const title = data.equipped.find(item => item.type === 'TITLE');
+    $('profile-avatar').classList.remove('frame-amethyst', 'frame-ember');
+    if (frame && ['amethyst', 'ember'].includes(frame.cssToken)) $('profile-avatar').classList.add(`frame-${frame.cssToken}`);
+    document.querySelector('.profile-card').classList.remove('theme-aurora', 'theme-night');
+    if (theme && ['aurora', 'night'].includes(theme.cssToken)) document.querySelector('.profile-card').classList.add(`theme-${theme.cssToken}`);
+    $('profile-special-title').textContent = title?.title || '';
+    $('profile-special-title').classList.toggle('hidden', !title);
+  } catch (error) { console.error('Falha ao carregar medalhas:', error); }
+}
+$('profile-block-button').addEventListener('click', async () => {
+  if (!viewedUser || viewedUser.isSelf) return;
+  try {
+    await request(`/api/direct/blocks/${encodeURIComponent(viewedUser.id)}`, {
+      method: viewedUser.isBlockedByMe ? 'DELETE' : 'PUT',
+    });
+    loadProfile();
+  } catch (error) { message.textContent = error.message; }
+});
+$('profile-report-button').addEventListener('click', () => $('profile-report-dialog').showModal());
+$('profile-report-send').addEventListener('click', async () => {
+  const button = $('profile-report-send'); button.disabled = true;
+  try {
+    await request('/api/moderation/reports', { method: 'POST', body: JSON.stringify({
+      kind: 'USER', targetId: viewedUser.id, reason: $('profile-report-reason').value,
+      details: $('profile-report-details').value }) });
+    $('profile-report-dialog').close(); message.textContent = 'Denúncia enviada.';
+  } catch (error) { $('profile-report-status').textContent = error.message; }
+  finally { button.disabled = false; }
+});
+$('profile-visibility-save').addEventListener('click', async () => {
+  const button = $('profile-visibility-save'); button.disabled = true;
+  try {
+    const result = await request('/api/auth/privacy', { method: 'PATCH', body: JSON.stringify({
+      profileVisibility: $('profile-visibility').value }) });
+    viewedUser.profileVisibility = result.profileVisibility;
+    $('profile-privacy-status').textContent = 'Privacidade atualizada.';
+  } catch (error) { $('profile-privacy-status').textContent = error.message; }
+  finally { button.disabled = false; }
+});
+$('profile-delete-open').addEventListener('click', () => $('profile-delete-dialog').showModal());
+$('profile-delete-confirm').addEventListener('click', async () => {
+  const button = $('profile-delete-confirm'); button.disabled = true;
+  try {
+    await request('/api/auth/account', { method: 'DELETE', body: JSON.stringify({
+      password: $('profile-delete-password').value }) });
+    localStorage.removeItem('authToken'); location.replace('/login.html');
+  } catch (error) { $('profile-delete-status').textContent = error.message; button.disabled = false; }
+});
 
 function renderPosts(posts) {
   postList.replaceChildren();
@@ -103,12 +180,21 @@ function renderPosts(posts) {
   for (const post of posts) {
     const article = document.createElement("article");
     article.className = "profile-post";
+    article.id = `post-${post.id}`;
     const date = document.createElement("time");
     date.dateTime = post.createdAt;
     date.textContent = new Date(post.createdAt).toLocaleDateString("pt-BR");
     const content = document.createElement("p");
-    content.textContent = post.content;
+    content.textContent = post.content || (post.sharedPost ? `Compartilhou uma publicação de ${post.sharedPost.user.username}` : '');
     article.append(date, content);
+    if (post.sharedPost) {
+      const original = document.createElement('a'); original.href = `/feed.html?post=${encodeURIComponent(post.sharedPost.id)}`;
+      original.textContent = `${post.sharedPost.user.username}: ${post.sharedPost.content.slice(0, 180)}`;
+      article.append(original);
+    }
+    const discussion = document.createElement('a'); discussion.href = `/feed.html?post=${encodeURIComponent(post.id)}`;
+    discussion.className = 'profile-post-discussion'; discussion.textContent = `Ver post e comentários (${post._count?.comments || 0})`;
+    article.append(discussion);
     if (post.featuredAt) { const mark = document.createElement('strong'); mark.textContent = '★ Destaque'; article.append(mark); }
     if (viewedUser?.id !== currentUserId) {
       const like = document.createElement('button');
@@ -118,7 +204,8 @@ function renderPosts(posts) {
       like.addEventListener('click', async () => { try { await request(`/api/posts/${post.id}/like`, { method: 'POST' }); loadPosts(); } catch (e) { message.textContent = e.message; } });
       article.append(like);
     }
-    if (viewedUser?.viewerIsModerator && !post.featuredAt) {
+    if (!post.featuredAt && (currentUserIsSiteAdmin ||
+      (post.roomId && viewedUser?.viewerModeratedRoomIds?.includes(post.roomId)))) {
       const feature = document.createElement('button'); feature.type = 'button'; feature.className = 'follow-button'; feature.textContent = 'Destacar';
       feature.addEventListener('click', async () => { try { await request(`/api/posts/${post.id}/feature`, { method: 'POST' }); loadPosts(); } catch (e) { message.textContent = e.message; } });
       article.append(feature);
@@ -134,6 +221,7 @@ function renderPosts(posts) {
     }
     postList.append(article);
   }
+  if (location.hash.startsWith('#post-')) requestAnimationFrame(() => document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: 'center' }));
 }
 
 function connectionRow(user) {
@@ -212,6 +300,7 @@ async function loadProfile() {
     currentUserId = me.user.id;
     const profile = await request(`/api/users/${encodeURIComponent(id)}`);
     renderProfile(profile.user);
+    void loadShowcase(id);
     try {
       const posts = await request(`/api/users/${encodeURIComponent(id)}/posts`);
       renderPosts(posts.posts);

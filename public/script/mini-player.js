@@ -3,7 +3,7 @@ import dom from './dom.js';
 
 const $ = id => document.getElementById(id);
 const preferenceKey = 'floatingVideoEnabled';
-const allowedPages = new Set(['/index.html', '/', '/perfil.html', '/editar-perfil.html', '/communities.html', '/room.html', '/admin.html']);
+const allowedPages = new Set(['/index.html', '/', '/perfil.html', '/editar-perfil.html', '/communities.html', '/room.html', '/admin.html', '/direct.html']);
 let initialized = false;
 let noticeTimer;
 let pipWindow = null;
