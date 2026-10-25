@@ -18,6 +18,6 @@ test('downloads hospedados continuam disponíveis sem os arquivos de build locai
       redirect(code, url) { redirect = { code, url }; },
     });
     assert.equal(redirect.code, 302);
-    assert.match(redirect.url, /^https:\/\/github\.com\/carlosalexandresoares\/chat-amino-2\/releases\/download\/v0\.1\.0-beta\.1\//);
+    assert.match(redirect.url, new RegExp(`^https://github\\.com/carlosalexandresoares/chat-amino-2/releases/download/v0\\.1\\.0-beta\\.${platform === 'android' ? '2' : '1'}/`));
   }
 });

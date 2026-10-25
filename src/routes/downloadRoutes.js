@@ -7,7 +7,7 @@ const packages = {
     file: path.join(root, 'mobile/android/app/build/outputs/apk/debug/app-debug.apk'),
     name: 'Purp-Android-teste.apk',
     url: 'PURP_ANDROID_DOWNLOAD_URL',
-    release: 'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.1/Purp-Android-teste.apk',
+    release: 'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.2/Purp-Android-teste.apk',
   },
   windows: {
     file: path.join(root, 'desktop/dist/Purp Setup 0.1.0.exe'),
