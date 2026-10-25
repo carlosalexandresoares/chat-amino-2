@@ -43,6 +43,7 @@ app.use(express.json());
 // Servir o frontend da pasta public
 app.use(express.static(path.join(__dirname, "../public")));
 app.get('/api/downloads', downloads.status);
+app.get('/api/app-updates/android', downloads.androidUpdate);
 app.get('/downloads/:platform', downloads.download);
 
 // Rotas de autenticação

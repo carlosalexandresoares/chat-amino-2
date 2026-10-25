@@ -20,6 +20,8 @@ fs.writeFileSync(path.join(output, 'platform-runtime.js'),
   adapter.replace('__PURP_SERVER_ORIGIN__', JSON.stringify(backend.origin)));
 require('esbuild').buildSync({ entryPoints: [path.join(__dirname, 'native-push.js')],
   outfile: path.join(output, 'native-push.js'), bundle: true, platform: 'browser', format: 'iife' });
+require('esbuild').buildSync({ entryPoints: [path.join(__dirname, 'app-update.js')],
+  outfile: path.join(output, 'app-update.js'), bundle: true, platform: 'browser', format: 'iife' });
 for (const file of fs.readdirSync(output).filter(name => name.endsWith('.html'))) {
   const target = path.join(output, file);
   let html = fs.readFileSync(target, 'utf8');
@@ -27,7 +29,7 @@ for (const file of fs.readdirSync(output).filter(name => name.endsWith('.html'))
   if (!html.includes('<head>') || !html.includes('</head>'))
     throw new Error(`Página sem head: ${file}`);
   html = html.replace('<head>', '<head>\n<script src="/platform-runtime.js"></script>');
-  html = html.replace('</head>', '<script src="/native-push.js"></script>\n</head>');
+  html = html.replace('</head>', '<script src="/native-push.js"></script>\n<script src="/app-update.js"></script>\n</head>');
   fs.writeFileSync(target, html);
 }
 console.log(`Interface mobile preparada em ${output} para ${backend.origin}`);

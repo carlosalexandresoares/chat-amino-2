@@ -1,5 +1,14 @@
 # Aplicativos Purp
 
+## Beta 3: atualização e ícone Android
+
+- `npm test`: 37 aprovados, 0 falhas, 12 ignorados.
+- `npm run sync` e `gradlew assembleDebug`: concluídos. APK versão 3, 9.888.598 bytes, SHA-256 `f2cf52261f871aa90ff6bd23d5f1c789b9937c59b46fb4bbe4f24332ff8a458b`.
+- `aapt dump badging`: confirmou versão 3 e `REQUEST_INSTALL_PACKAGES` no manifesto.
+- `apksigner verify --print-certs`: beta 2 e beta 3 têm a mesma assinatura SHA-256 `8a42be1cbb59e3e4fbd1b3e5d87fd502790414d505ad6ffca99413737521fc65`.
+- Inspeção visual: o ícone mostra o mascote Purp nas versões padrão e adaptativa.
+- Instalação e atualização em aparelho: pendentes; `adb devices` não listou aparelhos conectados.
+
 Os aplicativos usam a interface de `public/` e o backend HTTP/Socket.IO existente. O servidor, PostgreSQL e os arquivos de mídia permanecem hospedados; não são incluídos nos instaladores. A URL padrão é `https://project-dacj.onrender.com` e pode ser substituída no build mobile ou na execução desktop com `PURP_SERVER_URL` (HTTPS em distribuição).
 
 ## Windows
@@ -41,6 +50,14 @@ O pacote mobile contém cópia dos arquivos web e redireciona chamadas `/api` e 
 
 **Pendente:** a captura de tela Android ainda precisa de uma implementação nativa com MediaProjection integrada a uma trilha WebRTC. O controle de compartilhar fica indisponível onde `getDisplayMedia` não existe. Um APK gerado não comprova esse recurso.
 
+### Atualização do Android
+
+O ícone do APK vem de `public/image/purp-mascot.png`. Depois de alterar essa imagem, execute `node mobile/generate-icons.js` na raiz antes de compilar.
+
+Desde a beta 3, o aplicativo consulta `/api/app-updates/android` ao abrir e oferece **Atualizar agora** se houver uma versão mais nova. No perfil há **Verificar atualizações do app**. O APK é baixado no cache interno, limitado a 100 MB, verificado pelo SHA-256 publicado e enviado ao instalador do Android. Na primeira atualização, o Android pode pedir permissão para instalar pelo Purp; toda instalação exige confirmação do usuário. O APK novo precisa ter a mesma assinatura do app instalado. Quem tem a beta 2 precisa instalar a beta 3 manualmente uma vez pela página de downloads, pois aquela versão ainda não possuía o atualizador.
+
+Para publicar uma versão futura, incremente `versionCode` e `versionName` em `mobile/android/app/build.gradle`, compile e publique o APK com a mesma chave, e atualize a versão, URL e SHA-256 em `src/config/androidRelease.json`. Teste a instalação em um dispositivo antes de anunciar suporte completo.
+
 ## iOS
 
 O projeto Xcode está em `mobile/ios/`. Para compilar e testar são necessários macOS, Xcode, uma equipe Apple para assinatura e um iPhone para validar permissões e mídia.
@@ -66,7 +83,7 @@ A migração `prisma/migrations/20261025000000_native_push_devices` adiciona som
 
 ## Página de downloads do site
 
-A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, o Android usa a [beta 2 corrigida](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.2) e o Windows usa a [beta 1](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.1). Os arquivos de build não entram no Git nem são enviados ao Render. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
+A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, o Android usa a [beta 3](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.3) e o Windows usa a [beta 1](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.1). Os arquivos de build não entram no Git nem são enviados ao Render. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
 
 ## Validação necessária antes da distribuição
 

@@ -18,6 +18,18 @@ test('downloads hospedados continuam disponíveis sem os arquivos de build locai
       redirect(code, url) { redirect = { code, url }; },
     });
     assert.equal(redirect.code, 302);
-    assert.match(redirect.url, new RegExp(`^https://github\\.com/carlosalexandresoares/chat-amino-2/releases/download/v0\\.1\\.0-beta\\.${platform === 'android' ? '2' : '1'}/`));
+    assert.match(redirect.url, new RegExp(`^https://github\\.com/carlosalexandresoares/chat-amino-2/releases/download/v0\\.1\\.0-beta\\.${platform === 'android' ? '3' : '1'}/`));
   }
+});
+
+test('manifesto de atualização Android anuncia APK e hash verificável', () => {
+  let result;
+  downloads.androidUpdate({}, {
+    set(name, value) { assert.equal(name, 'Cache-Control'); assert.equal(value, 'no-store'); return this; },
+    json(value) { result = value; },
+  });
+  assert.equal(result.versionCode, 3);
+  assert.equal(result.versionName, '0.1.0-beta.3');
+  assert.match(result.downloadUrl, /^https:\/\/github\.com\/carlosalexandresoares\/chat-amino-2\/releases\/download\/v0\.1\.0-beta\.3\//);
+  assert.match(result.sha256, /^[a-f0-9]{64}$/);
 });

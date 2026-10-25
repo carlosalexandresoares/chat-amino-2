@@ -1,5 +1,6 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const androidRelease = require('../config/androidRelease.json');
 
 const root = path.resolve(__dirname, '../..');
 const packages = {
@@ -7,7 +8,7 @@ const packages = {
     file: path.join(root, 'mobile/android/app/build/outputs/apk/debug/app-debug.apk'),
     name: 'Purp-Android-teste.apk',
     url: 'PURP_ANDROID_DOWNLOAD_URL',
-    release: 'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.2/Purp-Android-teste.apk',
+    release: androidRelease.downloadUrl,
   },
   windows: {
     file: path.join(root, 'desktop/dist/Purp Setup 0.1.0.exe'),
@@ -42,6 +43,10 @@ async function status(_req, res) {
   res.set('Cache-Control', 'no-store').json({ android, windows, ios: false });
 }
 
+function androidUpdate(_req, res) {
+  res.set('Cache-Control', 'no-store').json(androidRelease);
+}
+
 async function download(req, res) {
   const packageInfo = packages[req.params.platform];
   if (!packageInfo) return res.sendStatus(404);
@@ -51,4 +56,4 @@ async function download(req, res) {
   return res.redirect(302, packageInfo.release);
 }
 
-module.exports = { status, download };
+module.exports = { status, download, androidUpdate };
