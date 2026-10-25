@@ -6,7 +6,7 @@
 - O Render recebeu a credencial FCM como variável secreta `FIREBASE_SERVICE_ACCOUNT_JSON`; a implantação terminou com sucesso. A conta de serviço tem a função **Administrador da API Firebase Cloud Messaging**.
 - Um teste com token fictício chegou à API do FCM e recebeu `messaging/invalid-argument` por token inválido, conforme esperado. Isso verifica a autenticação do servidor, sem comprovar entrega a um celular.
 - `npm test`: 40 aprovados, 0 falhas, 12 ignorados. `npm --prefix mobile run sync` e `gradlew assembleDebug`: aprovados.
-- APK beta 4: `versionCode` 4, 9.895.515 bytes, SHA-256 `248de55869af498be693b7edeB6C87A68AAF11FCB92B77852A70BF7DE4AF8196` (em hexadecimal, sem distinção de maiúsculas). O build gerou os recursos do Firebase e contém o ícone de notificação Purp. `apksigner` confirmou a mesma assinatura da beta 3.
+- APK beta 4: `versionCode` 4, 9.895.515 bytes, SHA-256 `248de55869af498be693b7edeb6c87a68aaf11fcb92b77852a70bf7de4af8196`. O build gerou os recursos do Firebase e contém o ícone de notificação Purp. `apksigner` confirmou a mesma assinatura da beta 3. O arquivo publicado no GitHub foi baixado e teve o mesmo tamanho e SHA-256 do build local.
 - `adb devices` não encontrou celular. Instalação, permissão do Android e entrega real de mensagens gerais e privadas ainda precisam de teste em aparelho.
 
 ## Beta 3: atualização e ícone Android
@@ -105,7 +105,7 @@ A migração `prisma/migrations/20261025000000_native_push_devices` adiciona som
 
 ## Página de downloads do site
 
-A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, o Android usa a [beta 3](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.3) e o Windows usa a [beta 1](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.1). Os arquivos de build não entram no Git nem são enviados ao Render. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
+A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, o Android usa a [beta 4](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.4) e o Windows usa a [beta 1](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.1). Os arquivos de build não entram no Git nem são enviados ao Render. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
 
 ## Validação necessária antes da distribuição
 
