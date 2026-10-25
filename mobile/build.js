@@ -23,7 +23,11 @@ require('esbuild').buildSync({ entryPoints: [path.join(__dirname, 'native-push.j
 for (const file of fs.readdirSync(output).filter(name => name.endsWith('.html'))) {
   const target = path.join(output, file);
   let html = fs.readFileSync(target, 'utf8');
-  html = html.replace('</head>', '<script src="/platform-runtime.js"></script>\n<script src="/native-push.js"></script>\n</head>');
+  if (!html.trim()) continue;
+  if (!html.includes('<head>') || !html.includes('</head>'))
+    throw new Error(`Página sem head: ${file}`);
+  html = html.replace('<head>', '<head>\n<script src="/platform-runtime.js"></script>');
+  html = html.replace('</head>', '<script src="/native-push.js"></script>\n</head>');
   fs.writeFileSync(target, html);
 }
 console.log(`Interface mobile preparada em ${output} para ${backend.origin}`);

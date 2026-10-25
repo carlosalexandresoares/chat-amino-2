@@ -30,21 +30,19 @@
     attributeFilter: ['src', 'href'] });
   document.addEventListener('DOMContentLoaded', () =>
     document.querySelectorAll('[src^="/api/"], [href^="/api/"]').forEach(routeMedia));
-  let socketFactory;
+  const wrapSocket = value => {
+    if (typeof value !== 'function' || value.__purpWrapped) return value;
+    const wrapped = (...args) => typeof args[0] === 'string'
+      ? value(...args) : value(backend, args[0]);
+    Object.assign(wrapped, value);
+    wrapped.__purpWrapped = true;
+    return wrapped;
+  };
+  let socketFactory = wrapSocket(window.io);
   Object.defineProperty(window, 'io', {
     configurable: true,
     enumerable: true,
     get: () => socketFactory,
-    set: value => {
-      if (typeof value !== 'function' || value.__purpWrapped) {
-        socketFactory = value;
-        return;
-      }
-      const wrapped = (...args) => typeof args[0] === 'string'
-        ? value(...args) : value(backend, args[0]);
-      Object.assign(wrapped, value);
-      wrapped.__purpWrapped = true;
-      socketFactory = wrapped;
-    }
+    set: value => { socketFactory = wrapSocket(value); }
   });
 })();
