@@ -1,6 +1,29 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const notifications = require('../src/services/notifications');
+const nativePush = require('../src/services/nativePush');
+
+test('primeiro cadastro móvel ativa chat e privado sem sobrescrever preferências existentes', async () => {
+  let input;
+  const db = { notificationPreference: { createMany: async args => { input = args; return { count: 2 }; } } };
+  await notifications.enableMessagePushByDefault('pessoa', db);
+  assert.equal(input.skipDuplicates, true);
+  assert.deepEqual(input.data.map(item => item.category), ['CHAT', 'DIRECT']);
+  assert.ok(input.data.every(item => item.userId === 'pessoa' && item.enabled && item.pushEnabled));
+});
+
+test('mensagem privada com Push ativo aciona entrega nativa ao destinatário', async t => {
+  const calls = [];
+  t.mock.method(nativePush, 'sendNativePush', async notification => calls.push(notification));
+  const db = { notificationPreference: { findUnique: async () => ({ enabled: true, pushEnabled: true }) },
+    notification: { create: async ({ data }) => ({ id: 'n1', ...data }) } };
+  await notifications.publish({ db, push: async () => {}, recipientId: 'destino', actorId: 'autor',
+    kind: 'DIRECT_MESSAGE', sourceKey: 'direct:m1', title: 'Mensagem privada',
+    body: 'Chegou uma mensagem.', href: '/direct.html?conversation=c1' });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].recipientId, 'destino');
+  assert.equal(calls[0].kind, 'DIRECT_MESSAGE');
+});
 
 test('notificações respeitam categoria desligada e chave idempotente', async () => {
   let creates = 0;

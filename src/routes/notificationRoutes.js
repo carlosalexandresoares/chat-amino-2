@@ -111,6 +111,7 @@ router.put('/native-push/devices', async (req, res) => {
     const device = await prisma.nativePushDevice.upsert({ where: { token },
       create: { userId: req.userId, platform, token },
       update: { userId: req.userId, platform }, select: { id: true, platform: true } });
+    await notifications.enableMessagePushByDefault(req.userId);
     res.status(201).json({ device });
   } catch (error) { fail(res, error); }
 });

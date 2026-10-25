@@ -30,6 +30,13 @@ async function main() {
       .composite([{ input: logo, gravity: 'centre' }]).png()
       .toFile(path.join(folder, 'ic_launcher_foreground.png'));
   }
+  const { data, info } = await sharp(mascot).resize(96, 96).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  for (let i = 0; i < data.length; i += info.channels) {
+    data[i] = 255; data[i + 1] = 255; data[i + 2] = 255;
+  }
+  const notificationFolder = path.join(root, 'drawable-nodpi');
+  await fs.mkdir(notificationFolder, { recursive: true });
+  await sharp(data, { raw: info }).png().toFile(path.join(notificationFolder, 'purp_notification.png'));
 }
 
 main().catch(error => { console.error(error); process.exitCode = 1; });

@@ -75,6 +75,19 @@ Em Xcode, configure a equipe de assinatura, a capacidade **Push Notifications** 
 
 ## Push nativo
 
+### Avisos de mensagens no Android
+
+O chat geral envia um aviso para cada usuário com aplicativo móvel registrado, exceto o autor e pessoas que já receberam aviso de menção ou resposta da mesma mensagem. O chat privado já envia um aviso ao destinatário, respeitando conversas silenciadas. Ao ativar o aparelho pela primeira vez, as categorias **Chat** e **Mensagens privadas** recebem Push por padrão; preferências existentes permanecem como estão. O app oferece a ativação após o login e permite controlar tudo em **Notificações → Preferências e dispositivos**. A notificação usa o ícone Purp e abre a conversa correspondente ao tocar nela.
+
+Para habilitar a entrega real com o aplicativo fechado:
+
+1. Crie ou use um projeto Firebase e registre um app Android com identificador **`com.purp.app`**. Baixe o `google-services.json` e coloque-o em `mobile/android/app/`. Esse arquivo é ignorado pelo Git.
+2. No Firebase, crie uma credencial de conta de serviço para o FCM. No Render, configure o JSON completo na variável secreta `FIREBASE_SERVICE_ACCOUNT_JSON`. Nunca coloque a chave de serviço no APK ou no repositório.
+3. Execute `npm --prefix mobile run sync` e compile um **novo APK** com `gradlew assembleDebug`. Publique-o com a mesma chave de assinatura e um `versionCode` maior; atualize `src/config/androidRelease.json` com URL e SHA-256.
+4. No celular, instale a versão nova, entre na conta, toque **Ativar notificações** e permita avisos do Android. Com duas contas em dois aparelhos, envie mensagens no geral e no privado com o destinatário em segundo plano, toque os avisos e confirme que cada um abre a conversa correta. Teste também conversa silenciada e categorias desativadas.
+
+As migrações `20261025000000_native_push_devices` e `20261025010000_chat_message_notifications` foram aplicadas ao PostgreSQL em 25/10/2026. Sem as credenciais Firebase e um aparelho real, a entrega push permanece **não validada**; os testes automatizados verificam a lógica de destinatários e preferências.
+
 A migração `prisma/migrations/20261025000000_native_push_devices` adiciona somente a tabela de tokens dos dispositivos. Execute `npx prisma migrate deploy` no servidor antes de habilitar o recurso. Não inclua credenciais nos aplicativos.
 
 - Android: configure `FIREBASE_SERVICE_ACCOUNT_JSON` no servidor e `google-services.json` apenas no projeto Android. O servidor usa FCM.

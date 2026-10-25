@@ -81,4 +81,33 @@ if (Capacitor.isNativePlatform()) {
   if (auth() && localStorage.getItem(tokenKey) &&
       !sessionStorage.getItem('purp-native-push-synced'))
     PushNotifications.register().catch(() => {});
+
+  const offerKey = 'purp-native-push-offer-dismissed';
+  async function offerNotifications() {
+    if (!auth() || localStorage.getItem(tokenKey) || localStorage.getItem(offerKey) ||
+        location.pathname === '/notifications.html' || !await window.PurpNativePush.available().catch(() => false)) return;
+    const banner = document.createElement('aside');
+    banner.setAttribute('role', 'region');
+    banner.setAttribute('aria-label', 'Notificações de mensagens');
+    banner.style.cssText = 'position:fixed;z-index:10000;left:16px;right:16px;bottom:80px;max-width:420px;margin:auto;padding:16px;border:1px solid #8556cb;border-radius:16px;background:#211138;color:#fff;box-shadow:0 12px 35px #0009;font:inherit';
+    const message = document.createElement('p');
+    message.textContent = 'Receba avisos no celular quando chegarem mensagens no Chat Geral ou no privado.';
+    message.style.margin = '0 0 12px';
+    const enable = document.createElement('button');
+    enable.type = 'button'; enable.textContent = 'Ativar notificações';
+    const later = document.createElement('button');
+    later.type = 'button'; later.textContent = 'Depois';
+    for (const button of [enable, later]) button.style.cssText = 'margin-right:8px;padding:9px 12px;border-radius:8px;border:1px solid #8556cb;background:#7028cf;color:white;font:inherit';
+    later.style.background = 'transparent';
+    later.onclick = () => { localStorage.setItem(offerKey, '1'); banner.remove(); };
+    enable.onclick = async () => {
+      enable.disabled = true;
+      try { await window.PurpNativePush.enable(); banner.remove(); }
+      catch (error) { message.textContent = error.message || 'Falha ao ativar notificações.'; enable.disabled = false; }
+    };
+    banner.append(message, enable, later);
+    document.body.appendChild(banner);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(offerNotifications, 3500));
+  else setTimeout(offerNotifications, 3500);
 }

@@ -34,6 +34,7 @@ const moderation = require('./services/moderation');
 const antiSpam = require('./services/antiSpam');
 const { createVoiceService } = require('./services/voiceRooms');
 const notifications = require('./services/notifications');
+const generalMessageNotifications = require('./services/generalMessageNotifications');
 
 const app = express();
 
@@ -124,6 +125,10 @@ async function publishChatNotifications(saved, roomId, actor) {
     await notifications.publish({ recipientId: parentAuthorId, actorId: actor.id, kind: 'CHAT_REPLY',
       sourceKey: `reply:${saved.id}:${parentAuthorId}`, title: 'Responderam sua mensagem',
       body: `${actor.username} respondeu sua mensagem.`, href, io });
+  }
+  if (roomId === 'geral') {
+    await generalMessageNotifications.publish({ db: prisma, notifications, io,
+      messageId: saved.id, actor, excludedIds: [...mentionedIds, parentAuthorId].filter(Boolean), href });
   }
 }
 

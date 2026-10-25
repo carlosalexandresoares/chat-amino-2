@@ -6,6 +6,7 @@ mobile/android/.gradle/
 mobile/android/build/
 mobile/android/app/build/
 mobile/android/app/src/main/assets/public/
+mobile/android/app/google-services.json
 mobile/ios/App/App/public/
 mobile/ios/DerivedData/
 .toolchains/

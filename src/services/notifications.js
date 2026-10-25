@@ -5,7 +5,7 @@ const nativePush = require('./nativePush');
 const categories = ['SOCIAL', 'CHAT', 'DIRECT', 'PROJECTION', 'EVENT', 'ACHIEVEMENT', 'ADMIN'];
 const kinds = {
   FOLLOW: 'SOCIAL', POST_LIKE: 'SOCIAL', POST_COMMENT: 'SOCIAL', POST_FEATURED: 'SOCIAL',
-  CHAT_REPLY: 'CHAT', MENTION: 'CHAT', DIRECT_MESSAGE: 'DIRECT',
+  CHAT_REPLY: 'CHAT', CHAT_MESSAGE: 'CHAT', MENTION: 'CHAT', DIRECT_MESSAGE: 'DIRECT',
   PROJECTION_START: 'PROJECTION', EVENT_REMINDER: 'EVENT',
   ACHIEVEMENT_UNLOCKED: 'ACHIEVEMENT', ADMIN_WARNING: 'ADMIN',
 };
@@ -100,5 +100,11 @@ function validEndpoint(endpoint) {
   } catch { return false; }
 }
 
+async function enableMessagePushByDefault(userId, db = prisma) {
+  return db.notificationPreference.createMany({ data: ['CHAT', 'DIRECT'].map(category => ({
+    userId, category, enabled: true, pushEnabled: true,
+  })), skipDuplicates: true });
+}
+
 module.exports = { categories, kinds, publicKey: pushAvailable ? publicKey : '', pushAvailable,
-  safeHref, validEndpoint, publish, publishBatch, sendPush };
+  safeHref, validEndpoint, publish, publishBatch, sendPush, enableMessagePushByDefault };
