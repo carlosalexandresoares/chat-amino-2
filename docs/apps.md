@@ -66,7 +66,7 @@ A migração `prisma/migrations/20261025000000_native_push_devices` adiciona som
 
 ## Página de downloads do site
 
-A página pública `/downloads.html` mostra Android, Windows e iPhone. Android e Windows só habilitam o botão quando o servidor encontra o APK/instalador local ou quando `PURP_ANDROID_DOWNLOAD_URL` / `PURP_WINDOWS_DOWNLOAD_URL` apontam para arquivos publicados por HTTPS. Os arquivos de build não entram no Git nem são enviados automaticamente ao Render. Publique-os em um serviço de distribuição e configure essas variáveis no servidor para oferecer downloads no site hospedado. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
+A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, os botões redirecionam para os arquivos da [release de teste v0.1.0-beta.1](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.1). Os arquivos de build não entram no Git nem são enviados ao Render. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
 
 ## Validação necessária antes da distribuição
 
@@ -85,7 +85,7 @@ Os testes de integração opcionais criam e removem registros: use um banco isol
 
 | Tipo | Verificação | Resultado |
 | --- | --- | --- |
-| Automatizado | `npm test` na raiz | 34 aprovados, 0 falhas, 12 ignorados por dependerem de serviços ou banco de teste |
+| Automatizado | `npm test` na raiz | 35 aprovados, 0 falhas, 12 ignorados por dependerem de serviços ou banco de teste |
 | Automatizado | `npx prisma validate` e `npx prisma generate` | Aprovados; a migração de push não foi aplicada ao banco hospedado |
 | Automatizado | Electron em modo smoke com backend local | Janela, cliente Socket.IO, APIs WebRTC e captura presentes; API respondeu 400 a login vazio, conforme esperado |
 | Manual assistido por navegador | Pacote web do mobile servido localmente | Página de login abriu, API remota respondeu 400 a login vazio e o cliente Socket.IO apontou para o backend remoto |

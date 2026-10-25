@@ -7,11 +7,13 @@ const packages = {
     file: path.join(root, 'mobile/android/app/build/outputs/apk/debug/app-debug.apk'),
     name: 'Purp-Android-teste.apk',
     url: 'PURP_ANDROID_DOWNLOAD_URL',
+    release: 'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.1/Purp-Android-teste.apk',
   },
   windows: {
     file: path.join(root, 'desktop/dist/Purp Setup 0.1.0.exe'),
     name: 'Purp-Windows-Setup.exe',
     url: 'PURP_WINDOWS_DOWNLOAD_URL',
+    release: 'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.1/Purp-Windows-Setup.exe',
   },
 };
 
@@ -24,10 +26,13 @@ function externalUrl(packageInfo) {
   } catch { return null; }
 }
 
-async function available(packageInfo) {
-  if (externalUrl(packageInfo)) return true;
+async function localAvailable(packageInfo) {
   try { return (await fs.stat(packageInfo.file)).isFile(); }
   catch { return false; }
+}
+
+async function available(packageInfo) {
+  return Boolean(externalUrl(packageInfo) || packageInfo.release) || await localAvailable(packageInfo);
 }
 
 async function status(_req, res) {
@@ -42,8 +47,8 @@ async function download(req, res) {
   if (!packageInfo) return res.sendStatus(404);
   const url = externalUrl(packageInfo);
   if (url) return res.redirect(302, url);
-  if (!(await available(packageInfo))) return res.sendStatus(404);
-  return res.download(packageInfo.file, packageInfo.name);
+  if (await localAvailable(packageInfo)) return res.download(packageInfo.file, packageInfo.name);
+  return res.redirect(302, packageInfo.release);
 }
 
 module.exports = { status, download };
