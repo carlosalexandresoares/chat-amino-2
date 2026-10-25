@@ -1,5 +1,14 @@
 # Aplicativos Purp
 
+## Beta 4: notificações Android
+
+- O app Android `com.purp.app` foi registrado no projeto Firebase `purp-chat`. O build inclui `google-services.json` somente no diretório local ignorado pelo Git.
+- O Render recebeu a credencial FCM como variável secreta `FIREBASE_SERVICE_ACCOUNT_JSON`; a implantação terminou com sucesso. A conta de serviço tem a função **Administrador da API Firebase Cloud Messaging**.
+- Um teste com token fictício chegou à API do FCM e recebeu `messaging/invalid-argument` por token inválido, conforme esperado. Isso verifica a autenticação do servidor, sem comprovar entrega a um celular.
+- `npm test`: 40 aprovados, 0 falhas, 12 ignorados. `npm --prefix mobile run sync` e `gradlew assembleDebug`: aprovados.
+- APK beta 4: `versionCode` 4, 9.895.515 bytes, SHA-256 `248de55869af498be693b7edeB6C87A68AAF11FCB92B77852A70BF7DE4AF8196` (em hexadecimal, sem distinção de maiúsculas). O build gerou os recursos do Firebase e contém o ícone de notificação Purp. `apksigner` confirmou a mesma assinatura da beta 3.
+- `adb devices` não encontrou celular. Instalação, permissão do Android e entrega real de mensagens gerais e privadas ainda precisam de teste em aparelho.
+
 ## Beta 3: atualização e ícone Android
 
 - `npm test`: 37 aprovados, 0 falhas, 12 ignorados.
@@ -46,7 +55,7 @@ cd android
 
 O APK de depuração é produzido em `mobile/android/app/build/outputs/apk/debug/app-debug.apk` quando o Gradle termina com sucesso. Verifique a existência e o tamanho do arquivo. Instale com `adb install -r` somente depois de conectar um aparelho e autorizar a depuração USB.
 
-O pacote mobile contém cópia dos arquivos web e redireciona chamadas `/api` e Socket.IO para o backend HTTPS. Áudio precisa de permissão de microfone. O projeto contém o plugin Capacitor Push Notifications, mas a entrega de push requer um projeto Firebase, `google-services.json` no projeto Android e a configuração do servidor abaixo.
+O pacote mobile contém cópia dos arquivos web e redireciona chamadas `/api` e Socket.IO para o backend HTTPS. Áudio precisa de permissão de microfone. A beta 4 inclui o plugin Capacitor Push Notifications e a configuração do Firebase; a entrega real ainda precisa de validação em aparelho.
 
 **Pendente:** a captura de tela Android ainda precisa de uma implementação nativa com MediaProjection integrada a uma trilha WebRTC. O controle de compartilhar fica indisponível onde `getDisplayMedia` não existe. Um APK gerado não comprova esse recurso.
 
@@ -86,7 +95,7 @@ Para habilitar a entrega real com o aplicativo fechado:
 3. Execute `npm --prefix mobile run sync` e compile um **novo APK** com `gradlew assembleDebug`. Publique-o com a mesma chave de assinatura e um `versionCode` maior; atualize `src/config/androidRelease.json` com URL e SHA-256.
 4. No celular, instale a versão nova, entre na conta, toque **Ativar notificações** e permita avisos do Android. Com duas contas em dois aparelhos, envie mensagens no geral e no privado com o destinatário em segundo plano, toque os avisos e confirme que cada um abre a conversa correta. Teste também conversa silenciada e categorias desativadas.
 
-As migrações `20261025000000_native_push_devices` e `20261025010000_chat_message_notifications` foram aplicadas ao PostgreSQL em 25/10/2026. Sem as credenciais Firebase e um aparelho real, a entrega push permanece **não validada**; os testes automatizados verificam a lógica de destinatários e preferências.
+As migrações `20261025000000_native_push_devices` e `20261025010000_chat_message_notifications` foram aplicadas ao PostgreSQL em 25/10/2026. As credenciais Firebase estão configuradas no servidor hospedado. Sem um aparelho real, a entrega push permanece **não validada**; os testes automatizados verificam a lógica de destinatários e preferências.
 
 A migração `prisma/migrations/20261025000000_native_push_devices` adiciona somente a tabela de tokens dos dispositivos. Execute `npx prisma migrate deploy` no servidor antes de habilitar o recurso. Não inclua credenciais nos aplicativos.
 
@@ -116,7 +125,7 @@ Os testes de integração opcionais criam e removem registros: use um banco isol
 | Tipo | Verificação | Resultado |
 | --- | --- | --- |
 | Automatizado | `npm test` na raiz | 36 aprovados, 0 falhas, 12 ignorados por dependerem de serviços ou banco de teste |
-| Automatizado | `npx prisma validate` e `npx prisma generate` | Aprovados; a migração de push não foi aplicada ao banco hospedado |
+| Automatizado | `npx prisma validate` e `npx prisma generate` | Aprovados; as migrações de push foram aplicadas ao banco hospedado em 25/10/2026 |
 | Automatizado | Electron em modo smoke com backend local | Janela, cliente Socket.IO, APIs WebRTC e captura presentes; API respondeu 400 a login vazio, conforme esperado |
 | Manual assistido por navegador | Pacote web do mobile servido localmente | Página de login abriu, API remota respondeu 400 a login vazio e o cliente Socket.IO apontou para o backend remoto |
 | Compilação | `npm run dist:win` | Instalador `desktop/dist/Purp Setup 0.1.0.exe` produzido, 106.209.535 bytes, sem assinatura de código |
