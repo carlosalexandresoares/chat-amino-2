@@ -383,7 +383,8 @@ postForm.addEventListener("submit", async (event) => {
   }
 });
 
-$("logout-button").addEventListener("click", () => {
+$("logout-button").addEventListener("click", async () => {
+  try { await window.PurpNativePush?.disable(); } catch { /* O logout continua offline. */ }
   localStorage.removeItem("authToken");
   window.location.href = "/login.html";
 });

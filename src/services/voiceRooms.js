@@ -31,7 +31,8 @@ function createVoiceService({ io, prisma, getActiveLive }) {
   const membersOf = voiceRoomId => byRoom.get(voiceRoomId) || new Map();
   const participant = entry => ({ socketId: entry.socket.id, userId: entry.socket.user.id,
     username: entry.socket.user.username, avatar: entry.socket.user.avatar || null,
-    muted: entry.muted, forcedMuted: entry.forcedMuted, speaking: entry.speaking });
+    muted: entry.muted, forcedMuted: entry.forcedMuted, speaking: entry.speaking,
+    sharing: entry.sharing });
   const broadcastMembers = voiceRoomId => io.to(`voice:${voiceRoomId}`).emit('voice:participants',
     { voiceRoomId, participants: [...membersOf(voiceRoomId).values()].map(participant) });
   async function access(socket, roomId, moderator = false) {
@@ -127,7 +128,7 @@ function createVoiceService({ io, prisma, getActiveLive }) {
         if (members.size >= MAX_PEERS) return response(callback,
           { success: false, message: 'Esta sala de voz está cheia.' });
         const peers = [...members.values()].map(participant);
-        const entry = { socket, voiceRoomId, roomId: room.roomId, muted: false,
+        const entry = { socket, voiceRoomId, roomId: room.roomId, muted: false, sharing: false,
           forcedMuted: false, speaking: false, speakingAt: 0, signals: [] };
         members.set(socket.id, entry); byRoom.set(voiceRoomId, members); bySocket.set(socket.id, entry);
         socket.join(`voice:${voiceRoomId}`);
@@ -151,6 +152,17 @@ function createVoiceService({ io, prisma, getActiveLive }) {
       if (muted) entry.speaking = false;
       broadcastMembers(entry.voiceRoomId);
       response(callback, { success: true, muted });
+    });
+    socket.on('voice:share', ({ sharing } = {}, callback) => {
+      const entry = bySocket.get(socket.id);
+      if (!entry || typeof sharing !== 'boolean')
+        return response(callback, { success: false, message: 'Entre na chamada para compartilhar.' });
+      if (sharing && [...membersOf(entry.voiceRoomId).values()].some(member =>
+        member.socket.id !== socket.id && member.sharing))
+        return response(callback, { success: false, message: 'Outra pessoa já está compartilhando a tela.' });
+      entry.sharing = sharing;
+      broadcastMembers(entry.voiceRoomId);
+      response(callback, { success: true });
     });
     socket.on('voice:speaking', ({ speaking } = {}) => {
       const entry = bySocket.get(socket.id);

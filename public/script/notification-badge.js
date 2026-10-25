@@ -18,6 +18,9 @@
     if (!socket) return;
     for (const event of ['connect', 'notification', 'notification-read', 'notifications-read-all', 'notification-deleted'])
       socket.on(event, scheduleRefresh);
+    if (window.purpDesktop) socket.on('notification', notification => {
+      window.purpDesktop.notify(notification);
+    });
   }
   window.ChatNotificationBadge = { attachSocket, refresh: scheduleRefresh };
   if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', event => {

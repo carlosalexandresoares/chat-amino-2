@@ -1,0 +1,33 @@
+:root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+* { box-sizing: border-box; }
+body { min-height: 100dvh; margin: 0; color: #f7f1ff; background: radial-gradient(circle at 50% -12%, #43266b 0, #1b102f 42%, #10091e 78%); }
+a { color: inherit; }
+.download-header { display: flex; align-items: center; justify-content: space-between; gap: 24px; max-width: 1190px; margin: auto; padding: 24px 28px; }
+.download-brand { display: inline-flex; align-items: center; gap: 7px; text-decoration: none; font-size: 24px; font-weight: 850; letter-spacing: -.06em; }
+.download-brand img { object-fit: contain; }
+.download-brand span { align-self: flex-start; color: #ad75ff; font-size: 14px; }
+.download-header nav { display: flex; align-items: center; gap: 24px; }
+.download-header nav a { color: #d5c7e8; font-size: 14px; font-weight: 650; text-decoration: none; }
+.download-header nav a:hover, .download-note a:hover { color: white; text-decoration: underline; }
+main { max-width: 1190px; margin: auto; padding: 45px 28px 80px; }
+.download-hero { max-width: 750px; margin: 0 auto 48px; text-align: center; }
+.eyebrow, .platform-tag { color: #c7a0ff; font-size: 11px; font-weight: 850; letter-spacing: .16em; }
+h1 { margin: 16px 0 15px; font-size: clamp(40px, 5.6vw, 69px); line-height: 1.08; letter-spacing: -.065em; }
+h1 span { color: #b17cff; }
+.download-hero p { margin: 0; color: #c8b9da; font-size: clamp(16px, 2vw, 19px); line-height: 1.6; }
+.download-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.download-card { display: flex; flex-direction: column; min-height: 350px; padding: 30px; border: 1px solid #4b345e; border-radius: 23px; background: #211532; box-shadow: 0 20px 55px #08041030; }
+.download-card.featured { border-color: #8b4bea; background: linear-gradient(155deg, #30204a, #211532 65%); }
+.platform-icon { display: grid; place-items: center; width: 54px; height: 54px; margin-bottom: 27px; border: 1px solid #67468f; border-radius: 15px; background: #392256; color: #dcbcff; font-size: 29px; }
+.download-card h2 { margin: 8px 0 8px; font-size: 28px; letter-spacing: -.04em; }
+.download-card p { flex: 1; margin: 0 0 26px; color: #c5b6d5; line-height: 1.55; }
+.download-button { display: grid; place-items: center; min-height: 48px; padding: 11px 16px; border-radius: 11px; background: #7429df; color: white; font-size: 14px; font-weight: 800; text-align: center; text-decoration: none; transition: background .2s, transform .2s; }
+a.download-button:hover { background: #9252ee; transform: translateY(-2px); }
+.download-button.unavailable { background: #453752; color: #c8b7d3; cursor: default; }
+.download-card small { display: block; margin-top: 13px; color: #aa9ab9; text-align: center; }
+.download-note { margin: 38px 0 12px; color: #c9bbd9; text-align: center; }
+.download-note a { color: #dcbcff; font-weight: 700; text-decoration: none; }
+.download-caution { max-width: 680px; margin: 0 auto; color: #a99ab9; font-size: 13px; line-height: 1.6; text-align: center; }
+@media (max-width: 780px) { .download-grid { grid-template-columns: 1fr; max-width: 500px; margin: auto; } .download-card { min-height: 0; } .download-card p { margin-bottom: 28px; } }
+@media (max-width: 520px) { .download-header { padding: 18px; } .download-header nav { gap: 12px; } .download-header nav a { font-size: 12px; } .download-header nav a:first-child { display: none; } main { padding: 45px 18px 60px; } .download-hero { margin-bottom: 32px; } .download-card { padding: 24px; } }
+@media (prefers-reduced-motion: reduce) { .download-button { transition: none; } }

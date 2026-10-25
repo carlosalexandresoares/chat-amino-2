@@ -1,0 +1,27 @@
+{
+  "name": "purp-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aplicativo Windows do Purp",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^39.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "dependencies": {
+    "http-proxy": "^1.18.1"
+  },
+  "build": {
+    "appId": "com.purp.desktop",
+    "productName": "Purp",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "package.json"],
+    "extraResources": [{ "from": "../public", "to": "public" }],
+    "win": { "target": "nsis", "icon": "../public/image/purp-mascot.png" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+  }
+}

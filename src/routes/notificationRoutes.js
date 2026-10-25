@@ -2,6 +2,7 @@ const express = require('express');
 const prisma = require('../database/prisma');
 const auth = require('../middleware/authMiddleware');
 const notifications = require('../services/notifications');
+const nativePush = require('../services/nativePush');
 
 const router = express.Router();
 router.use(auth);
@@ -86,6 +87,43 @@ router.patch('/preferences/categories/:category', async (req, res) => {
 
 router.get('/push/config', (_req, res) => res.json({ available: notifications.pushAvailable,
   publicKey: notifications.publicKey }));
+
+router.get('/native-push/config', (_req, res) => res.json({ available: nativePush.available }));
+
+router.get('/native-push/devices', async (req, res) => {
+  try {
+    const devices = await prisma.nativePushDevice.findMany({ where: { userId: req.userId },
+      select: { id: true, platform: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 10 });
+    res.json({ devices });
+  } catch (error) { fail(res, error); }
+});
+
+router.put('/native-push/devices', async (req, res) => {
+  const { platform, token } = req.body || {};
+  if (!nativePush.validToken(platform, token))
+    return res.status(400).json({ message: 'Dispositivo inválido.' });
+  if (!nativePush.available[platform])
+    return res.status(503).json({ message: 'Notificações nativas não configuradas neste servidor.' });
+  try {
+    const existing = await prisma.nativePushDevice.findUnique({ where: { token }, select: { id: true } });
+    if (!existing && await prisma.nativePushDevice.count({ where: { userId: req.userId } }) >= 10)
+      return res.status(429).json({ message: 'Limite de dispositivos atingido.' });
+    const device = await prisma.nativePushDevice.upsert({ where: { token },
+      create: { userId: req.userId, platform, token },
+      update: { userId: req.userId, platform }, select: { id: true, platform: true } });
+    res.status(201).json({ device });
+  } catch (error) { fail(res, error); }
+});
+
+router.delete('/native-push/devices', async (req, res) => {
+  const { platform, token } = req.body || {};
+  if (!nativePush.validToken(platform, token))
+    return res.status(400).json({ message: 'Dispositivo inválido.' });
+  try {
+    await prisma.nativePushDevice.deleteMany({ where: { userId: req.userId, platform, token } });
+    res.json({ deleted: true });
+  } catch (error) { fail(res, error); }
+});
 
 router.get('/push/devices', async (req, res) => {
   try {

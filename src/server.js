@@ -25,6 +25,7 @@ const chatMedia = require('./services/chatMedia');
 const direct = require('./services/direct');
 const { loadSocketUser } = require('./services/socketUser');
 const notificationRoutes = require('./routes/notificationRoutes');
+const downloads = require('./routes/downloadRoutes');
 const communityRoutes = require('./routes/communityRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const eventReminders = require('./services/eventReminders');
@@ -41,6 +42,8 @@ app.use(express.json());
 
 // Servir o frontend da pasta public
 app.use(express.static(path.join(__dirname, "../public")));
+app.get('/api/downloads', downloads.status);
+app.get('/downloads/:platform', downloads.download);
 
 // Rotas de autenticação
 app.use("/api/auth", authRoutes);

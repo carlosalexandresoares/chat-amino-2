@@ -1,5 +1,9 @@
 # Purpverse
 
+## Aplicativos instaláveis
+
+O código e as instruções de compilação para Windows, Android e iOS estão em [docs/apps.md](docs/apps.md). Os aplicativos reutilizam esta interface e este backend. Consulte a documentação para os recursos validados e as limitações atuais de cada plataforma.
+
 Plataforma de comunidades com salas de conversa em tempo real, perfis sociais e projeções sincronizadas de vídeos do YouTube. A aplicação reúne interface web, API e Socket.IO em um servidor Node.js, com dados persistidos em PostgreSQL.
 
 ## Visão do produto

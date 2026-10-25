@@ -72,6 +72,12 @@ test('voz: acesso, criação, sinalização, moderação e limite de salas', {
     assert.deepEqual(await delivered, { from: hostSocket.id, type: 'offer', data: { sdp: 'test-sdp' } });
     assert.equal((await request(outsideSocket, 'voice:signal', { to: memberSocket.id,
       type: 'offer', data: { sdp: 'test-sdp' } })).success, false);
+    assert.equal((await request(outsideSocket, 'voice:share', { sharing: true })).success, false);
+    assert.equal((await request(hostSocket, 'voice:share', { sharing: true })).success, true);
+    assert.equal((await request(memberSocket, 'voice:share', { sharing: true })).success, false);
+    assert.equal((await request(hostSocket, 'voice:share', { sharing: false })).success, true);
+    assert.equal((await request(memberSocket, 'voice:share', { sharing: true })).success, true);
+    assert.equal((await request(memberSocket, 'voice:share', { sharing: false })).success, true);
     assert.equal((await request(memberSocket, 'voice:moderate', { voiceRoomId,
       targetSocketId: hostSocket.id, action: 'mute' })).success, false);
     assert.equal((await request(hostSocket, 'voice:moderate', { voiceRoomId,

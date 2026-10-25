@@ -122,13 +122,20 @@ async function currentSubscription() { return (await registration()).pushManager
 async function loadDevices() {
   try {
     const { devices } = await request('/push/devices');
+    if (window.PurpNativePush) {
+      const native = await request('/native-push/devices');
+      devices.push(...native.devices.map(device => ({ ...device,
+        deviceLabel: `${device.platform === 'ios' ? 'iPhone' : 'Android'} (app)`, native: true })));
+    }
     $('push-devices').replaceChildren();
     for (const device of devices) {
       const row = document.createElement('div'); row.className = 'device-row';
       const label = document.createElement('span'); label.textContent = `${device.deviceLabel || 'Dispositivo'} · ${new Date(device.createdAt).toLocaleDateString('pt-BR')}`;
       const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remover';
       remove.setAttribute('aria-label', `Remover ${device.deviceLabel || 'dispositivo'}`);
-      remove.addEventListener('click', async () => { try { await request(`/push/devices/${device.id}`, { method: 'DELETE' });
+      remove.addEventListener('click', async () => { try {
+        if (device.native) { await window.PurpNativePush.disable(); await loadDevices(); return; }
+        await request(`/push/devices/${device.id}`, { method: 'DELETE' });
         const current = 'serviceWorker' in navigator && 'PushManager' in window ? await currentSubscription() : null;
         if (current?.endpoint === device.endpoint) await current.unsubscribe();
         await updatePushControls(); await loadDevices(); }
@@ -140,6 +147,15 @@ async function loadDevices() {
 }
 
 async function updatePushControls() {
+  if (window.PurpNativePush) {
+    const available = await window.PurpNativePush.available().catch(() => false);
+    const enabled = window.PurpNativePush.isEnabled();
+    $('enable-push').classList.toggle('hidden', enabled || !available);
+    $('disable-push').classList.toggle('hidden', !enabled);
+    $('push-status').textContent = window.PurpNativePush.status() ||
+      (available ? '' : 'Notificações nativas não estão configuradas neste servidor.');
+    return;
+  }
   const supported = isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   $('enable-push').classList.toggle('hidden', !supported || !pushConfig.available);
   $('disable-push').classList.add('hidden');
@@ -152,6 +168,9 @@ async function updatePushControls() {
 
 $('enable-push').addEventListener('click', async () => {
   try {
+    if (window.PurpNativePush) {
+      await window.PurpNativePush.enable(); await updatePushControls(); await loadDevices(); return;
+    }
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') { $('push-status').textContent = 'Permissão não concedida.'; return; }
     const worker = await registration();
@@ -164,6 +183,9 @@ $('enable-push').addEventListener('click', async () => {
 });
 $('disable-push').addEventListener('click', async () => {
   try {
+    if (window.PurpNativePush) {
+      await window.PurpNativePush.disable(); await updatePushControls(); await loadDevices(); return;
+    }
     const current = await currentSubscription();
     if (current) { await request('/push/subscriptions', { method: 'DELETE', body: JSON.stringify({ endpoint: current.endpoint }) });
       await current.unsubscribe(); }

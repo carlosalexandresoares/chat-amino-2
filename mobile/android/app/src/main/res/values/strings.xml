@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Purp</string>
+    <string name="title_activity_main">Purp</string>
+    <string name="package_name">com.purp.app</string>
+    <string name="custom_url_scheme">com.purp.app</string>
+</resources>

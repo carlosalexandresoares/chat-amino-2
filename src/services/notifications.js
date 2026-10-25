@@ -1,5 +1,6 @@
 const prisma = require('../database/prisma');
 const webpush = require('web-push');
+const nativePush = require('./nativePush');
 
 const categories = ['SOCIAL', 'CHAT', 'DIRECT', 'PROJECTION', 'EVENT', 'ACHIEVEMENT', 'ADMIN'];
 const kinds = {
@@ -56,7 +57,10 @@ async function publish({ recipientId, actorId = null, kind, sourceKey, title, bo
     throw error;
   }
   io?.to(`user:${recipientId}`).emit('notification', notification);
-  if (preference?.pushEnabled) void push(notification, db).catch(error => console.error('Erro no Web Push:', error));
+  if (preference?.pushEnabled) {
+    void push(notification, db).catch(error => console.error('Erro no Web Push:', error));
+    void nativePush.sendNativePush(notification, db).catch(error => console.error('Erro no Push nativo:', error));
+  }
   return notification;
 }
 
@@ -77,8 +81,10 @@ async function publishBatch({ recipientIds, actorId = null, kind, sourcePrefix, 
   const created = await db.notification.createManyAndReturn({ data, skipDuplicates: true });
   for (const notification of created) {
     io?.to(`user:${notification.recipientId}`).emit('notification', notification);
-    if (preferenceByUser.get(notification.recipientId)?.pushEnabled)
+    if (preferenceByUser.get(notification.recipientId)?.pushEnabled) {
       void push(notification, db).catch(error => console.error('Erro no Web Push:', error));
+      void nativePush.sendNativePush(notification, db).catch(error => console.error('Erro no Push nativo:', error));
+    }
   }
   return created;
 }

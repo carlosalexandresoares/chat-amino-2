@@ -1,4 +1,14 @@
 node_modules
+desktop/dist/
+desktop/installation-smoke/
+mobile/www/
+mobile/android/.gradle/
+mobile/android/build/
+mobile/android/app/build/
+mobile/android/app/src/main/assets/public/
+mobile/ios/App/App/public/
+mobile/ios/DerivedData/
+.toolchains/
 # Keep environment variables out of version control
 .env
 .env.*

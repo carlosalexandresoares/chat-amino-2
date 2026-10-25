@@ -16,7 +16,7 @@
   />
   <link rel="stylesheet" href="/style/notification-badge.css?v=1">
   <link rel="stylesheet" href="/style/community.css?v=4">
-  <link rel="stylesheet" href="/style/voice.css?v=1">
+  <link rel="stylesheet" href="/style/voice.css?v=2">
   <link rel="stylesheet" href="/style/moderation.css?v=1">
 
   <script src="/socket.io/socket.io.js"></script>
@@ -45,6 +45,7 @@
       <nav class="rooms-topbar" aria-label="Navegação principal">
         <a class="rooms-brand" href="/index.html"><span class="pv-logo" aria-hidden="true"></span><span class="pv-brand-name">Purp</span></a>
         <a class="rooms-profile-link" href="/perfil.html">Meu perfil <span aria-hidden="true">↗</span></a>
+        <a class="rooms-profile-link" href="/downloads.html">Baixar aplicativo</a>
         <a class="rooms-profile-link notification-link" href="/notifications.html" aria-label="Notificações">🔔 <span class="notification-badge hidden">0</span></a>
         <a class="rooms-profile-link site-admin-link hidden" href="/admin.html">Administração</a>
       </nav>
@@ -56,6 +57,7 @@
           <p>Entre no chat, crie sua comunidade e encontre gente para conversar.</p>
           <div class="hero-actions">
             <button type="button" id="show-create-room" class="create-room-button"><span aria-hidden="true">＋</span> Criar meu chat</button>
+            <a class="pv-button pv-button--quiet" href="/downloads.html">Baixar aplicativo <span aria-hidden="true">↗</span></a>
             <span class="hero-note">Grátis, público e feito por você</span>
           </div>
         </div>
@@ -471,7 +473,7 @@
   <div id="site-view" class="site-view hidden"><iframe id="site-frame" title="Outra área do Purp"></iframe></div>
   <section id="voice-dock" class="voice-dock hidden" aria-label="Chamada de voz ativa">
     <div class="voice-dock-head"><div><strong id="voice-dock-title">Na voz</strong><small id="voice-dock-count">1 participante</small></div><button id="voice-dock-mute" type="button" aria-pressed="false">🎙 Microfone</button><button id="voice-dock-expand" type="button" aria-expanded="false" aria-controls="voice-dock-body">Expandir</button><button id="voice-dock-leave" type="button">Sair</button></div>
-    <div id="voice-dock-body" class="voice-dock-body hidden"><p id="voice-dock-status" role="status"></p><div id="voice-participant-list"></div><label id="voice-video-volume-wrap" class="voice-video-volume-wrap hidden">Volume do vídeo <input id="voice-video-volume" type="range" min="0" max="100" value="100"></label></div>
+    <div id="voice-dock-body" class="voice-dock-body hidden"><p id="voice-dock-status" role="status"></p><button id="voice-screen-share" type="button">Compartilhar tela</button><div id="voice-screen-view" class="voice-screen-view hidden"><strong id="voice-screen-label"></strong><video id="voice-screen-video" autoplay playsinline controls></video></div><div id="voice-participant-list"></div><label id="voice-video-volume-wrap" class="voice-video-volume-wrap hidden">Volume do vídeo <input id="voice-video-volume" type="range" min="0" max="100" value="100"></label></div>
   </section>
   <div id="mini-player-notice" class="mini-player-notice hidden" role="status"></div>
   <dialog id="pip-help-dialog" class="pip-help-dialog" aria-labelledby="pip-help-title">

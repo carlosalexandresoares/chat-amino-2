@@ -1,0 +1,22 @@
+{
+  "name": "purp-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build:web": "node build.js",
+    "sync": "npm run build:web && cap sync",
+    "android": "npm run sync && cap open android",
+    "ios": "npm run sync && cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/core": "^8.0.0",
+    "@capacitor/ios": "^8.0.0",
+    "@capacitor/push-notifications": "^8.0.0",
+    "socket.io-client": "^4.8.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.0.0",
+    "esbuild": "^0.25.12"
+  }
+}

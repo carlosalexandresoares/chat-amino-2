@@ -1,0 +1,11 @@
+{
+  "appId": "com.purp.app",
+  "appName": "Purp",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "PushNotifications": { "presentationOptions": ["badge", "sound", "alert"] }
+  }
+}
