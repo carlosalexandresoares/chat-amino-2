@@ -20,9 +20,9 @@ test('downloads hospedados continuam disponíveis sem os arquivos de build locai
     });
     assert.equal(redirect.code, 302);
     if (platform === 'android') assert.equal(redirect.url,
-      'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.9/Purp-Android-teste.apk');
+      'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.10/Purp-Android-teste.apk');
     else assert.equal(redirect.url,
-      'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.9/Purp-Windows-Setup.exe');
+      'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.10/Purp-Windows-Setup.exe');
   }
 });
 

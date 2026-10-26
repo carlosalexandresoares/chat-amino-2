@@ -92,6 +92,11 @@ async function join(win, watchOnly = false) {
   await win.webContents.executeJavaScript(`Array.from(document.querySelectorAll('#voice-room-list button'))
     .find(button => button.textContent === ${JSON.stringify(label)}).click()`);
   await waitFor(win, "!document.querySelector('#voice-dock').classList.contains('hidden')", 'entrou na chamada');
+  const shareVisible = await win.webContents.executeJavaScript(`(() => {
+    const button = document.querySelector('#voice-screen-share');
+    return !button.closest('.hidden') && button.getClientRects().length > 0;
+  })()`);
+  if (!shareVisible) throw new Error('Botão Compartilhar tela oculto após entrar na chamada');
   await click(win, '#voice-dock-expand');
 }
 async function streamVisible(win, label) {

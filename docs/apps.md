@@ -1,22 +1,24 @@
 # Aplicativos Purp
 
-## Compartilhamento de tela Android (Etapa 3, beta 9)
+## Compartilhamento de tela Android (Etapa 3, beta 10)
 
-O botão da chamada no APK beta 9 abre o consentimento de captura do Android. Após a autorização, um serviço em primeiro plano mostra uma notificação persistente com **Parar transmissão**. `MediaProjection` alimenta uma trilha de vídeo WebRTC nativa; a voz continua nas conexões existentes do WebView. Quando há microfone na chamada e a permissão foi concedida, o serviço declara também o tipo de microfone para ajudar a manter o áudio em segundo plano. A sinalização usa a mesma sala de voz e o servidor só encaminha ofertas de tela do participante que está compartilhando para membros daquela chamada. Até cinco espectadores recebem conexões P2P, com meta de 720p, 30 FPS e 2,2 Mbit/s por espectador. O usuário pode alternar para outros aplicativos enquanto o serviço e a chamada permanecerem ativos. Conteúdo protegido pelo Android pode aparecer preto.
+Para encontrar o controle no celular: abra uma comunidade, toque em **⋮ → Voz e compartilhar tela**, crie ou entre em uma sala de voz e toque em **Compartilhar tela** no painel da chamada, mesmo quando ele estiver recolhido. Confirme a captura no diálogo do Android. Toque no mesmo botão para interromper. A beta 10 exige instalação manual do APK da página de downloads; o atualizador interno ainda oferece a beta 8.
 
-O WebView não pode inserir diretamente uma trilha `MediaProjection` em seu `RTCPeerConnection`; por isso o vídeo nativo usa uma conexão adicional, sem substituir a chamada de áudio. O espectador usa o mesmo painel de vídeo no navegador, no Windows 0.1.2 e no Android. O aviso do sistema e o controle da chamada encerram a captura; a revogação pelo Android também a interrompe. Não há gravação nem armazenamento. O Android 14 ou superior pode oferecer a escolha entre um aplicativo e a tela inteira no diálogo do sistema.
+O botão da chamada no APK beta 10 abre o consentimento de captura do Android. Após a autorização, um serviço em primeiro plano mostra uma notificação persistente com **Parar transmissão**. `MediaProjection` alimenta uma trilha de vídeo WebRTC nativa; a voz continua nas conexões existentes do WebView. Quando há microfone na chamada e a permissão foi concedida, o serviço declara também o tipo de microfone para ajudar a manter o áudio em segundo plano. A sinalização usa a mesma sala de voz e o servidor só encaminha ofertas de tela do participante que está compartilhando para membros daquela chamada. Até cinco espectadores recebem conexões P2P, com meta de 720p, 30 FPS e 2,2 Mbit/s por espectador. O usuário pode alternar para outros aplicativos enquanto o serviço e a chamada permanecerem ativos. Conteúdo protegido pelo Android pode aparecer preto.
+
+O WebView não pode inserir diretamente uma trilha `MediaProjection` em seu `RTCPeerConnection`; por isso o vídeo nativo usa uma conexão adicional, sem substituir a chamada de áudio. O espectador usa o mesmo painel de vídeo no navegador, no Windows 0.1.3 e no Android. O aviso do sistema e o controle da chamada encerram a captura; a revogação pelo Android também a interrompe. Não há gravação nem armazenamento. O Android 14 ou superior pode oferecer a escolha entre um aplicativo e a tela inteira no diálogo do sistema.
 
 **Beta experimental:** o APK foi compilado e a assinatura de atualização conferida, mas não havia celular em `adb devices`. Portanto, ainda faltam os testes reais Android→PC, Android→Android, troca de aplicativo, continuidade em segundo plano, rotação, permissão negada pelo sistema e redes móveis. O teste com quatro clientes Electron simula um emissor Android e verifica a sinalização e recepção WebRTC, mas não executa `MediaProjection`. O socket do WebView participa da sinalização; a continuidade ao sair da interface pode variar com as restrições de execução em segundo plano e precisa ser medida em aparelhos reais. Para redes restritas, configure TURN em `VOICE_ICE_SERVERS`.
 
-O arquivo de teste está em `mobile/android/app/build/outputs/apk/debug/app-debug.apk` (58.287.647 bytes; SHA-256 `06438F9111275DCCE855465A67A43D17A9036E98C2027FC18206AA80B8B478E2`). O instalador Windows complementar é `desktop/dist/Purp Setup 0.1.2.exe` (106.442.367 bytes; SHA-256 `DDCBEE463DA78644FFBF9C394235BECAB35567493D4B0487C124F672EC054F78`). Ambos são builds de teste; o Windows permanece sem assinatura de código. A beta 9 deve ser instalada manualmente pelo site para esta validação. O atualizador automático Android continua oferecendo a beta 8 até a transmissão ser confirmada em aparelho real, evitando atualizar toda a base para uma captura ainda não validada.
+O arquivo de teste está em `mobile/android/app/build/outputs/apk/debug/app-debug.apk` (58.261.163 bytes; SHA-256 `93EE1311A98506E0D059624C6F013F6D17C0798676C72B64CC7E233442342532`). O instalador Windows complementar é `desktop/dist/Purp Setup 0.1.3.exe` (106.442.434 bytes; SHA-256 `4027DFBA8CAA7E5C04927E96042191223E7CE69FEE35362E505F66CC493EB12D`). Ambos são builds de teste; o Windows permanece sem assinatura de código. A beta 10 deve ser instalada manualmente pelo site para esta validação. O atualizador automático Android continua oferecendo a beta 8 até a transmissão ser confirmada em aparelho real, evitando atualizar toda a base para uma captura ainda não validada.
 
 | Tipo | Verificação em 26/10/2026 | Resultado |
 | --- | --- | --- |
 | Automatizado | `npm test` | 41 aprovados, 0 falhas, 12 integrações opcionais ignoradas. |
 | Automatizado | `npm --prefix desktop run test:voice` | Quatro clientes WebRTC; vídeo web e emissor Android simulado para três espectadores, áudio, entrada tardia, parada e reconexão: aprovado. |
-| Compilação | `npm --prefix mobile run build:web`, `npx cap sync android`, `gradlew assembleDebug` | APK beta 9 produzido; versão, tamanho e assinatura conferidos. |
-| Compilação | `npm --prefix desktop run dist:win` | Instalador Windows 0.1.2 produzido e conferido. |
-| Abertura do pacote | Windows 0.1.2 em modo smoke | `ready: true`; processo encerrado após o teste. |
+| Compilação | `npm --prefix mobile run build:web`, `npx cap sync android`, `gradlew assembleDebug` | APK beta 10 produzido; versão e tamanho conferidos. |
+| Compilação | `npm --prefix desktop run dist:win` | Instalador Windows 0.1.3 produzido e conferido. |
+| Abertura do pacote | Windows 0.1.3 em modo smoke | `ready: true`; processos de teste encerrados. |
 | Manual em dispositivo | `adb devices` | Nenhum aparelho conectado; instalação e captura nativa não testadas. |
 
 ## Compartilhamento de tela — web e Windows (Etapa 2)
@@ -77,7 +79,7 @@ npm ci
 npm run dist:win
 ```
 
-O instalador NSIS da versão atual sai em `desktop/dist/Purp Setup 0.1.2.exe`. Confirme o arquivo antes de distribuí-lo. Durante desenvolvimento, execute o backend na raiz com `npm start` e, em outro terminal:
+O instalador NSIS da versão atual sai em `desktop/dist/Purp Setup 0.1.3.exe`. Confirme o arquivo antes de distribuí-lo. Durante desenvolvimento, execute o backend na raiz com `npm start` e, em outro terminal:
 
 ```powershell
 cd desktop
@@ -104,7 +106,7 @@ O APK de depuração é produzido em `mobile/android/app/build/outputs/apk/debug
 
 O pacote mobile contém cópia dos arquivos web e redireciona chamadas `/api` e Socket.IO para o backend HTTPS. Áudio precisa de permissão de microfone. A beta 4 inclui o plugin Capacitor Push Notifications e a configuração do Firebase; a entrega real ainda precisa de validação em aparelho.
 
-**Em validação:** a beta 9 implementa captura nativa com MediaProjection e WebRTC. Um APK gerado não comprova a transmissão em aparelho; execute os cenários manuais da Etapa 3 acima antes de anunciar suporte estável.
+**Em validação:** a beta 10 implementa captura nativa com MediaProjection e WebRTC. Um APK gerado não comprova a transmissão em aparelho; execute os cenários manuais da Etapa 3 acima antes de anunciar suporte estável.
 
 ### Atualização do Android
 
@@ -152,7 +154,7 @@ A migração `prisma/migrations/20261025000000_native_push_devices` adiciona som
 
 ## Página de downloads do site
 
-A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, Android beta 9 e Windows 0.1.2 usam os arquivos da [versão experimental](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.9). Os arquivos de build não entram no Git nem são enviados ao Render. O manifesto do atualizador automático Android continua na beta 8 até o teste em aparelho real. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
+A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, Android beta 10 e Windows 0.1.3 usam os arquivos da [versão experimental](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.10). Os arquivos de build não entram no Git nem são enviados ao Render. O manifesto do atualizador automático Android continua na beta 8 até o teste em aparelho real. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
 
 Na beta 5, Fixadas, Enquetes, Busca e Voz da comunidade ficam no menu de três pontos do chat em telas de celular. O painel de live permanece visível. O campo de mensagem e a navegação inferior foram ajustados para ocupar melhor a tela.
 

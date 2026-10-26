@@ -24,6 +24,7 @@
 .voice-dock-head #voice-dock-leave { border-color: #a46677; background: #653b4b; }
 .voice-dock-body { padding-top: 10px; }
 #voice-screen-share, #voice-screen-watch { width: 100%; margin: 8px 0; }
+#voice-dock > #voice-screen-share { margin: 9px 0 0; background: #7629bc; border-color: #b66cf2; font-size: 13px; }
 .voice-screen-view { display: grid; gap: 6px; margin: 8px 0; }
 .voice-screen-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 7px; }
 .voice-screen-head strong { font-size: 12px; }

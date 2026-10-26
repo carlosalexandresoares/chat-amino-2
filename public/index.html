@@ -16,7 +16,7 @@
   />
   <link rel="stylesheet" href="/style/notification-badge.css?v=1">
   <link rel="stylesheet" href="/style/community.css?v=4">
-  <link rel="stylesheet" href="/style/voice.css?v=3">
+  <link rel="stylesheet" href="/style/voice.css?v=4">
   <link rel="stylesheet" href="/style/moderation.css?v=1">
 
   <script src="/socket.io/socket.io.js"></script>
@@ -161,7 +161,7 @@
           <button type="button" data-community-tab="pins" role="menuitem" aria-expanded="false">📌 Mensagens fixadas</button>
           <button type="button" data-community-tab="polls" role="menuitem" aria-expanded="false">◉ Enquetes</button>
           <button type="button" data-community-tab="search" role="menuitem" aria-expanded="false">⌕ Buscar mensagens</button>
-          <button type="button" id="room-voice-toggle" role="menuitem" aria-expanded="false">🎙 Voz da comunidade</button>
+          <button type="button" id="room-voice-toggle" role="menuitem" aria-expanded="false">🎙 Voz e compartilhar tela</button>
           <div class="room-options-divider" role="separator"></div>
           <a href="/notifications.html" class="notification-link" role="menuitem">🔔 Notificações <span class="notification-badge hidden">0</span></a>
           <button type="button" data-room-action="wallpaper-open" role="menuitem">Personalizar fundo</button>
@@ -218,7 +218,7 @@
           </div>
         </section>
         <details id="voice-section" class="voice-section">
-          <summary><span aria-hidden="true">🎙</span> Voz da comunidade <small id="voice-room-count"></small></summary>
+          <summary><span aria-hidden="true">🎙</span> Voz e compartilhar tela <small id="voice-room-count"></small></summary>
           <div class="voice-section-content">
             <form id="voice-create-form" class="voice-create-form hidden">
               <label>Nome da sala <input id="voice-room-name" maxlength="60" minlength="3" placeholder="Ex.: Conversa da comunidade" required></label>
@@ -479,7 +479,8 @@
   <div id="site-view" class="site-view hidden"><iframe id="site-frame" title="Outra área do Purp"></iframe></div>
   <section id="voice-dock" class="voice-dock hidden" aria-label="Chamada de voz ativa">
     <div class="voice-dock-head"><div><strong id="voice-dock-title">Na voz</strong><small id="voice-dock-count">1 participante</small></div><button id="voice-dock-mute" type="button" aria-pressed="false">🎙 Microfone</button><button id="voice-dock-expand" type="button" aria-expanded="false" aria-controls="voice-dock-body">Expandir</button><button id="voice-dock-leave" type="button">Sair</button></div>
-    <div id="voice-dock-body" class="voice-dock-body hidden"><p id="voice-dock-status" role="status"></p><button id="voice-screen-share" type="button">Compartilhar tela</button><button id="voice-screen-watch" class="hidden" type="button">Assistir transmissão</button><div id="voice-screen-view" class="voice-screen-view hidden"><div class="voice-screen-head"><strong id="voice-screen-label"></strong><div class="voice-screen-actions"><button id="voice-screen-minimize" type="button">Minimizar</button><button id="voice-screen-fullscreen" type="button">Tela cheia</button><button id="voice-screen-close" type="button">Sair da visualização</button></div></div><video id="voice-screen-video" autoplay playsinline muted></video><p id="voice-screen-waiting" role="status">Aguardando vídeo...</p></div><div id="voice-participant-list"></div><label id="voice-video-volume-wrap" class="voice-video-volume-wrap hidden">Volume do vídeo <input id="voice-video-volume" type="range" min="0" max="100" value="100"></label></div>
+    <button id="voice-screen-share" type="button">Compartilhar tela</button>
+    <div id="voice-dock-body" class="voice-dock-body hidden"><p id="voice-dock-status" role="status"></p><button id="voice-screen-watch" class="hidden" type="button">Assistir transmissão</button><div id="voice-screen-view" class="voice-screen-view hidden"><div class="voice-screen-head"><strong id="voice-screen-label"></strong><div class="voice-screen-actions"><button id="voice-screen-minimize" type="button">Minimizar</button><button id="voice-screen-fullscreen" type="button">Tela cheia</button><button id="voice-screen-close" type="button">Sair da visualização</button></div></div><video id="voice-screen-video" autoplay playsinline muted></video><p id="voice-screen-waiting" role="status">Aguardando vídeo...</p></div><div id="voice-participant-list"></div><label id="voice-video-volume-wrap" class="voice-video-volume-wrap hidden">Volume do vídeo <input id="voice-video-volume" type="range" min="0" max="100" value="100"></label></div>
   </section>
   <div id="mini-player-notice" class="mini-player-notice hidden" role="status"></div>
   <dialog id="pip-help-dialog" class="pip-help-dialog" aria-labelledby="pip-help-title">
