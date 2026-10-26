@@ -1,5 +1,33 @@
 # Aplicativos Purp
 
+## Compartilhamento de tela — web e Windows (Etapa 2)
+
+O botão **Compartilhar tela** da chamada de voz usa `getDisplayMedia` no navegador e o seletor de monitor/janela do Electron no Windows. A captura exige escolha explícita do usuário. A trilha de vídeo segue pelas conexões WebRTC da chamada; o áudio do microfone permanece separado. Uma pessoa compartilha por sala de voz, com até seis participantes na sala. É possível entrar em **Só assistir** sem permitir o microfone. O espectador pode minimizar, ampliar em tela cheia, sair da visualização e reabri-la. Parar pelo botão, pelo controle de captura do sistema, ao sair da chamada ou ao perder a conexão interrompe a transmissão. Não há gravação nem armazenamento da tela.
+
+A captura solicita no máximo 1280×720 e 30 FPS, com bitrate de envio limitado a 2,2 Mbit/s por destinatário quando aceito pelo navegador. O WebRTC ajusta a qualidade conforme a rede. Cada espectador recebe uma conexão P2P; seis participantes podem exigir até cinco envios simultâneos do transmissor. Configure um TURN em `VOICE_ICE_SERVERS` para redes que não conseguem comunicação direta. O estado das salas de voz permanece em memória de uma instância Node; escalar para várias instâncias exige sincronizar esse estado e a sinalização.
+
+Para testar o transporte sem contas ou banco de produção:
+
+```powershell
+npm test
+npm --prefix desktop run test:voice
+```
+
+O segundo comando inicia quatro janelas Electron isoladas e um servidor local temporário. Usa identidades e sinalização simuladas, mas conexões WebRTC e trilhas reais de áudio e vídeo geradas em memória. Verifica múltiplos espectadores, entrada durante a transmissão, troca de transmissor, paradas, reconexão, visualização e permissão negada. O teste unitário verifica no serviço de voz que quem está fora da sala não pode receber sinalização nem compartilhar. Todos os processos do teste são encerrados ao terminar.
+
+**Validação manual ainda necessária:** entrar com duas contas reais no navegador e no instalador Windows, escolher monitor, janela e aba quando oferecidos, falar enquanto transmite e repetir em redes diferentes. O teste automatizado substitui a janela de consentimento do sistema por uma captura de teste e não comprova a experiência do seletor nativo. O teste opcional `RUN_VOICE_LIVE_TESTS=1` usa banco de testes migrado e servidor local; não o execute contra o banco de produção. Receber a transmissão em Android/iPhone deve ser validado em aparelhos reais. Capturar a tela desses aparelhos permanece para as Etapas 3 e 4, mediante autorização separada.
+
+### Resultado da Etapa 2 em 26/10/2026
+
+| Tipo | Verificação | Resultado |
+| --- | --- | --- |
+| Automatizado | `npm test` | 41 aprovados, 0 falhas, 12 ignorados por dependerem de serviços ou banco de testes. |
+| Automatizado | `npm --prefix desktop run test:voice` | Quatro clientes Electron com WebRTC real: vídeo para vários espectadores, entrada tardia, áudio simultâneo, transmissão nos dois sentidos, parada manual e automática simulada, reconexão e permissão negada; aprovado. |
+| Automatizado | Serviço de voz | Usuário fora da sala não entra, não compartilha e não encaminha sinal WebRTC; apenas um transmissor por sala; aprovado. |
+| Compilação | `npm --prefix desktop run dist:win` | Instalador Windows 0.1.1 produzido e arquivo verificado. |
+| Abertura do pacote | `Purp.exe` empacotado em modo smoke | Login abriu, API respondeu 400 ao envio vazio, cliente Socket.IO local respondeu 200, APIs WebRTC/captura presentes; `ready: true`. O processo foi encerrado após o teste. |
+| Manual com contas reais | Web e Windows em duas máquinas/redes | Pendente: requer contas de teste, permissão real de microfone/captura e seleção de fonte pelo sistema. |
+
 ## Beta 4: notificações Android
 
 - O app Android `com.purp.app` foi registrado no projeto Firebase `purp-chat`. O build inclui `google-services.json` somente no diretório local ignorado pelo Git.
@@ -30,7 +58,7 @@ npm ci
 npm run dist:win
 ```
 
-O instalador NSIS sai em `desktop/dist/Purp Setup 0.1.0.exe`. Confirme o arquivo antes de distribuí-lo. Durante desenvolvimento, execute o backend na raiz com `npm start` e, em outro terminal:
+O instalador NSIS da versão atual sai em `desktop/dist/Purp Setup 0.1.1.exe`. Confirme o arquivo antes de distribuí-lo. Durante desenvolvimento, execute o backend na raiz com `npm start` e, em outro terminal:
 
 ```powershell
 cd desktop
@@ -38,7 +66,7 @@ $env:PURP_SERVER_URL = 'http://localhost:3000'
 npm start
 ```
 
-O aplicativo serve os arquivos web empacotados por um servidor ligado somente a `127.0.0.1` e encaminha `/api` e Socket.IO ao backend. A janela mantém a conexão ao minimizar, possui bandeja do sistema e exibe notificações nativas quando não está em foco. Captura de tela usa a seleção explícita de janela ou monitor do Electron. O instalador de teste não é assinado; assinatura de código será necessária para uma distribuição confiável em larga escala.
+O aplicativo serve os arquivos web empacotados por um servidor ligado somente a `127.0.0.1`, inclui o cliente JavaScript do Socket.IO no pacote e encaminha as conexões `/api` e Socket.IO ao backend. A janela mantém a conexão ao minimizar, possui bandeja do sistema e exibe notificações nativas quando não está em foco. Captura de tela usa a seleção explícita de janela ou monitor do Electron. O instalador de teste não é assinado; assinatura de código será necessária para uma distribuição confiável em larga escala.
 
 ## Android
 
@@ -105,7 +133,7 @@ A migração `prisma/migrations/20261025000000_native_push_devices` adiciona som
 
 ## Página de downloads do site
 
-A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, o Android usa a [beta 8](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.8) e o Windows usa a [beta 1](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.1). Os arquivos de build não entram no Git nem são enviados ao Render. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
+A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, o Android usa a [beta 8](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.8) e o Windows usa a [beta 0.1.1](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.1-beta.1). Os arquivos de build não entram no Git nem são enviados ao Render. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
 
 Na beta 5, Fixadas, Enquetes, Busca e Voz da comunidade ficam no menu de três pontos do chat em telas de celular. O painel de live permanece visível. O campo de mensagem e a navegação inferior foram ajustados para ocupar melhor a tela.
 

@@ -11,10 +11,10 @@ const packages = {
     release: androidRelease.downloadUrl,
   },
   windows: {
-    file: path.join(root, 'desktop/dist/Purp Setup 0.1.0.exe'),
+    file: path.join(root, 'desktop/dist/Purp Setup 0.1.1.exe'),
     name: 'Purp-Windows-Setup.exe',
     url: 'PURP_WINDOWS_DOWNLOAD_URL',
-    release: 'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.1/Purp-Windows-Setup.exe',
+    release: 'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.1-beta.1/Purp-Windows-Setup.exe',
   },
 };
 

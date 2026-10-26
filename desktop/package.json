@@ -1,11 +1,12 @@
 {
   "name": "purp-desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Aplicativo Windows do Purp",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "test:voice": "electron voice-e2e.cjs",
     "dist:win": "electron-builder --win nsis"
   },
   "devDependencies": {
@@ -13,15 +14,33 @@
     "electron-builder": "^26.0.0"
   },
   "dependencies": {
-    "http-proxy": "^1.18.1"
+    "http-proxy": "^1.18.1",
+    "socket.io-client": "^4.8.3"
   },
   "build": {
     "appId": "com.purp.desktop",
     "productName": "Purp",
-    "directories": { "output": "dist" },
-    "files": ["main.js", "preload.js", "package.json"],
-    "extraResources": [{ "from": "../public", "to": "public" }],
-    "win": { "target": "nsis", "icon": "../public/image/purp-mascot.png" },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../public",
+        "to": "public"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "../public/image/purp-mascot.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }

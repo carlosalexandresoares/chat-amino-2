@@ -13,6 +13,7 @@ if (backend.protocol !== 'https:' && !(backend.protocol === 'http:' &&
 const assets = app.isPackaged
   ? path.join(process.resourcesPath, 'public')
   : path.resolve(__dirname, '..', 'public');
+const socketClientBundle = path.join(__dirname, 'node_modules', 'socket.io-client', 'dist', 'socket.io.min.js');
 const icon = path.join(assets, 'image', 'purp-mascot.png');
 const mime = { '.html': 'text/html', '.css': 'text/css', '.js': 'application/javascript',
   '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml',
@@ -38,6 +39,15 @@ function localRequest(request) {
 async function serve(request, response) {
   if (!localRequest(request)) { response.writeHead(403); response.end(); return; }
   const pathname = new URL(request.url, localOrigin).pathname;
+  if (pathname === '/socket.io/socket.io.js') {
+    try {
+      const contents = await fs.readFile(socketClientBundle);
+      response.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8',
+        'X-Content-Type-Options': 'nosniff' });
+      response.end(contents);
+    } catch { response.writeHead(503); response.end(); }
+    return;
+  }
   if (pathname.startsWith('/api/') || pathname.startsWith('/socket.io/')) {
     upstream.web(request, response); return;
   }
@@ -65,14 +75,21 @@ function createWindow() {
   if (process.env.PURP_SMOKE === '1') mainWindow.webContents.once('did-finish-load', async () => {
     const result = await mainWindow.webContents.executeJavaScript(`(async () => {
       let apiStatus = 0;
+      let socketAssetStatus = 0;
       try { apiStatus = (await fetch('/api/auth/login', { method: 'POST',
         headers: { 'Content-Type': 'application/json' }, body: '{}' })).status; }
       catch { /* O servidor remoto pode estar indisponível. */ }
-      return { page: Boolean(document.querySelector('main, #app-screen, #rooms-screen')),
+      try { const asset = await fetch('/socket.io/socket.io.js');
+        socketAssetStatus = asset.status;
+      } catch { /* Cliente Socket.IO indisponivel. */ }
+      return { loginPage: Boolean(document.querySelector('#login-form')),
+        appPage: Boolean(document.querySelector('#app-screen, #rooms-screen')),
         socketClient: typeof io === 'function', webRtc: typeof RTCPeerConnection === 'function',
-        capture: Boolean(navigator.mediaDevices?.getDisplayMedia), apiStatus };
+        capture: Boolean(navigator.mediaDevices?.getDisplayMedia), apiStatus,
+        socketAssetStatus };
     })()`);
-    const ready = result.page && result.socketClient && result.webRtc && result.capture && result.apiStatus === 400;
+    const ready = (result.loginPage || (result.appPage && result.socketClient)) &&
+      result.webRtc && result.capture && result.apiStatus === 400 && result.socketAssetStatus === 200;
     process.stdout.write(`PURP_SMOKE=${JSON.stringify(result)}\n`);
     if (process.env.PURP_SMOKE_FILE && path.isAbsolute(process.env.PURP_SMOKE_FILE))
       await fs.writeFile(process.env.PURP_SMOKE_FILE, JSON.stringify({ ...result, ready }));

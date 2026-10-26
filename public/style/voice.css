@@ -23,10 +23,17 @@
 .voice-dock-head button { flex: none; }
 .voice-dock-head #voice-dock-leave { border-color: #a46677; background: #653b4b; }
 .voice-dock-body { padding-top: 10px; }
-#voice-screen-share { width: 100%; margin: 8px 0; }
+#voice-screen-share, #voice-screen-watch { width: 100%; margin: 8px 0; }
 .voice-screen-view { display: grid; gap: 6px; margin: 8px 0; }
-.voice-screen-view strong { font-size: 12px; }
+.voice-screen-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 7px; }
+.voice-screen-head strong { font-size: 12px; }
+.voice-screen-actions { display: flex; flex-wrap: wrap; gap: 5px; }
+.voice-screen-actions button { padding: 5px 7px; font-size: 11px; }
 .voice-screen-view video { display: block; width: 100%; max-height: 42dvh; border-radius: 8px; background: #080b16; }
+.voice-screen-view.minimized video, .voice-screen-view.minimized #voice-screen-waiting { display: none; }
+#voice-screen-waiting { margin: 0; color: #b8c6d9; font-size: 12px; }
+.voice-screen-view:fullscreen { display: flex; flex-direction: column; justify-content: center; padding: 16px; background: #080b16; }
+.voice-screen-view:fullscreen video { max-height: calc(100vh - 85px); object-fit: contain; }
 #voice-participant-list { display: grid; gap: 7px; max-height: 32dvh; overflow: auto; }
 .voice-participant { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 8px; border: 1px solid #414b65; border-radius: 9px; background: #182037; }
 .voice-participant.speaking { border-color: #8ae0b2; box-shadow: inset 0 0 0 1px #8ae0b250; }

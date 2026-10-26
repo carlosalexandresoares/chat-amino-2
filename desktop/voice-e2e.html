@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<meta charset="utf-8">
+<title>Purp voice transport test</title>
+<style>.hidden { display: none !important; }</style>
+<div id="voice-link-wrap" class="hidden"><input id="voice-link-projection" type="checkbox"></div>
+<div id="voice-video-volume-wrap" class="hidden"><input id="voice-video-volume" type="range"></div>
+<form id="voice-create-form"><input id="voice-room-name"><button type="submit">Criar</button></form>
+<span id="voice-room-count"></span><div id="voice-room-list"></div>
+<p id="voice-section-status"></p>
+<section id="voice-dock" class="hidden">
+  <strong id="voice-dock-title"></strong><span id="voice-dock-count"></span>
+  <button id="voice-dock-mute"></button><button id="voice-dock-expand"></button><button id="voice-dock-leave"></button>
+  <div id="voice-dock-body" class="hidden">
+    <p id="voice-dock-status"></p>
+    <button id="voice-screen-share"></button><button id="voice-screen-watch" class="hidden"></button>
+    <div id="voice-screen-view" class="hidden">
+      <strong id="voice-screen-label"></strong><button id="voice-screen-minimize"></button>
+      <button id="voice-screen-fullscreen"></button><button id="voice-screen-close"></button>
+      <video id="voice-screen-video" autoplay playsinline muted></video><p id="voice-screen-waiting"></p>
+    </div>
+    <div id="voice-participant-list"></div>
+  </div>
+</section>
+<script>
+  const { ipcRenderer } = require('electron');
+  const userId = new URLSearchParams(location.search).get('id');
+  const listeners = new Map();
+  let nextAck = 0;
+  const pending = new Map();
+  window.io = () => ({
+    id: userId, connected: true,
+    on(name, handler) { const group = listeners.get(name) || []; group.push(handler); listeners.set(name, group); },
+    emit(name, payload, callback) {
+      if (typeof callback === 'function') {
+        const ack = ++nextAck; pending.set(ack, callback);
+        ipcRenderer.send('test:emit', { userId, name, payload, ack });
+      } else ipcRenderer.send('test:emit', { userId, name, payload });
+    },
+    timeout() { return { emit: (name, payload, callback) => {
+      const ack = ++nextAck; pending.set(ack, callback);
+      ipcRenderer.send('test:emit', { userId, name, payload, ack });
+    } }; },
+  });
+  ipcRenderer.on('test:event', (_event, { name, payload }) => {
+    for (const handler of listeners.get(name) || []) handler(payload);
+  });
+  ipcRenderer.on('test:ack', (_event, { ack, result }) => {
+    pending.get(ack)?.(null, result); pending.delete(ack);
+  });
+  const audioContext = new AudioContext();
+  const oscillator = audioContext.createOscillator();
+  const audioDestination = audioContext.createMediaStreamDestination();
+  oscillator.connect(audioDestination); oscillator.start();
+  const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 360;
+  const paint = canvas.getContext('2d');
+  let frame = 0;
+  setInterval(() => {
+    paint.fillStyle = frame++ % 2 ? '#8527bc' : '#35aaeb';
+    paint.fillRect(0, 0, canvas.width, canvas.height);
+  }, 50);
+  Object.defineProperty(navigator.mediaDevices, 'getUserMedia', {
+    configurable: true, value: async () => audioDestination.stream,
+  });
+  Object.defineProperty(navigator.mediaDevices, 'getDisplayMedia', {
+    configurable: true, value: async options => {
+      window.captureOptions = options;
+      window.lastCapture = canvas.captureStream(20);
+      return window.lastCapture;
+    },
+  });
+  window.testSocketEvent = (name, payload) => {
+    for (const handler of listeners.get(name) || []) handler(payload);
+  };
+</script>
+<script type="module">
+  import { initializeVoice } from '/script/voice.js';
+  initializeVoice();
+  window.testSocketEvent('room-permissions', { roomId: 'geral', role: 'MEMBER' });
+  window.voiceTestReady = true;
+</script>
+</html>

@@ -6,6 +6,9 @@ const pendingCandidates = new Map();
 let stream = null;
 let screenStream = null;
 let sharingInProgress = false;
+let viewerDismissed = false;
+let viewerMinimized = false;
+let lastSharerId = null;
 let active = null;
 let participants = [];
 let muted = false;
@@ -56,6 +59,10 @@ async function loadRooms() {
       join.type = 'button'; join.disabled = !!active || room.participantCount >= room.maxParticipants;
       join.addEventListener('click', () => joinVoice(room.id));
       actions.append(join);
+      const watch = element('button', 'Só assistir');
+      watch.type = 'button'; watch.disabled = !!active || room.participantCount >= room.maxParticipants;
+      watch.addEventListener('click', () => joinVoice(room.id, true));
+      actions.append(watch);
       if (canModerate) {
         const close = element('button', 'Encerrar'); close.type = 'button';
         close.addEventListener('click', async () => {
@@ -84,6 +91,7 @@ function closePeer(id) {
   if (!peer) return;
   peer.pc.close();
   peer.audio.remove();
+  peer.screenStream?.getTracks().forEach(track => track.stop());
   peers.delete(id);
   pendingCandidates.delete(id);
 }
@@ -94,6 +102,7 @@ function endVoice(send = true, message = '') {
   for (const id of [...peers.keys()]) closePeer(id);
   stopMedia();
   active = null; participants = []; muted = false; forcedMuted = false;
+  viewerDismissed = false; viewerMinimized = false; lastSharerId = null;
   updateScreenView();
   $('voice-dock').classList.add('hidden');
   document.body.classList.remove('voice-active');
@@ -112,20 +121,32 @@ function createPeer(id) {
   audio.autoplay = true; audio.playsInline = true;
   audio.setAttribute('aria-label', 'Áudio da chamada');
   audioContainer.append(audio);
-  const peer = { pc, audio, volume: 100, locallyMuted: false, screenStream: null };
+  const peer = { pc, audio, volume: 100, locallyMuted: false, screenStream: null,
+    screenSender: null, videoTask: Promise.resolve(), makingOffer: false,
+    ignoreOffer: false, settingRemoteAnswer: false, needsNegotiation: false,
+    incoming: Promise.resolve() };
   peers.set(id, peer);
+  if (!stream.getAudioTracks().length) pc.addTransceiver('audio', { direction: 'recvonly' });
   for (const track of stream.getTracks()) pc.addTrack(track, stream);
-  if (screenStream) pc.addTrack(screenStream.getVideoTracks()[0], screenStream);
+  pc.addTransceiver('video', { direction: 'recvonly' });
+  if (screenStream) {
+    peer.screenSender = pc.addTrack(screenStream.getVideoTracks()[0], screenStream);
+    void configureVideoSender(peer.screenSender);
+  }
+  pc.onnegotiationneeded = () => { void offerTo(id); };
   pc.onicecandidate = event => {
     if (event.candidate) sendSignal(id, 'candidate', event.candidate.toJSON());
   };
   pc.ontrack = event => {
     if (event.track.kind === 'video') {
       peer.screenStream = new MediaStream([event.track]);
-      event.track.addEventListener('ended', () => {
+      const clearVideo = () => {
         if (peer.screenStream?.getVideoTracks()[0] === event.track) peer.screenStream = null;
         updateScreenView();
-      });
+      };
+      event.track.addEventListener('ended', clearVideo);
+      event.track.addEventListener('mute', () => updateScreenView());
+      event.track.addEventListener('unmute', () => updateScreenView());
       updateScreenView();
       return;
     }
@@ -140,19 +161,33 @@ function createPeer(id) {
 }
 function updateScreenView() {
   const sharer = participants.find(person => person.sharing);
+  if (sharer?.socketId !== lastSharerId) {
+    lastSharerId = sharer?.socketId || null;
+    viewerDismissed = false;
+    viewerMinimized = false;
+  }
   const peer = sharer && peers.get(sharer.socketId);
   const visibleStream = sharer?.socketId === state.socket.id ? screenStream : peer?.screenStream;
   const view = $('voice-screen-view');
   const video = $('voice-screen-video');
-  view.classList.toggle('hidden', !sharer && !visibleStream);
+  view.classList.toggle('hidden', !sharer || viewerDismissed);
+  view.classList.toggle('minimized', viewerMinimized);
+  $('voice-screen-watch').classList.toggle('hidden', !sharer || !viewerDismissed);
+  $('voice-screen-minimize').textContent = viewerMinimized ? 'Expandir vídeo' : 'Minimizar';
   $('voice-screen-label').textContent = sharer ? `Tela de ${sharer.username}` : '';
-  if (video.srcObject !== (visibleStream || null)) video.srcObject = visibleStream || null;
-  video.muted = sharer?.socketId === state.socket.id;
+  const playingStream = visibleStream?.getVideoTracks().some(track => track.readyState === 'live' && !track.muted)
+    ? visibleStream : null;
+  if (video.srcObject !== playingStream) video.srcObject = playingStream;
+  if (playingStream) void video.play().catch(() => {});
+  $('voice-screen-waiting').classList.toggle('hidden', !!playingStream || !sharer);
   const button = $('voice-screen-share');
   button.textContent = screenStream ? 'Parar compartilhamento' : 'Compartilhar tela';
-  button.disabled = !active || sharingInProgress || (!screenStream && !navigator.mediaDevices?.getDisplayMedia);
+  button.disabled = !active || sharingInProgress || (!screenStream &&
+    (!navigator.mediaDevices?.getDisplayMedia || !!(sharer && sharer.socketId !== state.socket.id)));
   if (!screenStream && !navigator.mediaDevices?.getDisplayMedia)
     button.title = 'Compartilhamento de tela indisponível neste dispositivo.';
+  else if (!screenStream && sharer && sharer.socketId !== state.socket.id)
+    button.title = 'Aguarde o compartilhamento atual terminar.';
   else button.removeAttribute('title');
 }
 function stopScreenShare(announce = true) {
@@ -162,14 +197,21 @@ function stopScreenShare(announce = true) {
   oldStream.getTracks().forEach(track => track.stop());
   if (announce && active && state.socket.connected)
     state.socket.emit('voice:share', { sharing: false });
-  for (const [id, peer] of peers) {
-    const sender = peer.pc.getSenders().find(item => item.track?.kind === 'video');
-    if (sender) {
-      peer.pc.removeTrack(sender);
-      if (announce && peer.pc.signalingState === 'stable') void offerTo(id);
+  for (const peer of peers.values()) {
+    if (peer.screenSender) {
+      peer.videoTask = peer.videoTask.then(() => peer.screenSender.replaceTrack(null)).catch(() => {});
     }
   }
   updateScreenView();
+}
+async function configureVideoSender(sender) {
+  try {
+    const parameters = sender.getParameters();
+    parameters.encodings = parameters.encodings?.length ? parameters.encodings : [{}];
+    parameters.encodings[0].maxBitrate = 2200000;
+    parameters.degradationPreference = 'balanced';
+    await sender.setParameters(parameters);
+  } catch { /* O WebRTC ainda adapta a qualidade quando este ajuste não é aceito. */ }
 }
 async function startScreenShare() {
   if (!active || screenStream || sharingInProgress) return;
@@ -177,15 +219,24 @@ async function startScreenShare() {
   updateScreenView();
   let captured;
   try {
-    captured = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 15 }, audio: false });
+    captured = await navigator.mediaDevices.getDisplayMedia({ video: {
+      width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 },
+      frameRate: { ideal: 30, max: 30 } }, audio: false });
     const track = captured.getVideoTracks()[0];
     if (!track) throw new Error('Nenhuma imagem de tela foi recebida.');
+    if (!active || !state.socket.connected) throw new Error('A chamada foi encerrada.');
     await emit('voice:share', { sharing: true });
+    if (!active || !state.socket.connected) throw new Error('A chamada foi encerrada.');
     screenStream = captured;
     track.addEventListener('ended', () => stopScreenShare());
-    for (const [id, peer] of peers) {
-      peer.pc.addTrack(track, captured);
-      if (peer.pc.signalingState === 'stable') await offerTo(id);
+    for (const peer of peers.values()) {
+      if (peer.screenSender) {
+        peer.videoTask = peer.videoTask.then(() => peer.screenSender.replaceTrack(track));
+        await peer.videoTask;
+      } else {
+        peer.screenSender = peer.pc.addTrack(track, captured);
+        void configureVideoSender(peer.screenSender);
+      }
     }
     $('voice-dock-body').classList.remove('hidden');
     $('voice-dock-expand').textContent = 'Recolher';
@@ -201,9 +252,21 @@ async function startScreenShare() {
 async function offerTo(id) {
   const peer = createPeer(id);
   if (!peer) return;
-  const offer = await peer.pc.createOffer();
-  await peer.pc.setLocalDescription(offer);
-  sendSignal(id, 'offer', { sdp: peer.pc.localDescription.sdp });
+  if (peer.makingOffer || peer.pc.signalingState !== 'stable') {
+    peer.needsNegotiation = true;
+    return;
+  }
+  peer.makingOffer = true;
+  peer.needsNegotiation = false;
+  try {
+    await peer.pc.setLocalDescription(await peer.pc.createOffer());
+    if (peers.get(id) === peer && active && peer.pc.signalingState === 'have-local-offer')
+      sendSignal(id, 'offer', { sdp: peer.pc.localDescription.sdp });
+  } catch {
+    if (peer.pc.signalingState !== 'closed') dockStatus('Não foi possível atualizar a transmissão.');
+  } finally {
+    peer.makingOffer = false;
+  }
 }
 async function flushCandidates(id) {
   const peer = peers.get(id);
@@ -214,25 +277,40 @@ async function flushCandidates(id) {
 }
 async function receiveSignal({ from, type, data } = {}) {
   if (!active || typeof from !== 'string' || !['offer', 'answer', 'candidate'].includes(type)) return;
-  try {
+  if (type === 'candidate' && !peers.has(from)) {
+    if (!pendingCandidates.has(from)) pendingCandidates.set(from, []);
+    if (pendingCandidates.get(from).length < 30) pendingCandidates.get(from).push(data);
+    return;
+  }
+  const peer = createPeer(from);
+  if (!peer) return;
+  peer.incoming = peer.incoming.then(async () => {
+    if (peers.get(from) !== peer || peer.pc.signalingState === 'closed') return;
     if (type === 'candidate') {
-      const peer = peers.get(from);
-      if (!peer?.pc.remoteDescription) {
+      if (peer.ignoreOffer) return;
+      if (!peer.pc.remoteDescription) {
         if (!pendingCandidates.has(from)) pendingCandidates.set(from, []);
         if (pendingCandidates.get(from).length < 30) pendingCandidates.get(from).push(data);
       } else await peer.pc.addIceCandidate(data);
       return;
     }
-    const peer = createPeer(from);
-    if (!peer) return;
+    const collision = type === 'offer' &&
+      (peer.makingOffer || (peer.pc.signalingState !== 'stable' && !peer.settingRemoteAnswer));
+    const polite = state.socket.id < from;
+    peer.ignoreOffer = !polite && collision;
+    if (peer.ignoreOffer) return;
+    peer.settingRemoteAnswer = type === 'answer';
     await peer.pc.setRemoteDescription({ type, sdp: data.sdp });
+    peer.settingRemoteAnswer = false;
     await flushCandidates(from);
     if (type === 'offer') {
-      const answer = await peer.pc.createAnswer();
-      await peer.pc.setLocalDescription(answer);
+      await peer.pc.setLocalDescription(await peer.pc.createAnswer());
       sendSignal(from, 'answer', { sdp: peer.pc.localDescription.sdp });
     }
-  } catch (error) { dockStatus('Falha ao conectar o áudio de um participante.'); }
+    if (peer.needsNegotiation && peer.pc.signalingState === 'stable') void offerTo(from);
+  }).catch(() => { peer.settingRemoteAnswer = false;
+    dockStatus('Falha ao conectar a mídia de um participante.'); });
+  await peer.incoming;
 }
 function startSpeakingMeter() {
   if (!window.AudioContext || !stream) return;
@@ -316,23 +394,29 @@ function showDock(room) {
 }
 function updateMuteButton() {
   const button = $('voice-dock-mute');
-  button.textContent = forcedMuted ? 'Mic bloqueado' : muted ? '🔇 Ativar mic' : '🎙 Desligar mic';
-  button.disabled = forcedMuted;
+  button.textContent = !stream?.getAudioTracks().length ? 'Só ouvindo' :
+    forcedMuted ? 'Mic bloqueado' : muted ? '🔇 Ativar mic' : '🎙 Desligar mic';
+  button.disabled = forcedMuted || !stream?.getAudioTracks().length;
   button.setAttribute('aria-pressed', String(muted || forcedMuted));
   stream?.getAudioTracks().forEach(track => { track.enabled = !muted && !forcedMuted; });
 }
-async function joinVoice(voiceRoomId) {
+async function joinVoice(voiceRoomId, listenOnly = false) {
   if (active || creating) return;
   creating = true;
-  status('Solicitando acesso ao microfone...');
+  status(listenOnly ? 'Entrando para assistir...' : 'Solicitando acesso ao microfone...');
   try {
-    if (!navigator.mediaDevices?.getUserMedia || !window.RTCPeerConnection)
+    if (!window.RTCPeerConnection || (!listenOnly && !navigator.mediaDevices?.getUserMedia))
       throw new Error('Seu navegador não permite chamadas de voz neste contexto.');
-    stream = await navigator.mediaDevices.getUserMedia({ audio: {
+    stream = listenOnly ? new MediaStream() : await navigator.mediaDevices.getUserMedia({ audio: {
       echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false });
     const joined = await emit('voice:join', { voiceRoomId });
     active = { room: joined.room, iceServers: joined.iceServers || [] };
     muted = joined.self.muted; forcedMuted = joined.self.forcedMuted;
+    if (listenOnly) {
+      await emit('voice:self-mute', { muted: true });
+      muted = true;
+      joined.self.muted = true;
+    }
     participants = [joined.self, ...joined.peers];
     showDock(joined.room); renderParticipants(); startSpeakingMeter();
     for (const peer of joined.peers) await offerTo(peer.socketId);
@@ -357,7 +441,7 @@ export function initializeVoice() {
     finally { button.disabled = false; }
   });
   $('voice-dock-mute').addEventListener('click', async () => {
-    if (!active || forcedMuted) return;
+    if (!active || forcedMuted || !stream?.getAudioTracks().length) return;
     const button = $('voice-dock-mute'); button.disabled = true;
     try { const result = await emit('voice:self-mute', { muted: !muted });
       muted = result.muted; updateMuteButton(); dockStatus(''); }
@@ -367,6 +451,31 @@ export function initializeVoice() {
   $('voice-screen-share').addEventListener('click', () => {
     if (screenStream) stopScreenShare();
     else void startScreenShare();
+  });
+  $('voice-screen-watch').addEventListener('click', () => {
+    viewerDismissed = false; viewerMinimized = false;
+    updateScreenView();
+  });
+  $('voice-screen-close').addEventListener('click', () => {
+    viewerDismissed = true;
+    if (document.fullscreenElement === $('voice-screen-view')) void document.exitFullscreen();
+    updateScreenView();
+  });
+  $('voice-screen-minimize').addEventListener('click', () => {
+    viewerMinimized = !viewerMinimized;
+    if (viewerMinimized && document.fullscreenElement === $('voice-screen-view'))
+      void document.exitFullscreen();
+    updateScreenView();
+  });
+  $('voice-screen-fullscreen').addEventListener('click', async () => {
+    try {
+      if (document.fullscreenElement === $('voice-screen-view')) await document.exitFullscreen();
+      else {
+        viewerMinimized = false;
+        updateScreenView();
+        await $('voice-screen-view').requestFullscreen();
+      }
+    } catch { dockStatus('Tela cheia indisponível neste dispositivo.'); }
   });
   $('voice-dock-expand').addEventListener('click', () => {
     const expanded = $('voice-dock-body').classList.toggle('hidden') === false;
@@ -421,5 +530,5 @@ export function initializeVoice() {
   });
   for (const event of ['live-state', 'live-started', 'live-ended'])
     state.socket.on(event, () => setTimeout(syncProjectionOption, 0));
-  window.addEventListener('beforeunload', () => { stopMedia(); });
+  window.addEventListener('beforeunload', () => { stopScreenShare(false); stopMedia(); });
 }
