@@ -5,7 +5,8 @@
   const short = (value, limit = 135) => value?.length > limit ? `${value.slice(0, limit).trimEnd()}…` : value || '';
   const date = value => new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
   async function request(path) {
-    const response = await fetch(path, { headers: { Authorization: `Bearer ${token}` } });
+    const response = await fetch(path, { headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout?.(20000) });
     if (!response.ok) throw new Error('Não foi possível carregar esta seção.');
     return response.json();
   }

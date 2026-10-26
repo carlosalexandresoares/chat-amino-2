@@ -12,7 +12,9 @@ let searchParams = null;
 let activeTab = null;
 
 async function api(path, options = {}) {
-  const response = await fetch(`/api/community${path}`, { ...options, headers: {
+  const response = await fetch(`/api/community${path}`, { ...options,
+    signal: options.signal || (!options.method || options.method === 'GET' ? AbortSignal.timeout?.(20000) : undefined),
+    headers: {
     Authorization: `Bearer ${state.token}`,
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),
   } });
@@ -96,7 +98,13 @@ export async function loadDiscover(reset = true) {
     $('rooms-total').textContent = `${count}${hasMore ? '+' : ''} ${count === 1 ? 'comunidade' : 'comunidades'}`;
     $('discover-more').classList.toggle('hidden', !hasMore);
     if (hasMore) discoverPage++;
-  } catch (error) { if (seq === discoverSeq) $('public-rooms-grid').textContent = error.message; }
+  } catch (error) {
+    if (seq === discoverSeq) {
+      $('public-rooms-grid').textContent = error.name === 'TimeoutError'
+        ? 'A conexão demorou. Toque em Explorar para tentar novamente.' : error.message;
+      $('rooms-total').textContent = 'Não foi possível carregar';
+    }
+  }
   finally { $('discover-more').disabled = false; }
 }
 

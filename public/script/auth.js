@@ -16,6 +16,7 @@ export async function loadAuthenticatedUser() {
           Authorization:
             `Bearer ${state.token}`,
         },
+        signal: AbortSignal.timeout?.(20000),
       }
     );
 

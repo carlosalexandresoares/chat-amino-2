@@ -38,6 +38,7 @@ const fmt = new Intl.NumberFormat('pt-BR');
 async function request(url, options = {}) {
   const response = await fetch(url, {
     ...options,
+    signal: options.signal || (!options.method || options.method === 'GET' ? AbortSignal.timeout?.(20000) : undefined),
     headers: {
       Authorization: `Bearer ${token}`,
       ...(options.body ? { "Content-Type": "application/json" } : {}),
