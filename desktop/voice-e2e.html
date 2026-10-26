@@ -72,6 +72,48 @@
   window.testSocketEvent = (name, payload) => {
     for (const handler of listeners.get(name) || []) handler(payload);
   };
+  const nativePeers = new Map();
+  const nativeCandidates = new Map();
+  const sendNative = (to, type, data) =>
+    ipcRenderer.send('test:emit', { userId, name: 'voice:signal', payload: { to, type, data } });
+  const nativeSignals = listeners.get('voice:signal') || [];
+  nativeSignals.push(async ({ from, type, data }) => {
+    const pc = nativePeers.get(from);
+    if (!pc) return;
+    if (type === 'screen-answer') {
+      await pc.setRemoteDescription({ type: 'answer', sdp: data.sdp });
+      for (const candidate of nativeCandidates.get(from) || [])
+        await pc.addIceCandidate(candidate);
+      nativeCandidates.delete(from);
+    } else if (type === 'screen-candidate') {
+      if (pc.remoteDescription) await pc.addIceCandidate(data);
+      else {
+        if (!nativeCandidates.has(from)) nativeCandidates.set(from, []);
+        nativeCandidates.get(from).push(data);
+      }
+    }
+  });
+  listeners.set('voice:signal', nativeSignals);
+  window.testStartNativeShare = async viewers => {
+    await new Promise((resolve, reject) => window.io().emit('voice:share', { sharing: true },
+      (_error, result) => result?.success ? resolve() : reject(new Error('Falha ao iniciar tela nativa simulada'))));
+    const video = canvas.captureStream(20).getVideoTracks()[0];
+    for (const id of viewers) {
+      const pc = new RTCPeerConnection();
+      nativePeers.set(id, pc);
+      pc.addTrack(video);
+      pc.onicecandidate = event => {
+        if (event.candidate) sendNative(id, 'screen-candidate', event.candidate.toJSON());
+      };
+      await pc.setLocalDescription(await pc.createOffer());
+      sendNative(id, 'screen-offer', { sdp: pc.localDescription.sdp });
+    }
+  };
+  window.testStopNativeShare = async () => {
+    for (const pc of nativePeers.values()) pc.close();
+    nativePeers.clear(); nativeCandidates.clear();
+    await new Promise(resolve => window.io().emit('voice:share', { sharing: false }, () => resolve()));
+  };
 </script>
 <script type="module">
   import { initializeVoice } from '/script/voice.js';

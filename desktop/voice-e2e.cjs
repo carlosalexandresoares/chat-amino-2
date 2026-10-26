@@ -172,7 +172,14 @@ async function run() {
   await waitFor(c, `Array.from(document.querySelectorAll('audio')).some(audio =>
     audio.srcObject?.getAudioTracks().length)`, 'áudio restabelecido após reconexão');
   await click(b, '#voice-screen-share');
-  process.stdout.write('PASS: 4 clientes WebRTC, áudio, vídeo nos dois sentidos, entrada tardia, paradas, reconexão, visualização e permissão negada.\n');
+  await b.webContents.executeJavaScript('window.testStartNativeShare(["a", "c", "d"])');
+  await Promise.all([streamVisible(a, 'A recebeu tela Android simulada'),
+    streamVisible(c, 'C recebeu tela Android simulada'),
+    streamVisible(d, 'D recebeu tela Android simulada')]);
+  await b.webContents.executeJavaScript('window.testStopNativeShare()');
+  await waitFor(a, "document.querySelector('#voice-screen-view').classList.contains('hidden')",
+    'fim da transmissão Android simulada');
+  process.stdout.write('PASS: 4 clientes WebRTC, áudio, vídeo web e Android simulado, vários espectadores, entrada tardia, paradas, reconexão, visualização e permissão negada.\n');
 }
 
 run().then(() => finish(0), error => {

@@ -43,6 +43,14 @@ test('tela e sinais WebRTC exigem participação na mesma sala de voz', async ()
       data: { sdp: 'fake' } })).success, false);
     assert.equal((await alice.request('voice:signal', { to: 'bob', type: 'offer',
       data: { sdp: 'fake' } })).success, true);
+    assert.equal((await bob.request('voice:signal', { to: 'alice', type: 'screen-offer',
+      data: { sdp: 'fake' } })).success, false);
+    assert.equal((await alice.request('voice:signal', { to: 'bob', type: 'screen-offer',
+      data: { sdp: 'fake' } })).success, true);
+    assert.equal((await bob.request('voice:signal', { to: 'alice', type: 'screen-answer',
+      data: { sdp: 'fake' } })).success, true);
+    assert.equal((await outsider.request('voice:signal', { to: 'alice', type: 'screen-candidate',
+      data: { candidate: 'fake' } })).success, false);
     assert.ok(sent.some(item => item.target === 'bob' && item.name === 'voice:signal'));
     alice.disconnect();
     assert.ok(sent.some(item => item.name === 'voice:participants' &&

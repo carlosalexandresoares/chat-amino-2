@@ -67,8 +67,9 @@ function createVoiceService({ io, prisma, getActiveLive }) {
     })) };
   }
   function signalValid(type, data) {
-    if (!['offer', 'answer', 'candidate'].includes(type) || !data || typeof data !== 'object') return false;
-    if (type === 'offer' || type === 'answer')
+    const kind = typeof type === 'string' && type.startsWith('screen-') ? type.slice(7) : type;
+    if (!['offer', 'answer', 'candidate'].includes(kind) || !data || typeof data !== 'object') return false;
+    if (kind === 'offer' || kind === 'answer')
       return typeof data.sdp === 'string' && data.sdp.length > 0 && data.sdp.length <= 32000;
     return typeof data.candidate === 'string' && data.candidate.length <= 4000 &&
       (data.sdpMid === null || data.sdpMid === undefined || typeof data.sdpMid === 'string') &&
@@ -177,6 +178,11 @@ function createVoiceService({ io, prisma, getActiveLive }) {
       const target = typeof to === 'string' ? bySocket.get(to) : null;
       if (!from || !target || from.voiceRoomId !== target.voiceRoomId ||
         !signalValid(type, data)) return response(callback, { success: false });
+      if (typeof type === 'string' && type.startsWith('screen-') &&
+          (type === 'screen-offer' && !from.sharing ||
+           type === 'screen-answer' && !target.sharing ||
+           type === 'screen-candidate' && !from.sharing && !target.sharing))
+        return response(callback, { success: false });
       const now = Date.now();
       from.signals = from.signals.filter(at => now - at < 10000);
       if (from.signals.length >= 80) return response(callback, { success: false });

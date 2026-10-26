@@ -3,8 +3,12 @@ import state from './state.js';
 const $ = id => document.getElementById(id);
 const peers = new Map();
 const pendingCandidates = new Map();
+const pendingScreenSignals = new Map();
 let stream = null;
 let screenStream = null;
+let nativeSharing = false;
+let nativeStarting = false;
+const nativeScreen = window.PurpNativeScreenShare || null;
 let sharingInProgress = false;
 let viewerDismissed = false;
 let viewerMinimized = false;
@@ -90,6 +94,8 @@ function closePeer(id) {
   const peer = peers.get(id);
   if (!peer) return;
   peer.pc.close();
+  peer.screenPc?.close();
+  if (nativeSharing) void nativeScreen?.removeViewer(id);
   peer.audio.remove();
   peer.screenStream?.getTracks().forEach(track => track.stop());
   peers.delete(id);
@@ -100,6 +106,7 @@ function endVoice(send = true, message = '') {
     state.socket.emit('voice:leave', {});
   stopScreenShare(false);
   for (const id of [...peers.keys()]) closePeer(id);
+  pendingScreenSignals.clear();
   stopMedia();
   active = null; participants = []; muted = false; forcedMuted = false;
   viewerDismissed = false; viewerMinimized = false; lastSharerId = null;
@@ -179,18 +186,29 @@ function updateScreenView() {
     ? visibleStream : null;
   if (video.srcObject !== playingStream) video.srcObject = playingStream;
   if (playingStream) void video.play().catch(() => {});
+  $('voice-screen-waiting').textContent = nativeSharing && sharer?.socketId === state.socket.id
+    ? 'Sua tela está sendo transmitida pelo Android.' : 'Aguardando vídeo...';
   $('voice-screen-waiting').classList.toggle('hidden', !!playingStream || !sharer);
   const button = $('voice-screen-share');
-  button.textContent = screenStream ? 'Parar compartilhamento' : 'Compartilhar tela';
-  button.disabled = !active || sharingInProgress || (!screenStream &&
-    (!navigator.mediaDevices?.getDisplayMedia || !!(sharer && sharer.socketId !== state.socket.id)));
-  if (!screenStream && !navigator.mediaDevices?.getDisplayMedia)
+  button.textContent = screenStream || nativeSharing ? 'Parar compartilhamento' : 'Compartilhar tela';
+  button.disabled = !active || sharingInProgress || nativeStarting || (!screenStream && !nativeSharing &&
+    ((!nativeScreen && !navigator.mediaDevices?.getDisplayMedia) ||
+      !!(sharer && sharer.socketId !== state.socket.id)));
+  if (!screenStream && !nativeSharing && !nativeScreen && !navigator.mediaDevices?.getDisplayMedia)
     button.title = 'Compartilhamento de tela indisponível neste dispositivo.';
   else if (!screenStream && sharer && sharer.socketId !== state.socket.id)
     button.title = 'Aguarde o compartilhamento atual terminar.';
   else button.removeAttribute('title');
 }
 function stopScreenShare(announce = true) {
+  if (nativeSharing || nativeStarting) {
+    nativeSharing = false; nativeStarting = false;
+    void nativeScreen?.stop();
+    if (announce && active && state.socket.connected)
+      state.socket.emit('voice:share', { sharing: false });
+    updateScreenView();
+    return;
+  }
   if (!screenStream) return;
   const oldStream = screenStream;
   screenStream = null;
@@ -214,11 +232,25 @@ async function configureVideoSender(sender) {
   } catch { /* O WebRTC ainda adapta a qualidade quando este ajuste não é aceito. */ }
 }
 async function startScreenShare() {
-  if (!active || screenStream || sharingInProgress) return;
+  if (!active || screenStream || nativeSharing || sharingInProgress) return;
   sharingInProgress = true;
   updateScreenView();
   let captured;
   try {
+    if (nativeScreen) {
+      nativeStarting = true;
+      await nativeScreen.start({ iceServers: active.iceServers,
+        microphone: !!stream?.getAudioTracks().length });
+      if (!active || !state.socket.connected) throw new Error('A chamada foi encerrada.');
+      await emit('voice:share', { sharing: true });
+      nativeSharing = true; nativeStarting = false;
+      for (const person of participants) if (person.socketId !== state.socket.id)
+        void nativeScreen.addViewer(person.socketId);
+      $('voice-dock-body').classList.remove('hidden');
+      $('voice-dock-expand').textContent = 'Recolher';
+      $('voice-dock-expand').setAttribute('aria-expanded', 'true');
+      return;
+    }
     captured = await navigator.mediaDevices.getDisplayMedia({ video: {
       width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 },
       frameRate: { ideal: 30, max: 30 } }, audio: false });
@@ -243,11 +275,67 @@ async function startScreenShare() {
     $('voice-dock-expand').setAttribute('aria-expanded', 'true');
     updateScreenView();
   } catch (error) {
-    if (screenStream) stopScreenShare();
+    if (screenStream || nativeStarting || nativeSharing) stopScreenShare();
     else captured?.getTracks().forEach(track => track.stop());
     dockStatus(error.name === 'NotAllowedError' ? 'Compartilhamento de tela cancelado.' :
       error.message || 'Não foi possível compartilhar a tela.');
   } finally { sharingInProgress = false; updateScreenView(); }
+}
+async function receiveNativeScreenSignal({ from, type, data }) {
+  if (typeof from !== 'string' || !active) return;
+  if (!participants.some(person => person.socketId === from)) {
+    if (!pendingScreenSignals.has(from)) pendingScreenSignals.set(from, []);
+    if (pendingScreenSignals.get(from).length < 30)
+      pendingScreenSignals.get(from).push({ from, type, data });
+    return;
+  }
+  if (nativeSharing) {
+    if (['screen-answer', 'screen-candidate'].includes(type))
+      await nativeScreen.signal(from, type, data).catch(() => {});
+    return;
+  }
+  if (type !== 'screen-offer' && type !== 'screen-candidate') return;
+  const peer = createPeer(from);
+  if (!peer) return;
+  if (!peer.screenPc) {
+    peer.screenPc = new RTCPeerConnection({ iceServers: active.iceServers });
+    peer.screenCandidates = [];
+    peer.screenPc.addTransceiver('video', { direction: 'recvonly' });
+    peer.screenPc.ontrack = event => {
+      peer.screenStream = new MediaStream([event.track]);
+      event.track.addEventListener('ended', () => {
+        if (peer.screenStream?.getVideoTracks()[0] === event.track) peer.screenStream = null;
+        updateScreenView();
+      });
+      event.track.addEventListener('unmute', updateScreenView);
+      updateScreenView();
+    };
+    peer.screenPc.onicecandidate = event => {
+      if (event.candidate) sendSignal(from, 'screen-candidate', event.candidate.toJSON());
+    };
+  }
+  if (type === 'screen-candidate') {
+    if (peer.screenPc.remoteDescription) await peer.screenPc.addIceCandidate(data).catch(() => {});
+    else if (peer.screenCandidates.length < 30) peer.screenCandidates.push(data);
+    return;
+  }
+  if (peer.screenPc.signalingState !== 'stable') {
+    peer.screenPc.close(); peer.screenPc = null;
+    return receiveNativeScreenSignal({ from, type, data });
+  }
+  await peer.screenPc.setRemoteDescription({ type: 'offer', sdp: data.sdp });
+  for (const candidate of peer.screenCandidates.splice(0))
+    await peer.screenPc.addIceCandidate(candidate).catch(() => {});
+  await peer.screenPc.setLocalDescription(await peer.screenPc.createAnswer());
+  sendSignal(from, 'screen-answer', { sdp: peer.screenPc.localDescription.sdp });
+}
+function flushScreenSignals() {
+  for (const [id, queued] of pendingScreenSignals) {
+    if (!participants.some(person => person.socketId === id)) continue;
+    pendingScreenSignals.delete(id);
+    for (const signal of queued) void receiveNativeScreenSignal(signal)
+      .catch(() => dockStatus('Falha ao receber a tela do Android.'));
+  }
 }
 async function offerTo(id) {
   const peer = createPeer(id);
@@ -420,6 +508,7 @@ async function joinVoice(voiceRoomId, listenOnly = false) {
     participants = [joined.self, ...joined.peers];
     showDock(joined.room); renderParticipants(); startSpeakingMeter();
     for (const peer of joined.peers) await offerTo(peer.socketId);
+    flushScreenSignals();
     status(''); dockStatus('');
     await loadRooms();
   } catch (error) {
@@ -449,7 +538,7 @@ export function initializeVoice() {
   });
   $('voice-dock-leave').addEventListener('click', () => endVoice());
   $('voice-screen-share').addEventListener('click', () => {
-    if (screenStream) stopScreenShare();
+    if (screenStream || nativeSharing) stopScreenShare();
     else void startScreenShare();
   });
   $('voice-screen-watch').addEventListener('click', () => {
@@ -499,6 +588,14 @@ export function initializeVoice() {
   state.socket.on('voice:participants', ({ voiceRoomId, participants: members }) => {
     if (!active || active.room.id !== voiceRoomId || !Array.isArray(members)) return;
     participants = members;
+    flushScreenSignals();
+    for (const [id, peer] of peers) {
+      if (peer.screenPc && !members.some(person => person.socketId === id && person.sharing)) {
+        peer.screenPc.close(); peer.screenPc = null; peer.screenStream = null;
+      }
+    }
+    if (nativeSharing) for (const person of members)
+      if (person.socketId !== state.socket.id) void nativeScreen.addViewer(person.socketId);
     renderParticipants();
     updateScreenView();
   });
@@ -507,7 +604,11 @@ export function initializeVoice() {
     const person = participants.find(item => item.socketId === socketId);
     if (person) { person.speaking = speaking; renderParticipants(); }
   });
-  state.socket.on('voice:signal', payload => { void receiveSignal(payload); });
+  state.socket.on('voice:signal', payload => {
+    if (typeof payload?.type === 'string' && payload.type.startsWith('screen-'))
+      void receiveNativeScreenSignal(payload).catch(() => dockStatus('Falha ao receber a tela do Android.'));
+    else void receiveSignal(payload);
+  });
   state.socket.on('voice:peer-left', ({ voiceRoomId, socketId }) => {
     if (active?.room.id === voiceRoomId) { closePeer(socketId);
       participants = participants.filter(item => item.socketId !== socketId); renderParticipants(); updateScreenView(); }
@@ -528,6 +629,15 @@ export function initializeVoice() {
   state.socket.on('disconnect', () => {
     if (active) endVoice(false, 'Conexão perdida. Entre novamente na chamada.');
   });
+  nativeScreen?.onStopped(() => {
+    if (nativeSharing || nativeStarting) {
+      nativeSharing = false; nativeStarting = false;
+      if (active && state.socket.connected) state.socket.emit('voice:share', { sharing: false });
+      updateScreenView();
+      dockStatus('O compartilhamento de tela foi encerrado no Android.');
+    }
+  });
+  nativeScreen?.onSignal(({ to, type, data }) => sendSignal(to, type, data));
   for (const event of ['live-state', 'live-started', 'live-ended'])
     state.socket.on(event, () => setTimeout(syncProjectionOption, 0));
   window.addEventListener('beforeunload', () => { stopScreenShare(false); stopMedia(); });
