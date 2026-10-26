@@ -16,6 +16,7 @@ body.chat-shell:not(.rooms-mode) .pv-sidebar {
 
 .app-screen .app-header {
   position: relative;
+  z-index: 20;
   isolation: isolate;
   min-height: 92px;
   padding: 12px clamp(16px, 2vw, 30px);
@@ -101,6 +102,22 @@ body.chat-shell:not(.rooms-mode) .pv-sidebar {
   border-color: #8e46bf;
   background: #1c0d30;
   box-shadow: 0 20px 50px #05010dcc, 0 0 24px #8f36e52b;
+}
+.app-screen .room-options-menu .room-options-heading {
+  margin: 4px 12px 6px;
+  color: #cbb8df;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+.app-screen .room-options-menu .room-options-divider {
+  height: 1px;
+  margin: 6px 8px;
+  background: #78429c;
+}
+.app-screen .room-options-menu button[aria-expanded="true"] {
+  background: #4a1b6e;
+  color: #fff;
 }
 
 .app-screen .container { background: #0b0718; }
@@ -276,19 +293,21 @@ html[data-theme="light"] .app-screen .sticker-panel { border-color: #bc8cdd; bac
   .app-screen .chat-room-mascot { width: 44px; height: 44px; border-radius: 13px; }
   .app-screen .room-heading h1 { align-self: end; font-size: clamp(17px, 5vw, 20px); }
   .app-screen .room-stats { align-self: start; font-size: 11px; }
-  .app-screen .community-tool-tabs { gap: 6px; padding: 6px 8px; }
-  .app-screen .community-tool-tabs button { min-height: 40px; padding: 7px 9px; font-size: 11px; }
+  .app-screen .community-tools { border: 0; background: transparent; }
+  .app-screen .community-tool-tabs { display: none; }
+  .app-screen .community-tool-panel { border-top: 0; border-bottom: 1px solid #673990; }
   .app-screen .voice-section { margin: 6px 8px; }
+  .app-screen .voice-section:not([open]) { display: none; }
   .app-screen .live-panel,
   .app-screen .live-panel.active { margin: 0 8px 6px; padding: 7px 10px; }
   .app-screen .live-title-row h2 { font-size: 12px; }
   .app-screen .messages { padding: 12px 10px 16px; }
   .app-screen .message { max-width: 86%; padding: 9px 11px; font-size: 13px; }
-  .app-screen .container-chat { padding: 8px 8px max(8px, env(safe-area-inset-bottom)); }
+  .app-screen .container-chat { padding: 7px 8px max(7px, env(safe-area-inset-bottom)); }
   .app-screen .composer-row { gap: 6px; }
-  .app-screen .composer-icon { width: 40px; height: 44px; }
-  .app-screen .composer-row #chat-dig { height: 44px; padding: 9px 11px; font-size: 16px; }
-  .app-screen #enviar { width: 44px; height: 44px; }
+  .app-screen .composer-icon { width: 40px; height: 40px; }
+  .app-screen .composer-row #chat-dig { height: 40px; padding: 7px 11px; font-size: 16px; }
+  .app-screen #enviar { width: 40px; height: 40px; }
   .app-screen .mobile-bottom-nav { border-color: #7438a1; background: #160a29; }
   html[data-theme="light"] .app-screen .mobile-bottom-nav { background: #fff; }
 }

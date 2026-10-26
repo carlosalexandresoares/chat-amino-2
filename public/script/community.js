@@ -201,7 +201,9 @@ function openTab(tab) {
   $('community-tool-panel').classList.toggle('hidden', !activeTab);
   for (const name of ['pins', 'polls', 'search']) {
     $(`community-${name}`).classList.toggle('hidden', activeTab !== name);
-    document.querySelector(`[data-community-tab="${name}"]`).setAttribute('aria-expanded', String(activeTab === name));
+    document.querySelectorAll(`[data-community-tab="${name}"]`).forEach(button => {
+      button.setAttribute('aria-expanded', String(activeTab === name));
+    });
   }
   if (activeTab === 'pins') void loadPins();
   if (activeTab === 'polls') void loadPolls(true);

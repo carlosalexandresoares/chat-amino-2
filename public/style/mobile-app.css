@@ -56,10 +56,10 @@
   .app-screen .messages { flex: 1 1 0; min-height: 0; padding: 10px 10px 14px; overflow-x: hidden; }
   .app-screen .container-chat { padding: 7px 8px; padding-bottom: 7px; }
   .app-screen .container-chat input { font-size: 16px; }
-  .mobile-bottom-nav { z-index: 4; flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); min-height: 57px; padding: 3px max(5px, env(safe-area-inset-right)) max(5px, env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left)); border-top: 1px solid #353951; background: #171d31; }
-  .mobile-bottom-nav a, .mobile-bottom-nav button { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; border-radius: 11px; background: transparent; color: #b8bfd4; text-decoration: none; cursor: pointer; }
-  .mobile-bottom-nav span { font-size: 20px; line-height: 1; }
-  .mobile-bottom-nav small { font-size: 10px; font-weight: 700; }
+  .mobile-bottom-nav { z-index: 4; flex: none; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); min-height: calc(66px + env(safe-area-inset-bottom)); padding: 6px max(5px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(5px, env(safe-area-inset-left)); border-top: 1px solid #353951; background: #171d31; }
+  .mobile-bottom-nav a, .mobile-bottom-nav button { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 0; border-radius: 11px; background: transparent; color: #b8bfd4; text-decoration: none; cursor: pointer; }
+  .mobile-bottom-nav span { font-size: 21px; line-height: 1; }
+  .mobile-bottom-nav small { font-size: 11px; font-weight: 700; line-height: 1.2; }
   .mobile-bottom-nav [aria-current="page"], .mobile-bottom-nav .active { background: #30294d; color: #ddc8ff; }
   .rooms-bottom-nav, .profile-bottom-nav { position: fixed; z-index: 40; right: 0; bottom: 0; left: 0; }
   .rooms-screen, .profile-page { padding-bottom: calc(75px + env(safe-area-inset-bottom)); }

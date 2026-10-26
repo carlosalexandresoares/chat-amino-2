@@ -5,7 +5,7 @@ import { initializeYouTube, stopTimeUpdater } from "./youtube.js?v=10";
 import { initializeLive } from "./live.js?v=10";
 import { initializeMiniPlayer, openSitePage } from './mini-player.js?v=9';
 import { initializeMentions } from './mentions.js?v=1';
-import { initializeCommunity, loadDiscover, loadTopics } from './community.js?v=5';
+import { initializeCommunity, loadDiscover, loadTopics } from './community.js?v=6';
 import { initializeVoice } from './voice.js?v=1';
 import { initializeModeration, setModerationMembers } from './moderation-ui.js?v=2';
 
@@ -26,6 +26,8 @@ const roomsById = new Map();
 const roomInfoDialog = document.getElementById("room-info-dialog");
 const roomOptionsToggle = document.getElementById("room-options-toggle");
 const roomOptionsMenu = document.getElementById("room-options-menu");
+const roomVoiceToggle = document.getElementById("room-voice-toggle");
+const voiceSection = document.getElementById("voice-section");
 const projectionsTab = document.getElementById("mobile-projections-tab");
 const connectionStatus = document.getElementById("chat-connection-status");
 window.ChatNotificationBadge?.attachSocket(state.socket);
@@ -39,6 +41,16 @@ roomOptionsToggle.addEventListener("click", () => {
   const open = roomOptionsMenu.classList.toggle("hidden") === false;
   roomOptionsToggle.setAttribute("aria-expanded", String(open));
   if (open) roomOptionsMenu.querySelector('[role="menuitem"]:not(.hidden)')?.focus();
+});
+roomOptionsMenu.addEventListener("click", (event) => {
+  if (event.target.closest('button[role="menuitem"]')) closeRoomOptions();
+});
+roomVoiceToggle.addEventListener("click", () => {
+  voiceSection.open = !voiceSection.open;
+  if (voiceSection.open) voiceSection.scrollIntoView({ block: "nearest" });
+});
+voiceSection.addEventListener("toggle", () => {
+  roomVoiceToggle.setAttribute("aria-expanded", String(voiceSection.open));
 });
 document.addEventListener("click", (event) => {
   if (!event.target.closest(".mobile-header-actions")) closeRoomOptions();

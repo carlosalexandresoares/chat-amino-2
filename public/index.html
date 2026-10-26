@@ -12,7 +12,7 @@
 
   <link
     rel="stylesheet"
-    href="style/style.css?v=24"
+    href="style/style.css?v=25"
   />
   <link rel="stylesheet" href="/style/notification-badge.css?v=1">
   <link rel="stylesheet" href="/style/community.css?v=4">
@@ -25,13 +25,13 @@
 
   <script
     type="module"
-    src="script/script.js?v=37"
+    src="script/script.js?v=38"
   ></script>
   <link rel="icon" type="image/png" href="/image/purp-mascot.png">
   <meta name="theme-color" content="#0B0716">
   <meta name="description" content="Purp: comunidades, conversas, publicações, eventos e projeções.">
   <link rel="stylesheet" href="/style/purpverse.css?v=5">
-  <link rel="stylesheet" href="/style/purp-chat.css?v=2">
+  <link rel="stylesheet" href="/style/purp-chat.css?v=3">
   <script src="/script/purpverse-shell.js?v=3"></script>
   <script src="/script/purpverse-home.js?v=2" defer></script>
 </head>
@@ -157,6 +157,12 @@
       <div class="mobile-header-actions">
         <button type="button" id="room-options-toggle" aria-label="Opções da sala" aria-expanded="false" aria-controls="room-options-menu">⋮</button>
         <div id="room-options-menu" class="room-options-menu hidden" role="menu">
+          <p class="room-options-heading">Recursos da comunidade</p>
+          <button type="button" data-community-tab="pins" role="menuitem" aria-expanded="false">📌 Mensagens fixadas</button>
+          <button type="button" data-community-tab="polls" role="menuitem" aria-expanded="false">◉ Enquetes</button>
+          <button type="button" data-community-tab="search" role="menuitem" aria-expanded="false">⌕ Buscar mensagens</button>
+          <button type="button" id="room-voice-toggle" role="menuitem" aria-expanded="false">🎙 Voz da comunidade</button>
+          <div class="room-options-divider" role="separator"></div>
           <a href="/notifications.html" class="notification-link" role="menuitem">🔔 Notificações <span class="notification-badge hidden">0</span></a>
           <button type="button" data-room-action="wallpaper-open" role="menuitem">Personalizar fundo</button>
           <button type="button" data-room-action="manage-room" class="hidden" role="menuitem">Gerenciar chat</button>
