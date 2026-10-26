@@ -16,8 +16,11 @@ button { cursor: pointer; }
 .profile-card { position: relative; width: min(760px,100%); overflow: hidden; border: 1px solid rgba(255,255,255,.13); border-radius: 26px; background: #171e31; box-shadow: 0 30px 80px rgba(0,0,0,.3); }
 .profile-nav { position: absolute; z-index: 3; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 21px 24px; background: linear-gradient(180deg,rgba(8,12,26,.72),transparent); }
 .profile-nav a { padding: 9px 13px; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; background: rgba(10,15,31,.3); color: #fff; text-decoration: none; font-size: 12px; font-weight: 800; backdrop-filter: blur(9px); }
+.profile-nav .profile-back-link { display: inline-flex; align-items: center; gap: 6px; }
 .profile-nav a:hover { border-color: #cfb4ff; }
 .profile-nav span { color: #fff; font-size: 11px; font-weight: 900; letter-spacing: 1.6px; }
+.profile-nav .profile-nav-icon { font-size: 17px; letter-spacing: 0; }
+.profile-nav .profile-admin-icon { display: none; }
 .profile-banner { position: relative; width: 100%; height: 245px; background: radial-gradient(circle at 70% 30%,#aa6be5,#513586 52%,#252448); background-position: center; background-size: cover; }
 .profile-banner::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg,transparent 53%,rgba(23,30,49,.44)); pointer-events: none; }
 .profile-content { padding: 0 42px 42px; text-align: center; }
@@ -115,8 +118,12 @@ button { cursor: pointer; }
 @media (max-width: 600px) {
   .profile-page { padding: 0; }
   .profile-card { min-height: 100dvh; border: 0; border-radius: 0; }
-  .profile-nav { padding: 14px 16px; }
-  .profile-nav span { font-size: 9px; }
+  .profile-nav { justify-content: flex-end; gap: 8px; padding: 14px 12px; }
+  .profile-nav a, .profile-nav .pv-theme-toggle { display: grid; flex: none; place-items: center; width: 42px; height: 42px; min-width: 42px; min-height: 42px; padding: 0; border-radius: 13px; font-size: 19px; line-height: 1; white-space: nowrap; }
+  .profile-nav .profile-back-link { display: grid; margin-right: auto; }
+  .profile-nav .profile-nav-label, .profile-nav .pv-brand { display: none; }
+  .profile-nav .profile-admin-icon { display: inline; }
+  .profile-nav .profile-nav-icon { font-size: 21px; }
   .profile-banner { height: 205px; }
   .profile-content { padding: 0 16px 30px; }
   .profile-avatar { width: 116px; height: 116px; margin-top: -58px; }
