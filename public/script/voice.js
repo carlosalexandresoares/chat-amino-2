@@ -90,13 +90,40 @@ function stopMedia() {
   stream?.getTracks().forEach(track => track.stop());
   stream = null;
 }
+function stopNativeScreenAudio(peer) {
+  peer.nativeAudioChannel?.close();
+  peer.nativeAudioChannel = null;
+  void peer.nativeAudioContext?.close().catch(() => {});
+  peer.nativeAudioContext = null;
+  peer.nativeAudioTime = 0;
+}
+function playNativeScreenAudio(peer, data) {
+  if (!(data instanceof ArrayBuffer) || data.byteLength !== 1920 || !window.AudioContext) return;
+  try {
+    const context = peer.nativeAudioContext ||= new AudioContext();
+    const samples = new DataView(data);
+    const buffer = context.createBuffer(1, data.byteLength / 2, 48000);
+    const output = buffer.getChannelData(0);
+    for (let i = 0; i < output.length; i++) output[i] = samples.getInt16(i * 2, true) / 32768;
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(context.destination);
+    peer.nativeAudioTime = Math.max(context.currentTime + 0.06,
+      Math.min(peer.nativeAudioTime || 0, context.currentTime + 0.2));
+    source.start(peer.nativeAudioTime);
+    peer.nativeAudioTime += buffer.duration;
+    if (context.state === 'suspended') void context.resume().catch(() => {});
+  } catch { /* O vídeo continua disponível se o áudio não puder iniciar. */ }
+}
 function closePeer(id) {
   const peer = peers.get(id);
   if (!peer) return;
   peer.pc.close();
   peer.screenPc?.close();
+  stopNativeScreenAudio(peer);
   if (nativeSharing) void nativeScreen?.removeViewer(id);
   peer.audio.remove();
+  peer.screenAudio.remove();
   peer.screenStream?.getTracks().forEach(track => track.stop());
   peers.delete(id);
   pendingCandidates.delete(id);
@@ -127,9 +154,12 @@ function createPeer(id) {
   const audio = document.createElement('audio');
   audio.autoplay = true; audio.playsInline = true;
   audio.setAttribute('aria-label', 'Áudio da chamada');
-  audioContainer.append(audio);
+  const screenAudio = document.createElement('audio');
+  screenAudio.autoplay = true; screenAudio.playsInline = true;
+  screenAudio.setAttribute('aria-label', 'Áudio da tela compartilhada');
+  audioContainer.append(audio, screenAudio);
   const peer = { pc, audio, volume: 100, locallyMuted: false, screenStream: null,
-    screenSender: null, videoTask: Promise.resolve(), makingOffer: false,
+    screenAudio, screenSender: null, screenAudioSender: null, videoTask: Promise.resolve(), makingOffer: false,
     ignoreOffer: false, settingRemoteAnswer: false, needsNegotiation: false,
     incoming: Promise.resolve() };
   peers.set(id, peer);
@@ -139,6 +169,8 @@ function createPeer(id) {
   if (screenStream) {
     peer.screenSender = pc.addTrack(screenStream.getVideoTracks()[0], screenStream);
     void configureVideoSender(peer.screenSender);
+    const screenAudioTrack = screenStream.getAudioTracks()[0];
+    if (screenAudioTrack) peer.screenAudioSender = pc.addTrack(screenAudioTrack, screenStream);
   }
   pc.onnegotiationneeded = () => { void offerTo(id); };
   pc.onicecandidate = event => {
@@ -155,6 +187,13 @@ function createPeer(id) {
       event.track.addEventListener('mute', () => updateScreenView());
       event.track.addEventListener('unmute', () => updateScreenView());
       updateScreenView();
+      return;
+    }
+    if (event.streams.some(remoteStream => remoteStream.getVideoTracks().length)) {
+      screenAudio.srcObject = new MediaStream([event.track]);
+      screenAudio.muted = !participants.some(person => person.socketId === id && person.sharing);
+      if (event.track.readyState === 'live')
+        screenAudio.play().catch(() => dockStatus('Toque em Expandir para ativar o áudio da tela.'));
       return;
     }
     audio.srcObject = event.streams[0] || new MediaStream([event.track]);
@@ -185,6 +224,7 @@ function updateScreenView() {
   const playingStream = visibleStream?.getVideoTracks().some(track => track.readyState === 'live' && !track.muted)
     ? visibleStream : null;
   if (video.srcObject !== playingStream) video.srcObject = playingStream;
+  for (const [id, current] of peers) current.screenAudio.muted = id !== sharer?.socketId;
   if (playingStream) void video.play().catch(() => {});
   $('voice-screen-waiting').textContent = nativeSharing && sharer?.socketId === state.socket.id
     ? 'Sua tela está sendo transmitida pelo Android.' : 'Aguardando vídeo...';
@@ -219,6 +259,8 @@ function stopScreenShare(announce = true) {
     if (peer.screenSender) {
       peer.videoTask = peer.videoTask.then(() => peer.screenSender.replaceTrack(null)).catch(() => {});
     }
+    if (peer.screenAudioSender)
+      void peer.screenAudioSender.replaceTrack(null).catch(() => {});
   }
   updateScreenView();
 }
@@ -239,7 +281,7 @@ async function startScreenShare() {
   try {
     if (nativeScreen) {
       nativeStarting = true;
-      await nativeScreen.start({ iceServers: active.iceServers,
+      const nativeResult = await nativeScreen.start({ iceServers: active.iceServers,
         microphone: !!stream?.getAudioTracks().length });
       if (!active || !state.socket.connected) throw new Error('A chamada foi encerrada.');
       await emit('voice:share', { sharing: true });
@@ -249,11 +291,13 @@ async function startScreenShare() {
       $('voice-dock-body').classList.remove('hidden');
       $('voice-dock-expand').textContent = 'Recolher';
       $('voice-dock-expand').setAttribute('aria-expanded', 'true');
+      if (!nativeResult?.audioAvailable) dockStatus('Sua tela está sem áudio: o Android exige versão 10 ou mais recente e permissão de microfone.');
+      else dockStatus('');
       return;
     }
     captured = await navigator.mediaDevices.getDisplayMedia({ video: {
       width: { ideal: 1920, max: 1920 }, height: { ideal: 1080, max: 1080 },
-      frameRate: { ideal: 30, max: 30 } }, audio: false });
+      frameRate: { ideal: 30, max: 30 } }, audio: true, systemAudio: 'include' });
     const track = captured.getVideoTracks()[0];
     if (!track) throw new Error('Nenhuma imagem de tela foi recebida.');
     if (!active || !state.socket.connected) throw new Error('A chamada foi encerrada.');
@@ -268,6 +312,11 @@ async function startScreenShare() {
       } else {
         peer.screenSender = peer.pc.addTrack(track, captured);
         void configureVideoSender(peer.screenSender);
+      }
+      const screenAudioTrack = captured.getAudioTracks()[0];
+      if (screenAudioTrack) {
+        if (peer.screenAudioSender) await peer.screenAudioSender.replaceTrack(screenAudioTrack);
+        else peer.screenAudioSender = peer.pc.addTrack(screenAudioTrack, captured);
       }
     }
     $('voice-dock-body').classList.remove('hidden');
@@ -312,6 +361,19 @@ async function receiveNativeScreenSignal({ from, type, data }) {
     };
     peer.screenPc.onicecandidate = event => {
       if (event.candidate) sendSignal(from, 'screen-candidate', event.candidate.toJSON());
+    };
+    peer.screenPc.ondatachannel = event => {
+      if (event.channel.label !== 'screen-audio') { event.channel.close(); return; }
+      stopNativeScreenAudio(peer);
+      peer.nativeAudioChannel = event.channel;
+      event.channel.binaryType = 'arraybuffer';
+      event.channel.onmessage = message => {
+        if (participants.some(person => person.socketId === from && person.sharing))
+          playNativeScreenAudio(peer, message.data);
+      };
+      event.channel.onclose = () => {
+        if (peer.nativeAudioChannel === event.channel) stopNativeScreenAudio(peer);
+      };
     };
   }
   if (type === 'screen-candidate') {
@@ -570,7 +632,12 @@ export function initializeVoice() {
     const expanded = $('voice-dock-body').classList.toggle('hidden') === false;
     $('voice-dock-expand').textContent = expanded ? 'Recolher' : 'Expandir';
     $('voice-dock-expand').setAttribute('aria-expanded', String(expanded));
-    if (expanded) for (const peer of peers.values()) peer.audio.play().catch(() => {});
+    if (expanded) for (const peer of peers.values()) {
+      peer.audio.play().catch(() => {});
+      if (peer.screenAudio.srcObject) peer.screenAudio.play().catch(() => {});
+      if (peer.nativeAudioContext?.state === 'suspended')
+        void peer.nativeAudioContext.resume().catch(() => {});
+    }
   });
   $('voice-video-volume').addEventListener('input', event => {
     if (active?.room.linkedLiveId === state.currentLiveId && state.player?.setVolume)
@@ -592,6 +659,7 @@ export function initializeVoice() {
     for (const [id, peer] of peers) {
       if (peer.screenPc && !members.some(person => person.socketId === id && person.sharing)) {
         peer.screenPc.close(); peer.screenPc = null; peer.screenStream = null;
+        stopNativeScreenAudio(peer);
       }
     }
     if (nativeSharing) for (const person of members)

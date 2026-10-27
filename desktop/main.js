@@ -135,7 +135,9 @@ app.whenReady().then(async () => {
         type: 'question', title: 'Compartilhar tela', message: 'Escolha o que deseja compartilhar',
         buttons: [...sources.map(source => source.name), 'Cancelar'], cancelId: sources.length,
       });
-      callback(choice.response < sources.length ? { video: sources[choice.response] } : null);
+      if (choice.response >= sources.length) { callback(null); return; }
+      const source = sources[choice.response];
+      callback({ video: source, ...(source.id.startsWith('screen:') ? { audio: 'loopback' } : {}) });
     } catch { callback(null); }
   });
   createWindow();

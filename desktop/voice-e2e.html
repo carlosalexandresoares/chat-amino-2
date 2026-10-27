@@ -53,6 +53,10 @@
   const oscillator = audioContext.createOscillator();
   const audioDestination = audioContext.createMediaStreamDestination();
   oscillator.connect(audioDestination); oscillator.start();
+  const screenOscillator = audioContext.createOscillator();
+  screenOscillator.frequency.value = 880;
+  const screenDestination = audioContext.createMediaStreamDestination();
+  screenOscillator.connect(screenDestination); screenOscillator.start();
   const canvas = document.createElement('canvas'); canvas.width = 640; canvas.height = 360;
   const paint = canvas.getContext('2d');
   let frame = 0;
@@ -67,6 +71,8 @@
     configurable: true, value: async options => {
       window.captureOptions = options;
       window.lastCapture = canvas.captureStream(20);
+      if (window.testCaptureAudio !== false)
+        window.lastCapture.addTrack(screenDestination.stream.getAudioTracks()[0].clone());
       return window.lastCapture;
     },
   });
@@ -75,6 +81,15 @@
   };
   const nativePeers = new Map();
   const nativeCandidates = new Map();
+  const nativeAudioChannels = new Map();
+  const nativeAudioFrame = new Int16Array(960);
+  for (let i = 0; i < nativeAudioFrame.length; i++)
+    nativeAudioFrame[i] = Math.round(Math.sin(i * Math.PI * 2 * 440 / 48000) * 9000);
+  const nativeAudioTimer = setInterval(() => {
+    for (const channel of nativeAudioChannels.values())
+      if (channel.readyState === 'open' && channel.bufferedAmount < 96000)
+        channel.send(nativeAudioFrame.buffer);
+  }, 20);
   const sendNative = (to, type, data) =>
     ipcRenderer.send('test:emit', { userId, name: 'voice:signal', payload: { to, type, data } });
   const nativeSignals = listeners.get('voice:signal') || [];
@@ -102,6 +117,8 @@
     for (const id of viewers) {
       const pc = new RTCPeerConnection();
       nativePeers.set(id, pc);
+      nativeAudioChannels.set(id, pc.createDataChannel('screen-audio',
+        { ordered: true, maxRetransmits: 0 }));
       pc.addTrack(video);
       pc.onicecandidate = event => {
         if (event.candidate) sendNative(id, 'screen-candidate', event.candidate.toJSON());
@@ -111,12 +128,21 @@
     }
   };
   window.testStopNativeShare = async () => {
+    clearInterval(nativeAudioTimer);
+    for (const channel of nativeAudioChannels.values()) channel.close();
+    nativeAudioChannels.clear();
     for (const pc of nativePeers.values()) pc.close();
     nativePeers.clear(); nativeCandidates.clear();
     await new Promise(resolve => window.io().emit('voice:share', { sharing: false }, () => resolve()));
   };
 </script>
 <script type="module">
+  window.testNativeAudioStarts = 0;
+  const originalBufferStart = AudioBufferSourceNode.prototype.start;
+  AudioBufferSourceNode.prototype.start = function(...args) {
+    window.testNativeAudioStarts++;
+    return originalBufferStart.apply(this, args);
+  };
   import { initializeVoice } from '/script/voice.js';
   initializeVoice();
   window.testSocketEvent('room-permissions', { roomId: 'geral', role: 'MEMBER' });

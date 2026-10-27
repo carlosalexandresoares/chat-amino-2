@@ -130,19 +130,29 @@ async function run() {
     audio.srcObject?.getAudioTracks().length)`, 'áudio da chamada recebido');
   await click(a, '#voice-screen-share');
   await Promise.all([streamVisible(b, 'B recebeu tela'), streamVisible(c, 'C recebeu tela')]);
+  await waitFor(b, `Array.from(document.querySelectorAll('audio[aria-label="Áudio da tela compartilhada"]'))
+    .some(audio => !audio.muted && audio.srcObject?.getAudioTracks().some(track =>
+      track.readyState === 'live' && !track.muted))`, 'B recebeu áudio da tela');
   await waitFor(b, `Array.from(document.querySelectorAll('audio')).some(audio =>
     audio.srcObject?.getAudioTracks().some(track => track.readyState === 'live'))`,
     'áudio permaneceu durante a transmissão');
   const d = await openClient('d');
   await join(d, true);
   await streamVisible(d, 'D entrou durante a transmissão e recebeu tela');
+  await waitFor(d, `Array.from(document.querySelectorAll('audio[aria-label="Áudio da tela compartilhada"]'))
+    .some(audio => !audio.muted && audio.srcObject?.getAudioTracks().some(track =>
+      track.readyState === 'live' && !track.muted))`, 'D entrou durante a transmissão e recebeu áudio da tela');
   const captureOptions = await a.webContents.executeJavaScript('window.captureOptions');
-  if (captureOptions.video.frameRate.max !== 30 || captureOptions.video.width.max !== 1920 ||
+  if (captureOptions.audio !== true || captureOptions.systemAudio !== 'include' ||
+      captureOptions.video.frameRate.max !== 30 || captureOptions.video.width.max !== 1920 ||
       captureOptions.video.height.max !== 1080)
     throw new Error('Limites de qualidade não aplicados');
   await click(a, '#voice-screen-share');
   await waitFor(b, "document.querySelector('#voice-screen-view').classList.contains('hidden')",
     'parada propagada');
+  await waitFor(b, `Array.from(document.querySelectorAll('audio[aria-label="Áudio da tela compartilhada"]'))
+    .every(audio => audio.muted)`, 'áudio da tela parou');
+  await b.webContents.executeJavaScript('window.testCaptureAudio = false');
   await click(b, '#voice-screen-share');
   await Promise.all([streamVisible(a, 'A recebeu tela de B'), streamVisible(c, 'C recebeu tela de B'),
     streamVisible(d, 'D recebeu tela de B')]);
@@ -182,10 +192,12 @@ async function run() {
   await Promise.all([streamVisible(a, 'A recebeu tela Android simulada'),
     streamVisible(c, 'C recebeu tela Android simulada'),
     streamVisible(d, 'D recebeu tela Android simulada')]);
+  await Promise.all([a, c, d].map(win => waitFor(win, 'window.testNativeAudioStarts > 0',
+    'áudio Android simulado foi agendado')));
   await b.webContents.executeJavaScript('window.testStopNativeShare()');
   await waitFor(a, "document.querySelector('#voice-screen-view').classList.contains('hidden')",
     'fim da transmissão Android simulada');
-  process.stdout.write('PASS: 4 clientes WebRTC, áudio, vídeo web e Android simulado, vários espectadores, entrada tardia, paradas, reconexão, visualização e permissão negada.\n');
+  process.stdout.write('PASS: 4 clientes WebRTC, áudio da chamada e da tela, vídeo web e Android simulado, entrada tardia, paradas, reconexão, visualização e permissão negada.\n');
 }
 
 run().then(() => finish(0), error => {

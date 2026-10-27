@@ -1,5 +1,15 @@
 # Aplicativos Purp
 
+## Beta 13: áudio do compartilhamento de tela (27/10/2026)
+
+Web e Windows agora enviam o áudio da fonte quando ele é fornecido pela captura. No navegador, o usuário precisa habilitar **Compartilhar áudio** no seletor quando a opção aparecer. No Windows, selecionar um monitor inclui o áudio do sistema; selecionar uma janela não inclui todo o som do computador. A voz do microfone continua em uma trilha independente.
+
+No Android 10 ou superior, a captura nativa usa a mesma autorização de projeção da tela para obter áudio de apps que permitem captura. O app pede também a permissão de microfone exigida pelo Android para capturar a reprodução. O áudio segue em pacotes PCM pela conexão WebRTC da tela, separado do microfone da chamada. O Android permite capturar mídia e jogos, mas não a voz de chamadas. Android 9 ou anterior, apps com captura bloqueada, áudio fora dessas categorias e permissões recusadas podem resultar em vídeo sem som. O painel informa quando a captura de áudio não pôde iniciar. A captura usa 48 kHz mono, cerca de 768 kbit/s adicionais por espectador. O teste automatizado verifica o transporte e a reprodução simulada, mas ainda é necessário testar a captura real em um aparelho Android.
+
+`npm test`: 42 aprovados, 0 falhas, 12 integrações opcionais ignoradas. `npm --prefix desktop run test:voice`: aprovado com quatro clientes, áudio web e Android simulado. A compilação Android `:app:assembleDebug` e a criação do instalador Windows passaram. Nenhum aparelho apareceu em `adb devices`, portanto a captação Android real e o áudio loopback do Windows ainda precisam ser conferidos manualmente. A atualização automática Android continua oferecendo a beta 8; esta beta é de instalação manual.
+
+Arquivos gerados: `mobile/android/app/build/outputs/apk/debug/app-debug.apk` (58.282.095 bytes; SHA-256 `481da245bd469209f2d25edcc862c9480e372052ec87ce5d9014b3b75e14ffcf`) e `desktop/dist/Purp Setup 0.1.6.exe` (106.443.888 bytes; SHA-256 `1b8c62a438d666f5c1cc9091fa9f46255543049d8cec171c3494dc7c2e3e1b5d`). O APK mantém a assinatura debug das betas anteriores; o instalador Windows não tem assinatura de código.
+
 ## Beta 12: transmissão de tela até 1080p
 
 Web/Windows agora solicitam captura de até 1920×1080 a 30 FPS. A captura Android com `MediaProjection` preserva a proporção do aparelho e limita o quadro ao lado longo de 1920 e ao curto de 1080, sem ampliar telas menores. O teto de envio WebRTC subiu de 2,2 para 5 Mbit/s **por espectador**. No navegador, a preferência de degradação prioriza preservar a resolução e pode reduzir quadros quando a rede está limitada. A voz continua em trilhas separadas. A resolução recebida não é garantida: depende da fonte, do dispositivo, do codificador e da conexão. Com cinco espectadores, o transmissor pode precisar de até cerca de 25 Mbit/s de upload só para o vídeo.
@@ -48,6 +58,8 @@ O arquivo de teste está em `mobile/android/app/build/outputs/apk/debug/app-debu
 | Manual em dispositivo | `adb devices` | Nenhum aparelho conectado; instalação e captura nativa não testadas. |
 
 ## Compartilhamento de tela — web e Windows (Etapa 2)
+
+O compartilhamento web solicita também o áudio da fonte. No seletor do navegador, habilite **Compartilhar áudio** quando essa opção aparecer; a disponibilidade depende da fonte, do navegador e do sistema. No aplicativo Windows, selecionar um monitor inclui o áudio reproduzido pelo sistema. Selecionar apenas uma janela transmite a imagem sem capturar todo o áudio do computador. Os espectadores recebem o som da tela em uma trilha separada do microfone. A captura de áudio Android está descrita acima.
 
 O botão **Compartilhar tela** da chamada de voz usa `getDisplayMedia` no navegador e o seletor de monitor/janela do Electron no Windows. A captura exige escolha explícita do usuário. A trilha de vídeo segue pelas conexões WebRTC da chamada; o áudio do microfone permanece separado. Uma pessoa compartilha por sala de voz, com até seis participantes na sala. É possível entrar em **Só assistir** sem permitir o microfone. O espectador pode minimizar, ampliar em tela cheia, sair da visualização e reabri-la. Parar pelo botão, pelo controle de captura do sistema, ao sair da chamada ou ao perder a conexão interrompe a transmissão. Não há gravação nem armazenamento da tela.
 

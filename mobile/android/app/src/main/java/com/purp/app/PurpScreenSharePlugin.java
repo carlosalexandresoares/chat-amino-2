@@ -1,19 +1,26 @@
 package com.purp.app;
 
 import android.app.Activity;
+import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.media.projection.MediaProjectionManager;
+import android.os.Build;
 import androidx.activity.result.ActivityResult;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.annotation.ActivityCallback;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 import org.json.JSONObject;
 
-@CapacitorPlugin(name = "PurpScreenShare")
+@CapacitorPlugin(name = "PurpScreenShare", permissions = {
+    @Permission(alias = "screenAudio", strings = { Manifest.permission.RECORD_AUDIO })
+})
 public class PurpScreenSharePlugin extends Plugin {
     private final PurpScreenSession session = PurpScreenSession.get();
 
@@ -38,6 +45,18 @@ public class PurpScreenSharePlugin extends Plugin {
             call.reject("A tela já está sendo transmitida.");
             return;
         }
+        if (Build.VERSION.SDK_INT >= 29 && getPermissionState("screenAudio") != PermissionState.GRANTED) {
+            requestPermissionForAlias("screenAudio", call, "onAudioPermission");
+            return;
+        }
+        requestCaptureConsent(call);
+    }
+
+    @PermissionCallback private void onAudioPermission(PluginCall call) {
+        if (call != null) requestCaptureConsent(call);
+    }
+
+    private void requestCaptureConsent(PluginCall call) {
         try {
             MediaProjectionManager manager = (MediaProjectionManager)
                 getContext().getSystemService(Context.MEDIA_PROJECTION_SERVICE);
@@ -55,10 +74,14 @@ public class PurpScreenSharePlugin extends Plugin {
         }
         try {
             Intent permission = result.getData();
-            PurpProjectionService.start(getContext(), call.getBoolean("microphone", false), () -> execute(() -> {
+            boolean needsAudioService = call.getBoolean("microphone", false) ||
+                (Build.VERSION.SDK_INT >= 29 && getPermissionState("screenAudio") == PermissionState.GRANTED);
+            PurpProjectionService.start(getContext(), needsAudioService, () -> execute(() -> {
                 try {
                     session.start(getContext(), permission, call.getString("iceServersJson", "[]"));
-                    call.resolve();
+                    JSObject response = new JSObject();
+                    response.put("audioAvailable", session.hasPlaybackAudio());
+                    call.resolve(response);
                 } catch (Exception error) {
                     PurpProjectionService.requestStop(getContext());
                     call.reject("Não foi possível iniciar a captura da tela.", error);

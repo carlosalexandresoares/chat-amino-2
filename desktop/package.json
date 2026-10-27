@@ -1,6 +1,6 @@
 {
   "name": "purp-desktop",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "description": "Aplicativo Windows do Purp",
   "main": "main.js",
