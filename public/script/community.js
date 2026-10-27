@@ -1,4 +1,5 @@
 import state from './state.js';
+import { fetchWithTimeout } from './request-timeout.js';
 import { navigateTo } from './chat-rich.js?v=8';
 
 const $ = id => document.getElementById(id);
@@ -12,8 +13,8 @@ let searchParams = null;
 let activeTab = null;
 
 async function api(path, options = {}) {
-  const response = await fetch(`/api/community${path}`, { ...options,
-    signal: options.signal || (!options.method || options.method === 'GET' ? AbortSignal.timeout?.(20000) : undefined),
+  const request = !options.method || options.method === 'GET' ? fetchWithTimeout : fetch;
+  const response = await request(`/api/community${path}`, { ...options,
     headers: {
     Authorization: `Bearer ${state.token}`,
     ...(options.body ? { 'Content-Type': 'application/json' } : {}),

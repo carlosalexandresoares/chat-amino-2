@@ -1,4 +1,5 @@
 import state from "./state.js";
+import { fetchWithTimeout } from './request-timeout.js';
 
 export async function loadAuthenticatedUser() {
   if (!state.token) {
@@ -9,14 +10,13 @@ export async function loadAuthenticatedUser() {
   }
 
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       "/api/auth/me",
       {
         headers: {
           Authorization:
             `Bearer ${state.token}`,
         },
-        signal: AbortSignal.timeout?.(20000),
       }
     );
 
@@ -53,9 +53,15 @@ export async function loadAuthenticatedUser() {
       "Erro ao carregar usuário:",
       error
     );
-
-    alert(
-      "Não foi possível entrar no chat."
-    );
+    const message = error.name === 'TimeoutError'
+      ? 'A conexão demorou. Verifique sua internet e abra o Purp novamente.'
+      : 'Não foi possível carregar sua conta. Verifique sua internet e abra o Purp novamente.';
+    const roomsStatus = document.getElementById('rooms-total');
+    if (roomsStatus) roomsStatus.textContent = message;
+    const chatStatus = document.getElementById('chat-connection-status');
+    if (chatStatus) {
+      chatStatus.textContent = message;
+      chatStatus.classList.remove('hidden');
+    }
   }
 }

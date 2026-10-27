@@ -36,14 +36,24 @@ let rankingPage = 1;
 const fmt = new Intl.NumberFormat('pt-BR');
 
 async function request(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    signal: options.signal || (!options.method || options.method === 'GET' ? AbortSignal.timeout?.(20000) : undefined),
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-    },
-  });
+  const controller = new AbortController();
+  const timed = !options.signal && (!options.method || options.method === 'GET');
+  const timer = timed ? setTimeout(() => controller.abort(), 20000) : null;
+  let response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      signal: options.signal || (timed ? controller.signal : undefined),
+      headers: {
+        Authorization: `Bearer ${token}`,
+        ...(options.body ? { "Content-Type": "application/json" } : {}),
+      },
+    });
+  } catch (error) {
+    if (timed && controller.signal.aborted)
+      throw new Error('A conexão demorou. Tente novamente.');
+    throw error;
+  } finally { if (timer) clearTimeout(timer); }
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("application/json")) {
     throw new Error("O servidor ainda não carregou esta função. Reinicie-o e atualize a página.");

@@ -1,5 +1,23 @@
 # Aplicativos Purp
 
+## Beta 11: diagnóstico de carregamento Android (27/10/2026)
+
+Após um teste bem sucedido de captura de tela no celular, foi relatado que o aplicativo permanecia em “Carregando...” e “Carregando chats...”. As sondas públicas de `/healthz`, `/readyz` e Socket.IO no servidor hospedado responderam normalmente, mas essas sondas não verificam consultas autenticadas nem o aparelho do usuário. Nenhum dispositivo estava conectado por ADB; a causa exata no celular continua sem confirmação.
+
+A beta 11 remove a dependência de `AbortSignal.timeout` nas consultas iniciais e usa `AbortController` com temporizador, compatível com WebViews que não implementam aquela função. A consulta da conta começa sem esperar a consulta da sala. Em caso de falha ou demora, a tela mostra uma mensagem em vez de deixar o indicador de carregamento indefinidamente. O código compartilhado da web e do Windows contém a mesma correção. Não houve alteração no banco nem no fluxo de captura de tela.
+
+O APK beta 11 precisa ser instalado manualmente pela página de downloads para este teste. O manifesto da atualização automática permanece na beta 8 até que o carregamento, login, mensagens e captura da beta 11 sejam confirmados em um Android real. Se a tela continuar carregando, registre a versão do Android, a tela afetada, a mensagem exibida e um log do WebView/ADB para identificar a falha concreta. Ao terminar os testes locais, encerre os processos iniciados para eles.
+
+Arquivos gerados: `mobile/android/app/build/outputs/apk/debug/app-debug.apk` (58.267.647 bytes; SHA-256 `8ABF36E155D0618EF6457A445021EDF345EA54762D5A283972F6F87D6B67A602`) e `desktop/dist/Purp Setup 0.1.4.exe` (106.443.184 bytes; SHA-256 `8D8D8572DAB6998D7D1029D2B87D8D5595823DD80238DFC74F10C384A0D3D553`). `apksigner` confirmou a assinatura de atualização Android `8a42be1cbb59e3e4fbd1b3e5d87fd502790414d505ad6ffca99413737521fc65`. O instalador Windows continua sem assinatura de código.
+
+| Tipo | Verificação | Resultado |
+| --- | --- | --- |
+| Automatizado | `npm test` | 42 aprovados, 0 falhas, 12 integrações opcionais ignoradas. Inclui o caso de requisição presa sem `AbortSignal.timeout`. |
+| Automatizado | `npm --prefix desktop run test:voice` | Quatro clientes WebRTC e sinalização simulada: aprovado; não verifica API autenticada de produção. |
+| Compilação | `npm --prefix mobile run build:web`, `npx cap sync android`, `gradlew assembleDebug` | APK `versionCode` 11 produzido; módulo JavaScript dentro do pacote e assinatura conferidos. |
+| Compilação | `npm --prefix desktop run dist:win` | Instalador Windows 0.1.4 produzido; módulo JavaScript dentro do pacote. |
+| Manual em dispositivo | Android beta 11 | Pendente: não havia aparelho conectado ao ADB. |
+
 ## Compartilhamento de tela Android (Etapa 3, beta 10)
 
 Para encontrar o controle no celular: abra uma comunidade, toque em **⋮ → Voz e compartilhar tela**, crie ou entre em uma sala de voz e toque em **Compartilhar tela** no painel da chamada, mesmo quando ele estiver recolhido. Confirme a captura no diálogo do Android. Toque no mesmo botão para interromper. A beta 10 exige instalação manual do APK da página de downloads; o atualizador interno ainda oferece a beta 8.
@@ -160,7 +178,7 @@ A migração `prisma/migrations/20261025000000_native_push_devices` adiciona som
 
 ## Página de downloads do site
 
-A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, Android beta 10 e Windows 0.1.3 usam os arquivos da [versão experimental](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.10). Os arquivos de build não entram no Git nem são enviados ao Render. O manifesto do atualizador automático Android continua na beta 8 até o teste em aparelho real. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
+A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, Android beta 11 e Windows 0.1.4 usam os arquivos da [versão experimental](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.11). Os arquivos de build não entram no Git nem são enviados ao Render. O manifesto do atualizador automático Android continua na beta 8 até o teste em aparelho real. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
 
 Na beta 5, Fixadas, Enquetes, Busca e Voz da comunidade ficam no menu de três pontos do chat em telas de celular. O painel de live permanece visível. O campo de mensagem e a navegação inferior foram ajustados para ocupar melhor a tela.
 

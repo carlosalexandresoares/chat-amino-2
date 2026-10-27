@@ -1,11 +1,12 @@
 import state from "./state.js";
-import { loadAuthenticatedUser } from "./auth.js?v=3";
+import { fetchWithTimeout } from './request-timeout.js';
+import { loadAuthenticatedUser } from "./auth.js?v=4";
 import { initializeChat } from "./chat.js?v=14";
 import { initializeYouTube, stopTimeUpdater } from "./youtube.js?v=10";
 import { initializeLive } from "./live.js?v=10";
 import { initializeMiniPlayer, openSitePage } from './mini-player.js?v=9';
 import { initializeMentions } from './mentions.js?v=1';
-import { initializeCommunity, loadDiscover, loadTopics } from './community.js?v=7';
+import { initializeCommunity, loadDiscover, loadTopics } from './community.js?v=8';
 import { initializeVoice } from './voice.js?v=3';
 import { initializeModeration, setModerationMembers } from './moderation-ui.js?v=2';
 
@@ -196,9 +197,8 @@ function showChatScreen(room) {
 async function loadRooms() {
   try {
     if (state.roomId) {
-      const response = await fetch(`/api/rooms/${encodeURIComponent(state.roomId)}/summary`, {
+      const response = await fetchWithTimeout(`/api/rooms/${encodeURIComponent(state.roomId)}/summary`, {
         headers: { Authorization: `Bearer ${state.token}` },
-        signal: AbortSignal.timeout?.(20000),
       });
       if (response.status === 404) {
         state.roomId = null;
@@ -429,7 +429,8 @@ state.socket.on("connect_error", (error) => {
 });
 
 void loadTopics().catch(error => console.error('Falha ao carregar categorias:', error));
-void loadRooms().then(loadAuthenticatedUser).then(() => {
+void loadRooms();
+void loadAuthenticatedUser().then(() => {
   document.querySelectorAll('.site-admin-link').forEach(link => link.classList.toggle('hidden', !state.currentUser?.isSiteAdmin));
 });
 window.setInterval(() => {
