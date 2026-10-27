@@ -133,7 +133,7 @@ Em Xcode, configure a equipe de assinatura, a capacidade **Push Notifications** 
 
 ### Validação da base iOS
 
-`npm --prefix mobile run build:web` e `npx cap sync ios` concluíram no Windows em 27/10/2026. O workflow manual `.github/workflows/ios-build.yml` compila o app para o simulador em um runner macOS, sem assinatura. Esse build verifica a estrutura do projeto e as dependências Capacitor, mas não testa login, chamadas, recepção de vídeo nem transmissão de tela em iPhone.
+`npm --prefix mobile run build:web` e `npx cap sync ios` concluíram no Windows em 27/10/2026. O workflow manual `.github/workflows/ios-build.yml` [compilou com sucesso](https://github.com/carlosalexandresoares/chat-amino-2/actions/runs/40500315796) o app para o simulador em um runner macOS, sem assinatura. Esse build verifica a estrutura do projeto e as dependências Capacitor, mas não testa login, chamadas, recepção de vídeo nem transmissão de tela em iPhone.
 
 O projeto mantém iOS 15 como versão mínima. A amostra atual da Apple para captura da tela inteira com ScreenCaptureKit exige iOS 27; adotá-la como única implementação excluiria os iPhones com versões anteriores. Para iOS 15–26, a rota de captura fora do Purp exige uma extensão Broadcast Upload com ReplayKit, uma conexão WebRTC que sobreviva à suspensão do app principal e sinalização autenticada dentro da sala de voz. Isso requer implementação e teste em Xcode e em iPhone antes de disponibilizar o botão de transmissão. A interface iOS não deve oferecer um controle que apenas abra um seletor sem enviar vídeo.
 
