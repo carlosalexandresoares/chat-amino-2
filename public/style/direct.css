@@ -11,3 +11,13 @@
 .dm-message-search input,.dm-message-search select{min-width:0;min-height:34px;padding:6px;border:1px solid #555873;border-radius:8px;background:#151b2e;color:#fff;font:inherit}
 .dm-message-search button{min-height:34px;padding:6px 10px;border:1px solid #7057a0;border-radius:8px;background:#463460;color:#fff;font:inherit;cursor:pointer}
 @media(max-width:620px){.dm-message-search input,.dm-message-search select{font-size:16px}}
+
+/* Keep the conversation inside the viewport; only its message list scrolls. */
+html, body { overflow: hidden; }
+.dm-shell { grid-template-rows: minmax(0, 1fr); overflow: hidden; }
+.dm-sidebar, .dm-main { min-height: 0; overflow: hidden; }
+.dm-conversation { flex: 1 1 auto; height: auto; min-height: 0; overflow: hidden; }
+.dm-chat-header, .dm-compose { flex: none; }
+.dm-messages { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.dm-message { flex: none; }
+#dm-typing:empty, #dm-chat-status:empty { display: none; }

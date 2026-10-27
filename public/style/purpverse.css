@@ -175,9 +175,15 @@ html[data-theme="light"] .auth-card .form-message.success { color: var(--pv-succ
 .dm-shell { border-color: var(--pv-border); }
 .dm-brand a:first-child { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .dm-sidebar, .dm-compose { border-color: var(--pv-border); background: var(--pv-surface); }
-.dm-messages { background: linear-gradient(150deg, #392252, #201235); }
-.dm-message { border: 1px solid #d6c8e4; background: #fff; color: #23132f; }
-.dm-message.mine { border-color: #c89bf3; background: #d6b4fa; color: #21112f; }
+.dm-messages { background: #0b0718; scrollbar-color: #8d51b9 #170b2b; }
+.dm-message { border: 1px solid #6a3c8a; background: #27143c; color: #f9f0ff; box-shadow: 0 10px 28px #09021555; line-height: 1.5; }
+.dm-message.mine { border-color: #c574ff; background: linear-gradient(145deg, #6d20c5, #9638d4); color: #fff; }
+.dm-chat-header { border-color: #873dc4; background: radial-gradient(ellipse at 33% -60%, #ad52f64a, transparent 65%), linear-gradient(105deg, #150924, #210c38 56%, #0e091b); }
+.dm-compose { border-top: 1px solid #8643ba; background: #140925ee; box-shadow: 0 -10px 28px #08021088; }
+.dm-compose input { border-color: #78429c; background: #29153e; color: #fff; }
+.dm-compose input::placeholder { color: #c5a8dc; }
+.dm-compose button, .dm-upload { border: 1px solid #7947a1; background: #2b1642; color: #f3d8ff; }
+.dm-compose button[type="submit"] { border-color: #cf87ff; background: linear-gradient(140deg, #a642f2, #6e22d1); color: #fff; }
 .messages { scrollbar-color: var(--pv-border) transparent; }
 .message { max-width: min(82%, 580px); }
 .message .bubble, .message-content { border-radius: 17px; }
@@ -202,7 +208,13 @@ html[data-theme="light"] :is(.rooms-profile-link, .manage-room-button, .leave-ro
 html[data-theme="light"] :is(.create-room-form input, .create-room-form textarea, .feed-compose textarea, .feed-dialog textarea, .dm-compose input, .dm-search-label input, .profile-dialog input, .profile-dialog textarea, .profile-dialog select) { color: var(--pv-text); border-color: var(--pv-border); background: var(--pv-surface); }
 html[data-theme="light"] :is(.dm-row, .feed-header nav a, .events-topbar nav a, .game-topbar nav a, .profile-stats strong) { color: var(--pv-text); }
 html[data-theme="light"] :is(.dm-brand a, .dm-chat-header a) { color: var(--pv-text); }
-html[data-theme="light"] .dm-messages { background: linear-gradient(160deg, #f3e9fb, #e9d9f7); }
+html[data-theme="light"] .dm-messages { background: #f5edfc; }
+html[data-theme="light"] .dm-message { border-color: #d6b4e9; background: #fff; color: #2b1640; }
+html[data-theme="light"] .dm-message.mine { border-color: #7829c6; background: #7829c6; color: #fff; }
+html[data-theme="light"] .dm-chat-header { border-color: #a862d0; background: linear-gradient(110deg, #f6e7ff, #efe0fa 62%, #faf4ff); }
+html[data-theme="light"] .dm-compose { border-color: #bc87d8; background: #faf4ffef; }
+html[data-theme="light"] .dm-compose input { border-color: #bc8cdd; background: #fff; color: #2b1640; }
+html[data-theme="light"] .dm-compose input::placeholder { color: #755a86; }
 html[data-theme="light"] .profile-nav { background: linear-gradient(180deg, #28133fbd, transparent); }
 html[data-theme="light"] .room-info-dialog { background: var(--pv-surface); color: var(--pv-text); }
 html[data-theme="light"] :is(.feed-compose, .feed-card, .feed-side, .event-card, .notification-row, .notification-settings, .game-card, .game-transaction, .game-section-nav, .admin-content, .admin-row, .edit-card, .image-field, .profile-stats > div, .profile-stats > button, .profile-bio-card, .xp-area, .profile-post, #new-post-form) { border-color: var(--pv-border); background: var(--pv-surface); color: var(--pv-text); }
