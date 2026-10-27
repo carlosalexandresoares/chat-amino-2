@@ -24,6 +24,33 @@ let mainWindow;
 let tray;
 let localOrigin;
 let quitting = false;
+let lastUpdatePromptAt = 0;
+
+async function checkForUpdates() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  try {
+    const response = await fetch(new URL('/api/app-updates/windows', backend.origin), {
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) return;
+    const release = await response.json();
+    if (!/^\d+\.\d+\.\d+$/.test(release.version) ||
+        !/^https:\/\/github\.com\/carlosalexandresoares\/chat-amino-2\/releases\/download\//.test(release.downloadUrl)) return;
+    const installed = app.getVersion().split('.').map(Number);
+    const available = release.version.split('.').map(Number);
+    const newer = available.findIndex((part, index) => part !== installed[index]);
+    if (newer < 0 || available[newer] < installed[newer] ||
+        Date.now() - lastUpdatePromptAt < 24 * 60 * 60 * 1000) return;
+    lastUpdatePromptAt = Date.now();
+    const { response: choice } = await dialog.showMessageBox(mainWindow, {
+      type: 'info', title: 'Atualização do Purp',
+      message: `Purp ${release.version} está disponível.`,
+      detail: 'Baixe o instalador e confirme a instalação para receber as novidades.',
+      buttons: ['Baixar atualização', 'Mais tarde'], defaultId: 0, cancelId: 1,
+    });
+    if (choice === 0) await shell.openExternal(release.downloadUrl);
+  } catch (error) { console.error('Falha ao verificar atualização:', error.message); }
+}
 
 upstream.on('error', (_error, _request, response) => {
   if (response && !response.headersSent) {
@@ -141,6 +168,10 @@ app.whenReady().then(async () => {
     } catch { callback(null); }
   });
   createWindow();
+  if (process.env.PURP_SMOKE !== '1') {
+    setTimeout(() => { void checkForUpdates(); }, 5000).unref();
+    setInterval(() => { void checkForUpdates(); }, 6 * 60 * 60 * 1000).unref();
+  }
   tray = new Tray(icon);
   tray.setToolTip('Purp');
   tray.setContextMenu(Menu.buildFromTemplate([

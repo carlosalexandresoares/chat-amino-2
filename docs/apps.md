@@ -1,5 +1,13 @@
 # Aplicativos Purp
 
+## Beta 14: atualizações do perfil e chat privado (27/10/2026)
+
+Android beta 14 e Windows 0.1.7 incluem a edição do nome do perfil e o novo visual do chat privado. A lista de mensagens agora rola dentro da conversa, sem deslocar o campo de digitação. O Android consulta o manifesto da beta 14 e oferece a instalação dentro do app. A partir do Windows 0.1.7, o aplicativo consulta a versão publicada ao abrir e a cada seis horas; quando há uma versão nova, oferece o download do instalador. Quem usa uma versão Windows anterior precisa instalar a 0.1.7 manualmente uma vez para receber esses avisos.
+
+Arquivos: `mobile/android/app/build/outputs/apk/debug/app-debug.apk` (58.264.080 bytes; SHA-256 `bfd188b6b85c6748bdab1fd4583c4318eab1405abeb1d6cf0f118524d8e44d2a`) e `desktop/dist/Purp Setup 0.1.7.exe` (106.445.026 bytes; SHA-256 `9966db5671065638e5d99698c8433026610c2db5012b31d8773d3daa633eed71`). A assinatura Android continua `8a42be1cbb59e3e4fbd1b3e5d87fd502790414d505ad6ffca99413737521fc65`. O instalador Windows não é assinado. `npm test`: 44 aprovados, 0 falhas, 12 integrações opcionais ignoradas. A compilação Android, a criação do instalador e o smoke do Windows passaram. A instalação Android em aparelho real permanece sem teste neste ambiente.
+
+Publicação: [beta 14](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.14). Os dois arquivos da versão são usados pelos links da página de downloads. O servidor deve carregar os manifestos novos antes de oferecer a atualização dentro dos aplicativos.
+
 ## Beta 13: áudio do compartilhamento de tela (27/10/2026)
 
 Web e Windows agora enviam o áudio da fonte quando ele é fornecido pela captura. No navegador, o usuário precisa habilitar **Compartilhar áudio** no seletor quando a opção aparecer. No Windows, selecionar um monitor inclui o áudio do sistema; selecionar uma janela não inclui todo o som do computador. A voz do microfone continua em uma trilha independente.

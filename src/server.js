@@ -45,6 +45,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "../public")));
 app.get('/api/downloads', downloads.status);
 app.get('/api/app-updates/android', downloads.androidUpdate);
+app.get('/api/app-updates/windows', downloads.windowsUpdate);
 app.get('/downloads/:platform', downloads.download);
 
 // Rotas de autenticação
