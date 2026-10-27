@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Editar perfil | Purp</title>
-  <link rel="stylesheet" href="/style/editar-perfil.css?v=2">
-  <script src="/script/editar-perfil.js?v=2" defer></script>
+  <link rel="stylesheet" href="/style/editar-perfil.css?v=3">
+  <script src="/script/editar-perfil.js?v=3" defer></script>
   <link rel="icon" type="image/png" href="/image/purp-mascot.png">
   <meta name="theme-color" content="#0B0716">
   <meta name="description" content="Purp: comunidades, conversas, publicações, eventos e projeções.">
@@ -23,7 +23,7 @@
       <div class="heading">
         <span class="eyebrow">SEU PERFIL NINJA</span>
         <h1 id="page-title">Editar perfil</h1>
-        <p>Escolha imagens da galeria ou do computador, ou use um link.</p>
+        <p>Atualize seu nome, sua bio e suas imagens.</p>
       </div>
 
       <div class="profile-preview" aria-label="Prévia do perfil">
@@ -35,6 +35,11 @@
       </div>
 
       <form id="editProfileForm" novalidate>
+        <div class="name-field">
+          <label for="username">Nome de usuário</label>
+          <input id="username" name="username" type="text" minlength="3" maxlength="30" autocomplete="username" required>
+          <span>De 3 a 30 caracteres.</span>
+        </div>
         <div class="field-grid">
           <fieldset class="image-field">
             <legend>Foto de perfil</legend>

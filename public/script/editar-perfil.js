@@ -3,6 +3,7 @@ if (!token) window.location.replace('/login.html');
 
 const form = document.getElementById('editProfileForm');
 const message = document.getElementById('formMessage');
+const username = document.getElementById('username');
 const bio = document.getElementById('bio');
 const saveButton = form.querySelector('button[type="submit"]');
 const images = {
@@ -87,6 +88,10 @@ for (const [kind, state] of Object.entries(images)) {
   });
 }
 bio.addEventListener('input', () => { document.getElementById('bioLength').textContent = bio.value.length; });
+username.addEventListener('input', () => {
+  document.getElementById('avatarFallback').textContent = username.value.trim().charAt(0).toUpperCase() || '?';
+  setMessage('');
+});
 window.addEventListener('beforeunload', () => Object.values(images).forEach(releaseObjectUrl));
 
 async function loadProfile() {
@@ -97,6 +102,7 @@ async function loadProfile() {
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Não foi possível carregar seu perfil.');
     const user = data.user;
+    username.value = user.username || '';
     bio.value = user.bio || '';
     document.getElementById('bioLength').textContent = bio.value.length;
     document.getElementById('avatarFallback').textContent = user.username?.charAt(0).toUpperCase() || '?';
@@ -114,7 +120,14 @@ async function loadProfile() {
 form.addEventListener('submit', async event => {
   event.preventDefault();
   if (!token) return;
+  const name = username.value.trim();
+  if (name.length < 3 || name.length > 30) {
+    setMessage('O nome de usuário deve ter entre 3 e 30 caracteres.', 'error');
+    username.focus();
+    return;
+  }
   const payload = new FormData();
+  payload.append('username', name);
   payload.append('bio', bio.value);
   for (const [kind, state] of Object.entries(images)) {
     const file = state.file.files[0];

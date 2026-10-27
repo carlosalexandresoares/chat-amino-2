@@ -231,15 +231,26 @@ const updateProfile = async (req, res) => {
     const userId = req.userId;
     const body = req.body || {};
     const files = { avatar: req.files?.avatarFile?.[0], banner: req.files?.bannerFile?.[0] };
-    for (const key of ['bio', 'avatar', 'banner']) {
+    for (const key of ['username', 'bio', 'avatar', 'banner']) {
       if (body[key] !== undefined && typeof body[key] !== 'string') {
         return res.status(400).json({ message: `${key} inválido.` });
       }
     }
+    const username = body.username?.trim();
+    if (username !== undefined && (username.length < 3 || username.length > 30))
+      return res.status(400).json({ message: 'O nome de usuário deve ter entre 3 e 30 caracteres.' });
+    if (username !== undefined) {
+      const existingUser = await prisma.user.findFirst({
+        where: { id: { not: userId }, username: { equals: username, mode: 'insensitive' } },
+        select: { id: true },
+      });
+      if (existingUser) return res.status(409).json({ message: 'Este nome de usuário já está em uso.' });
+    }
     const bio = body.bio?.trim();
     if (bio !== undefined && bio.length > 300) return res.status(400).json({ message: 'A bio pode ter no máximo 300 caracteres.' });
 
-    const updates = { ...(bio !== undefined ? { bio: bio || null } : {}) };
+    const updates = { ...(username !== undefined ? { username } : {}),
+      ...(bio !== undefined ? { bio: bio || null } : {}) };
     const validatedFiles = {};
     for (const kind of ['avatar', 'banner']) {
       const file = files[kind];
@@ -279,7 +290,8 @@ const updateProfile = async (req, res) => {
 
     const io = req.app.get('io');
     if (io) for (const socket of io.sockets.sockets.values()) {
-      if (socket.user?.id === userId) socket.user = { ...socket.user, avatar: updatedUser.avatar };
+      if (socket.user?.id === userId) socket.user = { ...socket.user,
+        username: updatedUser.username, avatar: updatedUser.avatar };
     }
 
     return res.status(200).json({
@@ -288,6 +300,8 @@ const updateProfile = async (req, res) => {
       user: updatedUser,
     });
   } catch (error) {
+    if (error.code === 'P2002')
+      return res.status(409).json({ message: 'Este nome de usuário já está em uso.' });
     console.error(
       "Erro ao atualizar perfil:",
       error
