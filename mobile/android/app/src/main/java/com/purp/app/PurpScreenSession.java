@@ -119,8 +119,8 @@ final class PurpScreenSession {
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
         int width = Math.max(1, metrics.widthPixels);
         int height = Math.max(1, metrics.heightPixels);
-        double scale = Math.min(1.0, Math.min(1280.0 / Math.max(width, height),
-            720.0 / Math.min(width, height)));
+        double scale = Math.min(1.0, Math.min(1920.0 / Math.max(width, height),
+            1080.0 / Math.min(width, height)));
         return new int[] { Math.max(2, (int) (width * scale) & ~1),
             Math.max(2, (int) (height * scale) & ~1) };
     }
@@ -163,7 +163,7 @@ final class PurpScreenSession {
         if (sender != null) {
             RtpParameters parameters = sender.getParameters();
             if (!parameters.encodings.isEmpty()) {
-                parameters.encodings.get(0).maxBitrateBps = 2200000;
+                parameters.encodings.get(0).maxBitrateBps = 5000000;
                 sender.setParameters(parameters);
             }
         }

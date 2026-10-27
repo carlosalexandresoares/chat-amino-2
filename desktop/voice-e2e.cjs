@@ -137,7 +137,8 @@ async function run() {
   await join(d, true);
   await streamVisible(d, 'D entrou durante a transmissão e recebeu tela');
   const captureOptions = await a.webContents.executeJavaScript('window.captureOptions');
-  if (captureOptions.video.frameRate.max !== 30 || captureOptions.video.height.max !== 720)
+  if (captureOptions.video.frameRate.max !== 30 || captureOptions.video.width.max !== 1920 ||
+      captureOptions.video.height.max !== 1080)
     throw new Error('Limites de qualidade não aplicados');
   await click(a, '#voice-screen-share');
   await waitFor(b, "document.querySelector('#voice-screen-view').classList.contains('hidden')",

@@ -226,8 +226,8 @@ async function configureVideoSender(sender) {
   try {
     const parameters = sender.getParameters();
     parameters.encodings = parameters.encodings?.length ? parameters.encodings : [{}];
-    parameters.encodings[0].maxBitrate = 2200000;
-    parameters.degradationPreference = 'balanced';
+    parameters.encodings[0].maxBitrate = 5000000;
+    parameters.degradationPreference = 'maintain-resolution';
     await sender.setParameters(parameters);
   } catch { /* O WebRTC ainda adapta a qualidade quando este ajuste não é aceito. */ }
 }
@@ -252,7 +252,7 @@ async function startScreenShare() {
       return;
     }
     captured = await navigator.mediaDevices.getDisplayMedia({ video: {
-      width: { ideal: 1280, max: 1280 }, height: { ideal: 720, max: 720 },
+      width: { ideal: 1920, max: 1920 }, height: { ideal: 1080, max: 1080 },
       frameRate: { ideal: 30, max: 30 } }, audio: false });
     const track = captured.getVideoTracks()[0];
     if (!track) throw new Error('Nenhuma imagem de tela foi recebida.');

@@ -8,13 +8,13 @@ const packages = {
     file: path.join(root, 'mobile/android/app/build/outputs/apk/debug/app-debug.apk'),
     name: 'Purp-Android-teste.apk',
     url: 'PURP_ANDROID_DOWNLOAD_URL',
-    release: 'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.11/Purp-Android-teste.apk',
+    release: 'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.12/Purp-Android-teste.apk',
   },
   windows: {
-    file: path.join(root, 'desktop/dist/Purp Setup 0.1.4.exe'),
+    file: path.join(root, 'desktop/dist/Purp Setup 0.1.5.exe'),
     name: 'Purp-Windows-Setup.exe',
     url: 'PURP_WINDOWS_DOWNLOAD_URL',
-    release: 'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.11/Purp-Windows-Setup.exe',
+    release: 'https://github.com/carlosalexandresoares/chat-amino-2/releases/download/v0.1.0-beta.12/Purp-Windows-Setup.exe',
   },
 };
 

@@ -1,5 +1,13 @@
 # Aplicativos Purp
 
+## Beta 12: transmissão de tela até 1080p
+
+Web/Windows agora solicitam captura de até 1920×1080 a 30 FPS. A captura Android com `MediaProjection` preserva a proporção do aparelho e limita o quadro ao lado longo de 1920 e ao curto de 1080, sem ampliar telas menores. O teto de envio WebRTC subiu de 2,2 para 5 Mbit/s **por espectador**. No navegador, a preferência de degradação prioriza preservar a resolução e pode reduzir quadros quando a rede está limitada. A voz continua em trilhas separadas. A resolução recebida não é garantida: depende da fonte, do dispositivo, do codificador e da conexão. Com cinco espectadores, o transmissor pode precisar de até cerca de 25 Mbit/s de upload só para o vídeo.
+
+O teste automatizado com quatro clientes Electron verifica a solicitação de 1920×1080, áudio simultâneo, vários espectadores e reconexão. A compilação Android verifica que o código nativo compila; ainda é preciso medir a resolução e o bitrate recebidos em Android real e em redes diferentes. A beta 12 é experimental e de instalação manual. A atualização automática continua oferecendo a beta 8 enquanto o carregamento da beta 11/12 e a captura em aparelho não forem validados com mais abrangência.
+
+Arquivos gerados: `mobile/android/app/build/outputs/apk/debug/app-debug.apk` (58.262.056 bytes; SHA-256 `247780012BE1527459A0FD5A646B043F78A55C02F5EC09BB66B3ABDAA35A68AB`) e `desktop/dist/Purp Setup 0.1.5.exe` (106.443.136 bytes; SHA-256 `37E3BA337068302C433720C9F82E1913CD073A04F7B35A699BE395DBA361E696`). A assinatura Android é a mesma das betas anteriores. `npm test`: 42 aprovados, 0 falhas, 12 ignorados. `npm --prefix desktop run test:voice`: aprovado. APK e instalador foram compilados, mas não havia Android conectado para teste de transmissão real.
+
 ## Beta 11: diagnóstico de carregamento Android (27/10/2026)
 
 Após um teste bem sucedido de captura de tela no celular, foi relatado que o aplicativo permanecia em “Carregando...” e “Carregando chats...”. As sondas públicas de `/healthz`, `/readyz` e Socket.IO no servidor hospedado responderam normalmente, mas essas sondas não verificam consultas autenticadas nem o aparelho do usuário. Nenhum dispositivo estava conectado por ADB; a causa exata no celular continua sem confirmação.
@@ -43,7 +51,7 @@ O arquivo de teste está em `mobile/android/app/build/outputs/apk/debug/app-debu
 
 O botão **Compartilhar tela** da chamada de voz usa `getDisplayMedia` no navegador e o seletor de monitor/janela do Electron no Windows. A captura exige escolha explícita do usuário. A trilha de vídeo segue pelas conexões WebRTC da chamada; o áudio do microfone permanece separado. Uma pessoa compartilha por sala de voz, com até seis participantes na sala. É possível entrar em **Só assistir** sem permitir o microfone. O espectador pode minimizar, ampliar em tela cheia, sair da visualização e reabri-la. Parar pelo botão, pelo controle de captura do sistema, ao sair da chamada ou ao perder a conexão interrompe a transmissão. Não há gravação nem armazenamento da tela.
 
-A captura solicita no máximo 1280×720 e 30 FPS, com bitrate de envio limitado a 2,2 Mbit/s por destinatário quando aceito pelo navegador. O WebRTC ajusta a qualidade conforme a rede. Cada espectador recebe uma conexão P2P; seis participantes podem exigir até cinco envios simultâneos do transmissor. Configure um TURN em `VOICE_ICE_SERVERS` para redes que não conseguem comunicação direta. O estado das salas de voz permanece em memória de uma instância Node; escalar para várias instâncias exige sincronizar esse estado e a sinalização.
+A captura solicita no máximo 1920×1080 e 30 FPS, com bitrate de envio limitado a 5 Mbit/s por destinatário quando aceito pelo navegador. O WebRTC ajusta a qualidade conforme a rede. Cada espectador recebe uma conexão P2P; seis participantes podem exigir até cinco envios simultâneos do transmissor. Configure um TURN em `VOICE_ICE_SERVERS` para redes que não conseguem comunicação direta. O estado das salas de voz permanece em memória de uma instância Node; escalar para várias instâncias exige sincronizar esse estado e a sinalização.
 
 Para testar o transporte sem contas ou banco de produção:
 
@@ -178,7 +186,7 @@ A migração `prisma/migrations/20261025000000_native_push_devices` adiciona som
 
 ## Página de downloads do site
 
-A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, Android beta 11 e Windows 0.1.4 usam os arquivos da [versão experimental](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.11). Os arquivos de build não entram no Git nem são enviados ao Render. O manifesto do atualizador automático Android continua na beta 8 até o teste em aparelho real. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
+A página pública `/downloads.html` mostra Android, Windows e iPhone. No servidor local, Android e Windows servem os builds presentes. No site hospedado, Android beta 12 e Windows 0.1.5 usam os arquivos da [versão experimental](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.12). Os arquivos de build não entram no Git nem são enviados ao Render. O manifesto do atualizador automático Android continua na beta 8 até o teste em aparelho real. As variáveis `PURP_ANDROID_DOWNLOAD_URL` e `PURP_WINDOWS_DOWNLOAD_URL` permitem trocar os links por outras URLs HTTPS no futuro. iPhone permanece marcado como **Em breve** até existir uma versão iOS assinada e distribuível. Ao atualizar o código do servidor, reinicie o processo Node para carregar a rota nova.
 
 Na beta 5, Fixadas, Enquetes, Busca e Voz da comunidade ficam no menu de três pontos do chat em telas de celular. O painel de live permanece visível. O campo de mensagem e a navegação inferior foram ajustados para ocupar melhor a tela.
 

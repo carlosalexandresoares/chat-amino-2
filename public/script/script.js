@@ -7,7 +7,7 @@ import { initializeLive } from "./live.js?v=10";
 import { initializeMiniPlayer, openSitePage } from './mini-player.js?v=9';
 import { initializeMentions } from './mentions.js?v=1';
 import { initializeCommunity, loadDiscover, loadTopics } from './community.js?v=8';
-import { initializeVoice } from './voice.js?v=3';
+import { initializeVoice } from './voice.js?v=4';
 import { initializeModeration, setModerationMembers } from './moderation-ui.js?v=2';
 
 const roomsScreen = document.getElementById("rooms-screen");
