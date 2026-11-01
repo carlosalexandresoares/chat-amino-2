@@ -47,7 +47,10 @@ form.addEventListener("submit", async (event) => {
     showMessage("Login realizado! Redirecionando...", "success");
 
     setTimeout(() => {
-      window.location.href = "/perfil.html";
+      const invite = sessionStorage.getItem('purpInviteReturn');
+      sessionStorage.removeItem('purpInviteReturn');
+      window.location.href = invite && /^\/index\.html\?convite=[a-zA-Z0-9_-]{32}$/.test(invite)
+        ? invite : "/perfil.html";
     }, 1000);
   } catch (error) {
     showMessage(error.message, "error");

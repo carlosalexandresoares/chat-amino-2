@@ -14,7 +14,10 @@ router.get('/active', async (req, res) => {
       where: {
         status: 'ACTIVE',
         room: {
-          ...(admin ? {} : { OR: [{ id: 'geral' }, { members: { some: { userId: req.userId } } }] }),
+          AND: [
+            { OR: [{ isPrivate: false }, { members: { some: { userId: req.userId } } }] },
+            ...(admin ? [] : [{ OR: [{ id: 'geral' }, { members: { some: { userId: req.userId } } }] }]),
+          ],
           sanctions: { none: { userId: req.userId, type: 'SUSPEND', revokedAt: null, expiresAt: { gt: new Date() } } },
         },
       },

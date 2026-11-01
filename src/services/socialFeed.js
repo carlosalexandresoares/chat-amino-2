@@ -5,7 +5,9 @@ function noBlock(userId) {
 }
 
 function accessibleRoom(userId) {
-  return { OR: [{ roomId: null }, { room: { is: { sanctions: { none: {
+  return { OR: [{ roomId: null }, { room: { is: { OR: [
+    { isPrivate: false }, { members: { some: { userId } } },
+  ], sanctions: { none: {
     userId, type: 'SUSPEND', revokedAt: null, expiresAt: { gt: new Date() },
   } } } } }] };
 }

@@ -675,6 +675,7 @@ io.on("connection", (socket) => {
             select: {
               id: true,
               ownerId: true,
+              isPrivate: true,
             },
           });
 
@@ -702,6 +703,11 @@ io.on("connection", (socket) => {
               },
             },
           });
+
+        if (existingRoom.isPrivate && !membership) {
+          socket.emit('chat-error', { message: 'Este chat é privado. Abra um convite válido para entrar.' });
+          return;
+        }
 
         if (!membership) {
           membership =

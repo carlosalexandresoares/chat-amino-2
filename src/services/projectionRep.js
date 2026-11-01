@@ -197,9 +197,11 @@ async function collectHost(liveId, userId, requestId, now = new Date()) {
 
 async function report(liveId, userId) {
   const live = await prisma.liveSession.findUnique({ where: { id: liveId }, include: {
-    host: { select: { username: true } }, room: { select: { name: true } },
+    host: { select: { username: true } }, room: { select: { name: true, isPrivate: true,
+      members: { where: { userId }, take: 1, select: { userId: true } } } },
   } });
   if (!live) return null;
+  if (live.room.isPrivate && live.hostId !== userId && !live.room.members.length) return null;
   const own = live.hostId === userId;
   const base = { id: live.id, status: live.status, hostName: live.host.username,
     roomName: live.roomName || live.room.name, startedAt: live.startedAt, endedAt: live.endedAt,

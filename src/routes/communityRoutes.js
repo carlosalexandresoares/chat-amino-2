@@ -18,7 +18,8 @@ const bad = (res, message) => res.status(400).json({ message });
 async function access(req, res, roomId, moderator = false) {
   if (!validId(roomId)) { res.status(404).json({ message: 'Comunidade não encontrada.' }); return false; }
   const role = await community.roomRole(req.userId, roomId);
-  const admin = await isSiteAdmin(req.userId);
+  const room = await prisma.room.findUnique({ where: { id: roomId }, select: { isPrivate: true } });
+  const admin = !room?.isPrivate && await isSiteAdmin(req.userId);
   if (!role && !admin) { res.status(403).json({ message: 'Entre na comunidade para continuar.' }); return false; }
   if (await prisma.communitySanction.findFirst({ where: { roomId, userId: req.userId,
     type: 'SUSPEND', revokedAt: null, expiresAt: { gt: new Date() } }, select: { id: true } })) {
@@ -81,7 +82,7 @@ router.get('/discover', async (req, res) => {
         SELECT COUNT(*)::int AS activity FROM "Message"
         WHERE "roomId" = r.id AND "createdAt" >= NOW() - INTERVAL '7 days' AND "deletedAt" IS NULL
       ) a
-      WHERE (r."ownerId" IS NOT NULL OR r.id = 'geral')
+      WHERE (r."ownerId" IS NOT NULL OR r.id = 'geral') AND r."isPrivate" = false
         ${topic ? Prisma.sql`AND r.topic = ${topic}` : Prisma.empty}
         ${search ? Prisma.sql`AND (r.name ILIKE ${`%${search}%`} OR r.description ILIKE ${`%${search}%`})` : Prisma.empty}
         ${favoritesOnly ? Prisma.sql`AND EXISTS (SELECT 1 FROM "RoomFavorite" f WHERE f."roomId" = r.id AND f."userId" = ${req.userId})` : Prisma.empty}
@@ -103,8 +104,9 @@ router.get('/discover', async (req, res) => {
 
 router.put('/rooms/:roomId/favorite', async (req, res) => {
   try {
-    const room = await prisma.room.findUnique({ where: { id: req.params.roomId }, select: { id: true, ownerId: true } });
+    const room = await prisma.room.findUnique({ where: { id: req.params.roomId }, select: { id: true, ownerId: true, isPrivate: true } });
     if (!room || (room.id !== 'geral' && !room.ownerId)) return res.sendStatus(404);
+    if (room.isPrivate && !await community.roomRole(req.userId, room.id)) return res.sendStatus(404);
     await prisma.roomFavorite.upsert({ where: { userId_roomId: { userId: req.userId, roomId: room.id } },
       create: { userId: req.userId, roomId: room.id }, update: {} });
     res.json({ favorite: true });

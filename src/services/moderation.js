@@ -40,8 +40,9 @@ async function reportTarget(reporterId, kind, targetId) {
     return { subjectUserId: user.id, evidence: `Perfil: ${user.username}` };
   }
   if (kind === 'ROOM') {
-    const room = await prisma.room.findUnique({ where: { id: targetId }, select: { name: true } });
+    const room = await prisma.room.findUnique({ where: { id: targetId }, select: { name: true, isPrivate: true } });
     if (!room) throw problem('Comunidade indisponível.', 404);
+    if (room.isPrivate && !await chat.roomAccess(reporterId, targetId)) throw problem('Comunidade indisponível.', 404);
     return { evidence: `Comunidade: ${room.name}` };
   }
   if (kind === 'MESSAGE') {

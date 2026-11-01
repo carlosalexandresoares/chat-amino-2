@@ -1,6 +1,6 @@
 import state from "./state.js";
 import { fetchWithTimeout } from './request-timeout.js';
-import { loadAuthenticatedUser } from "./auth.js?v=4";
+import { loadAuthenticatedUser } from "./auth.js?v=5";
 import { initializeChat } from "./chat.js?v=14";
 import { initializeYouTube, stopTimeUpdater } from "./youtube.js?v=10";
 import { initializeLive } from "./live.js?v=10";
@@ -135,7 +135,8 @@ async function roomRequest(url, options = {}) {
     },
   });
   const data = await response.json();
-  if (!response.ok) throw new Error(data.message || "Não foi possível completar a ação.");
+  if (!response.ok) { const error = new Error(data.message || "Não foi possível completar a ação.");
+    error.status = response.status; throw error; }
   return data;
 }
 
@@ -189,6 +190,8 @@ function showChatScreen(room) {
   roomsScreen.classList.add("hidden");
   appScreen.classList.remove("hidden");
   roomTitle.textContent = `${room.category || "💬"} ${room.name}`;
+  document.getElementById('room-invite-open').classList.toggle('hidden', !room.isPrivate);
+  document.querySelector('[data-room-action="room-invite-open"]').classList.toggle('hidden', !room.isPrivate);
   updateRoomStats(room);
   document.title = `${room.name} | Purp`;
   if (window.location.hash === "#projections" && !appScreen.classList.contains("mobile-projections-open")) projectionsTab.click();
@@ -203,6 +206,7 @@ async function loadRooms() {
       if (response.status === 404) {
         state.roomId = null;
         showRoomsScreen();
+        void loadPrivateRooms();
         void loadDiscover();
         return;
       }
@@ -210,7 +214,7 @@ async function loadRooms() {
       const { room } = await response.json();
       roomsById.set(room.id, room);
       showChatScreen(room);
-    } else { showRoomsScreen(); void loadDiscover(); }
+    } else { showRoomsScreen(); void loadPrivateRooms(); void loadDiscover(); }
   } catch (error) {
     grid.textContent = error.message;
     if (state.roomId) {
@@ -218,6 +222,95 @@ async function loadRooms() {
     } else showRoomsScreen();
   }
 }
+
+async function loadPrivateRooms() {
+  const section = document.getElementById('private-rooms-section');
+  const list = document.getElementById('private-rooms-grid');
+  try {
+    const { rooms } = await roomRequest('/api/rooms/private');
+    list.replaceChildren();
+    section.classList.toggle('hidden', !rooms.length);
+    for (const room of rooms) {
+      const card = document.createElement('article'); card.className = 'private-room-card';
+      const title = document.createElement('h3'); title.textContent = `🔒 ${room.name}`;
+      const description = document.createElement('p');
+      description.textContent = room.description || `${room.membersCount} participantes`;
+      const open = document.createElement('button'); open.type = 'button'; open.textContent = 'Abrir chat';
+      open.addEventListener('click', () => enterRoom(room.id));
+      card.append(title, description, open); list.append(card);
+    }
+  } catch (error) { section.classList.remove('hidden'); list.textContent = error.message; }
+}
+
+async function acceptInvite(code) {
+  if (!state.token) return;
+  try {
+    const { room } = await roomRequest(`/api/rooms/invites/${encodeURIComponent(code)}/join`, { method: 'POST' });
+    enterRoom(room.id);
+  } catch (error) {
+    if (error.status === 401) {
+      sessionStorage.setItem('purpInviteReturn', `/index.html?convite=${encodeURIComponent(code)}`);
+      localStorage.removeItem('authToken');
+      location.replace('/login.html'); return;
+    }
+    const url = new URL(location.href); url.searchParams.delete('convite');
+    history.replaceState({}, '', url.pathname + url.search);
+    await loadRooms();
+    const section = document.getElementById('private-rooms-section');
+    section.classList.remove('hidden');
+    const message = document.createElement('p'); message.textContent = error.message;
+    document.getElementById('private-rooms-grid').prepend(message);
+  }
+}
+
+const inviteDialog = document.getElementById('room-invite-dialog');
+const inviteStatus = document.getElementById('room-invite-status');
+const inviteLink = document.getElementById('room-invite-link');
+document.getElementById('room-invite-open').addEventListener('click', async () => {
+  inviteStatus.textContent = '';
+  inviteDialog.showModal();
+  try {
+    const { link } = await roomRequest(`/api/rooms/${encodeURIComponent(state.roomId)}/invite`);
+    inviteLink.value = new URL(link, location.origin).href;
+    document.getElementById('room-invite-rotate').classList.toggle('hidden',
+      !['OWNER', 'CO_ADMIN'].includes(state.roomRole));
+  } catch (error) { inviteStatus.textContent = error.message; }
+});
+document.getElementById('room-invite-close').addEventListener('click', () => inviteDialog.close());
+document.getElementById('room-invite-copy').addEventListener('click', async () => {
+  if (!inviteLink.value) return;
+  try { await navigator.clipboard.writeText(inviteLink.value); inviteStatus.textContent = 'Link copiado.'; }
+  catch { inviteLink.select(); inviteStatus.textContent = 'Selecione e copie o link acima.'; }
+});
+document.getElementById('room-invite-rotate').addEventListener('click', async () => {
+  if (!confirm('O link anterior deixará de funcionar. Renovar?')) return;
+  try {
+    const { link } = await roomRequest(`/api/rooms/${encodeURIComponent(state.roomId)}/invite/rotate`, { method: 'POST' });
+    inviteLink.value = new URL(link, location.origin).href;
+    inviteStatus.textContent = 'Link renovado. Compartilhe o novo convite.';
+  } catch (error) { inviteStatus.textContent = error.message; }
+});
+document.getElementById('room-invite-user-form').addEventListener('submit', async event => {
+  event.preventDefault();
+  const submit = event.currentTarget.querySelector('[type="submit"]'); submit.disabled = true;
+  try {
+    const { sent } = await roomRequest(`/api/rooms/${encodeURIComponent(state.roomId)}/invite-user`, {
+      method: 'POST', body: JSON.stringify({ username: document.getElementById('room-invite-username').value.trim() }),
+    });
+    inviteStatus.textContent = sent ? 'Convite enviado nas notificações da pessoa.' :
+      'Convite não entregue. Compartilhe o link diretamente.';
+    if (sent) event.currentTarget.reset();
+  } catch (error) { inviteStatus.textContent = error.message; }
+  finally { submit.disabled = false; }
+});
+state.socket.on('room-invite-rotated', ({ roomId }) => {
+  if (roomId === state.roomId && inviteDialog.open) {
+    void roomRequest(`/api/rooms/${encodeURIComponent(roomId)}/invite`).then(({ link }) => {
+      inviteLink.value = new URL(link, location.origin).href;
+      inviteStatus.textContent = 'O link foi renovado.';
+    }).catch(error => { inviteLink.value = ''; inviteStatus.textContent = error.message; });
+  }
+});
 
 function renderMembers(members, role) {
   manageMembers.replaceChildren();
@@ -392,6 +485,7 @@ state.socket.on("room-members-count", ({ roomId, membersCount: count }) => {
 });
 state.socket.on("room-permissions", ({ roomId, role }) => {
   if (roomId === state.roomId) {
+    state.roomRole = role;
     manageButton.classList.toggle("hidden", !["OWNER", "CO_ADMIN"].includes(role));
     document.querySelector('[data-room-action="manage-room"]').classList.toggle("hidden", !["OWNER", "CO_ADMIN"].includes(role));
     if (!["OWNER", "CO_ADMIN"].includes(role)) managePanel.classList.add("hidden");
@@ -429,7 +523,9 @@ state.socket.on("connect_error", (error) => {
 });
 
 void loadTopics().catch(error => console.error('Falha ao carregar categorias:', error));
-void loadRooms();
+const inviteCode = new URLSearchParams(location.search).get('convite');
+if (inviteCode) void acceptInvite(inviteCode);
+else void loadRooms();
 void loadAuthenticatedUser().then(() => {
   document.querySelectorAll('.site-admin-link').forEach(link => link.classList.toggle('hidden', !state.currentUser?.isSiteAdmin));
 });

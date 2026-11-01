@@ -12,7 +12,7 @@ const packages = {
     release: androidRelease.downloadUrl,
   },
   windows: {
-    file: path.join(root, 'desktop/dist/Purp Setup 0.1.8.exe'),
+    file: path.join(root, 'desktop/dist/Purp Setup 0.1.9.exe'),
     name: 'Purp-Windows-Setup.exe',
     url: 'PURP_WINDOWS_DOWNLOAD_URL',
     release: windowsRelease.downloadUrl,

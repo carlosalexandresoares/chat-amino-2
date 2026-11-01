@@ -237,7 +237,8 @@ router.get('/appearance', async (req, res) => {
   try {
     const roomId = req.query.roomId;
     if (!validRoomId(roomId)) throw media.problem('Chat inválido.');
-    if (!await prisma.room.findUnique({ where: { id: roomId }, select: { id: true } })) throw media.problem('Chat não encontrado.', 404);
+    const room = await prisma.room.findUnique({ where: { id: roomId }, select: { isPrivate: true } });
+    if (!room || room.isPrivate && !await chat.roomAccess(req.userId, roomId)) throw media.problem('Chat não encontrado.', 404);
     const appearance = await prisma.chatAppearance.findUnique({ where: { userId_roomId: { userId: req.userId, roomId } } });
     res.json({ appearance });
   }
@@ -247,7 +248,8 @@ router.put('/appearance', async (req, res) => {
   try {
     const { roomId, mode, color, preset, assetId } = req.body || {};
     if (!validRoomId(roomId)) throw media.problem('Chat inválido.');
-    if (!await prisma.room.findUnique({ where: { id: roomId }, select: { id: true } })) throw media.problem('Chat não encontrado.', 404);
+    const room = await prisma.room.findUnique({ where: { id: roomId }, select: { isPrivate: true } });
+    if (!room || room.isPrivate && !await chat.roomAccess(req.userId, roomId)) throw media.problem('Chat não encontrado.', 404);
     if (!['DEFAULT', 'COLOR', 'PRESET', 'IMAGE'].includes(mode)) throw media.problem('Tipo de fundo inválido.');
     if (mode === 'COLOR' && !/^#[0-9a-f]{6}$/i.test(color)) throw media.problem('Cor inválida.');
     if (mode === 'PRESET' && !['geometry', 'twilight', 'night', 'minimal'].includes(preset)) throw media.problem('Papel de parede inválido.');

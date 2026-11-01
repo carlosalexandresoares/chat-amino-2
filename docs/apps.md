@@ -1,5 +1,13 @@
 # Aplicativos Purp
 
+## Beta 16: chats privados por convite (01/11/2026)
+
+Crie um chat privado no formul?rio de salas. Ele mant?m mensagens, voz, eventos, enquetes e transmiss?o da sala normal. Apenas participantes veem o chat; um link de convite permite entrar. Participantes podem copiar o link ou convidar pelo nome de usu?rio. Criador e coadministradores podem renovar o link; remover algu?m tamb?m invalida o link anterior.
+
+Android beta 16: 58272954 bytes, SHA-256 8a5675c81ca9871e48f62c7a4eddfb5eb1b377c512c86eedce6ab1c8c2b53dcd. Windows 0.1.9: 106452050 bytes, SHA-256 9933b7ca97720f37e24663e765f76051f83ba12e26bd18fbe57ec3558ccf975d. O APK usa a mesma assinatura debug das betas anteriores; o instalador Windows n?o tem assinatura de c?digo. Testes automatizados: 47 aprovados, 12 ignorados. A abertura por convite em dois dispositivos reais ainda precisa de valida??o manual.
+
+Publica??o: [beta 16](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.16). Os manifestos e links de download apontam para os dois arquivos desta vers?o.
+
 ## Beta 15: assistir juntos na conversa privada (01/11/2026)
 
 Android beta 15 e Windows 0.1.8 adicionam o painel **Assistir juntos** em conversas privadas aceitas. As duas pessoas podem abrir um link do YouTube, reproduzir, pausar, mudar a posi??o e encerrar o v?deo. O estado atual ? enviado a quem abrir a conversa depois. No mesmo painel, **Compartilhar tela** transmite a tela e, quando a plataforma fornecer, seu ?udio. A captura pede consentimento do sistema; apenas uma pessoa compartilha por vez. O painel fecha ao sair da conversa, perder a conex?o ou bloquear a pessoa.

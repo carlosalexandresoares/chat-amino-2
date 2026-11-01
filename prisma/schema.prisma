@@ -82,6 +82,7 @@ enum NotificationKind {
   POST_FEATURED
   CHAT_REPLY
   CHAT_MESSAGE
+  ROOM_INVITE
   MENTION
   DIRECT_MESSAGE
   PROJECTION_START
@@ -663,6 +664,8 @@ model Room {
   topic       String @default("GERAL") @db.VarChar(32)
   avatar      String?
   banner      String?
+  isPrivate   Boolean @default(false)
+  inviteCode  String? @unique @db.VarChar(64)
 
   ownerId String?
 

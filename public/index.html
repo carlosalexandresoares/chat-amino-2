@@ -15,7 +15,7 @@
     href="style/style.css?v=25"
   />
   <link rel="stylesheet" href="/style/notification-badge.css?v=1">
-  <link rel="stylesheet" href="/style/community.css?v=4">
+  <link rel="stylesheet" href="/style/community.css?v=5">
   <link rel="stylesheet" href="/style/voice.css?v=4">
   <link rel="stylesheet" href="/style/moderation.css?v=1">
 
@@ -25,7 +25,7 @@
 
   <script
     type="module"
-    src="script/script.js?v=43"
+    src="script/script.js?v=44"
   ></script>
   <link rel="icon" type="image/png" href="/image/purp-mascot.png">
   <meta name="theme-color" content="#0B0716">
@@ -94,10 +94,12 @@
         <select id="room-topic" name="topic"></select>
         <label for="room-banner">Imagem de capa <span class="optional">(opcional)</span></label>
         <input id="room-banner" name="banner" type="url" placeholder="https://..." />
+        <label class="room-private-choice"><input type="checkbox" name="isPrivate" value="true"> Chat privado: apenas pessoas com convite podem entrar</label>
         <p id="create-room-error" role="alert"></p>
         <div class="create-room-actions"><button type="submit">Criar chat <span aria-hidden="true">↗</span></button></div>
       </form>
 
+      <section id="private-rooms-section" class="private-rooms-section hidden" aria-label="Chats privados"><div class="rooms-section-title"><div><span class="section-kicker">SEUS ESPAÇOS</span><h2>Chats privados</h2></div></div><div id="private-rooms-grid" class="private-rooms-grid"></div></section>
       <div class="rooms-section-title" id="communities"><div><span class="section-kicker">EXPLORE</span><h2>Comunidades</h2></div><p id="rooms-total">Carregando...</p></div>
       <a class="direct-entry" href="/direct.html">✉ Mensagens privadas</a>
       <a class="direct-entry" href="/feed.html">✧ Feed social</a>
@@ -151,6 +153,7 @@
         <a href="/admin.html" class="manage-room-button site-admin-link hidden">Administração</a>
         <button type="button" id="wallpaper-open" class="manage-room-button" aria-label="Personalizar fundo do chat">▦ Fundo</button>
         <button type="button" id="manage-room" class="manage-room-button hidden">⚙ Gerenciar chat</button>
+        <button type="button" id="room-invite-open" class="manage-room-button hidden">🔗 Convidar</button>
         <button type="button" class="manage-room-button" data-report-room>Denunciar comunidade</button>
         <button type="button" id="leave-room" class="leave-room-button">Todos os chats</button>
       </div>
@@ -166,6 +169,7 @@
           <a href="/notifications.html" class="notification-link" role="menuitem">🔔 Notificações <span class="notification-badge hidden">0</span></a>
           <button type="button" data-room-action="wallpaper-open" role="menuitem">Personalizar fundo</button>
           <button type="button" data-room-action="manage-room" class="hidden" role="menuitem">Gerenciar chat</button>
+          <button type="button" data-room-action="room-invite-open" class="hidden" role="menuitem">Convidar pessoa</button>
           <button type="button" data-report-room role="menuitem">Denunciar comunidade</button>
           <a href="/admin.html" class="site-admin-link hidden" role="menuitem">Administração</a>
           <a href="/direct.html" role="menuitem">Mensagens privadas</a>
@@ -183,6 +187,14 @@
       <p id="room-info-counts"></p>
       <h3>Participantes</h3>
       <div id="room-info-members" class="room-info-members"></div>
+    </dialog>
+    <dialog id="room-invite-dialog" class="room-invite-dialog" aria-labelledby="room-invite-title">
+      <div class="room-info-heading"><h2 id="room-invite-title">Convidar para o chat privado</h2><button type="button" id="room-invite-close" aria-label="Fechar">×</button></div>
+      <p>Quem receber o link poderá entrar no chat com uma conta Purp.</p>
+      <label>Link de convite<input id="room-invite-link" type="text" readonly></label>
+      <div class="room-invite-actions"><button type="button" id="room-invite-copy">Copiar link</button><button type="button" id="room-invite-rotate" class="hidden">Renovar link</button></div>
+      <form id="room-invite-user-form"><label>Convidar pelo nome de usuário<input id="room-invite-username" type="text" minlength="3" maxlength="50" required placeholder="Nome de usuário"></label><button type="submit">Enviar convite</button></form>
+      <p id="room-invite-status" role="status"></p>
     </dialog>
 
     <section class="manage-room-panel hidden" id="manage-room-panel" aria-label="Administração do chat">

@@ -1,8 +1,15 @@
 import state from "./state.js";
 import { fetchWithTimeout } from './request-timeout.js';
 
+function rememberInvite() {
+  const code = new URLSearchParams(window.location.search).get('convite');
+  if (code && /^[a-zA-Z0-9_-]{32}$/.test(code))
+    sessionStorage.setItem('purpInviteReturn', `/index.html?convite=${encodeURIComponent(code)}`);
+}
+
 export async function loadAuthenticatedUser() {
   if (!state.token) {
+    rememberInvite();
     window.location.href =
       "/login.html";
 
@@ -27,6 +34,7 @@ export async function loadAuthenticatedUser() {
       response.status === 401 ||
       response.status === 403
     ) {
+      rememberInvite();
       localStorage.removeItem(
         "authToken"
       );

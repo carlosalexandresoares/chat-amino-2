@@ -20,7 +20,8 @@ function fail(res, error) {
 async function roleFor(userId, roomId) {
   if (!idPattern.test(roomId)) return null;
   const role = await community.roomRole(userId, roomId);
-  return { role, admin: await isSiteAdmin(userId) };
+  const room = await prisma.room.findUnique({ where: { id: roomId }, select: { isPrivate: true } });
+  return { role, admin: !room?.isPrivate && await isSiteAdmin(userId) };
 }
 async function roomAccess(req, res, roomId, manage = false) {
   const access = await roleFor(req.userId, roomId);
@@ -132,8 +133,9 @@ router.get('/', async (req, res) => {
     const rows = await prisma.communityEvent.findMany({ where: {
       status: 'SCHEDULED', startsAt: { gte: new Date(Date.now() - 2 * 3600000) },
       ...(roomIds ? { roomId: { in: roomIds } } : {}),
-      room: { sanctions: { none: { userId: req.userId, type: 'SUSPEND',
-        revokedAt: null, expiresAt: { gt: new Date() } } } },
+      room: { OR: [{ isPrivate: false }, { members: { some: { userId: req.userId } } }],
+        sanctions: { none: { userId: req.userId, type: 'SUSPEND',
+          revokedAt: null, expiresAt: { gt: new Date() } } } },
     }, orderBy: [{ startsAt: 'asc' }, { id: 'asc' }], skip: (page - 1) * 20,
     take: 21, select: eventSelect });
     res.json({ events: await decorate(rows.slice(0, 20), req.userId),
