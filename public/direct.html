@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Mensagens privadas | Purp</title>
-  <link rel="stylesheet" href="/style/direct.css?v=3">
+  <link rel="stylesheet" href="/style/direct.css?v=4">
   <link rel="stylesheet" href="/style/notification-badge.css?v=1">
   <script src="/socket.io/socket.io.js"></script>
   <script src="/script/notification-badge.js?v=2" defer></script>
-  <script type="module" src="/script/direct.js?v=4"></script>
+  <script type="module" src="/script/direct.js?v=5"></script>
   <link rel="icon" type="image/png" href="/image/purp-mascot.png">
   <meta name="theme-color" content="#0B0716">
   <meta name="description" content="Purp: comunidades, conversas, publicações, eventos e projeções.">
@@ -29,7 +29,16 @@
     <main class="dm-main" id="dm-main">
       <div id="dm-empty" class="dm-empty"><span class="pv-logo" aria-hidden="true"></span><h2>Suas conversas em um só lugar</h2><p>Abra o perfil de alguém e toque em “Mensagem” para começar.</p></div>
       <section id="dm-conversation" class="dm-conversation hidden" aria-label="Conversa privada">
-        <header class="dm-chat-header"><button type="button" id="dm-back" aria-label="Voltar às conversas">‹</button><a id="dm-person" href="#"></a><span id="dm-person-status"></span><button type="button" id="dm-more" aria-label="Opções da conversa" aria-expanded="false">⋮</button></header>
+        <header class="dm-chat-header"><button type="button" id="dm-back" aria-label="Voltar às conversas">‹</button><a id="dm-person" href="#"></a><span id="dm-person-status"></span><button type="button" id="dm-media-toggle" aria-expanded="false">Assistir juntos</button><button type="button" id="dm-more" aria-label="Opções da conversa" aria-expanded="false">⋮</button></header>
+        <section id="dm-media" class="dm-media hidden" aria-label="Assistir juntos e compartilhar tela">
+          <div class="dm-media-head"><strong>Assistir juntos</strong><span id="dm-media-participants"></span><button type="button" id="dm-media-close" aria-label="Fechar painel">?</button></div>
+          <form id="dm-watch-form"><input id="dm-watch-url" type="url" placeholder="Cole um link do YouTube" aria-label="Link do YouTube"><button type="submit">Abrir v?deo</button></form>
+          <div id="dm-watch-player" class="dm-watch-player hidden"></div>
+          <div id="dm-watch-controls" class="dm-watch-controls hidden"><button type="button" id="dm-watch-play">Reproduzir</button><button type="button" id="dm-watch-pause">Pausar</button><label>Posi??o <input id="dm-watch-position" type="number" min="0" max="86400" step="1" value="0" aria-label="Posi??o em segundos"></label><button type="button" id="dm-watch-seek">Ir</button><button type="button" id="dm-watch-stop">Encerrar v?deo</button></div>
+          <div class="dm-screen-controls"><button type="button" id="dm-screen-share">Compartilhar tela</button><span id="dm-screen-label"></span></div>
+          <video id="dm-screen-video" autoplay playsinline controls class="hidden"></video>
+          <p id="dm-media-status" role="status"></p>
+        </section>
         <div id="dm-options" class="dm-options hidden"><button type="button" id="dm-search-messages">Buscar mensagens</button><button type="button" data-setting="muted">Silenciar</button><button type="button" data-setting="pinned">Fixar</button><button type="button" data-setting="archived">Arquivar</button><button type="button" id="dm-block">Bloquear</button><button type="button" id="dm-report-open">Denunciar</button></div>
         <form id="dm-message-search" class="dm-message-search hidden" role="search"><input id="dm-message-search-text" type="search" maxlength="100" placeholder="Palavra-chave" aria-label="Palavra-chave"><select id="dm-message-search-author" aria-label="Autor"><option value="">Todos</option><option value="me">Eu</option><option value="other">Outra pessoa</option></select><select id="dm-message-search-type" aria-label="Tipo"><option value="">Todos os tipos</option><option value="TEXT">Texto</option><option value="AUDIO">Áudio</option><option value="STICKER">Figurinha</option><option value="IMAGE">Imagem</option></select><label>De<input id="dm-message-search-from" type="date"></label><label>Até<input id="dm-message-search-to" type="date"></label><button type="submit">Buscar</button><button id="dm-message-search-clear" type="button">Limpar</button></form>
         <div id="dm-request-actions" class="dm-request-actions hidden"><p>Esta pessoa quer conversar com você.</p><button id="dm-accept" type="button">Aceitar</button><button id="dm-decline" type="button">Recusar</button><button id="dm-request-block" type="button">Bloquear</button><button id="dm-request-report" type="button">Denunciar</button></div>

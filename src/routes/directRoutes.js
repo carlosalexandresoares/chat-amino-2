@@ -69,6 +69,10 @@ router.put('/blocks/:userId', async (req, res) => {
     await prisma.directConversation.updateMany({ where: { status: 'PENDING', OR: [
       { userAId: req.userId, userBId: req.params.userId }, { userBId: req.userId, userAId: req.params.userId },
     ] }, data: { status: 'DECLINED' } });
+    const conversation = await prisma.directConversation.findFirst({ where: { OR: [
+      { userAId: req.userId, userBId: req.params.userId }, { userBId: req.userId, userAId: req.params.userId },
+    ] }, select: { id: true } });
+    if (conversation) req.app.get('removeDirectMediaConversation')?.(conversation.id);
     req.app.get('io').to(userRoom(req.userId)).to(userRoom(req.params.userId)).emit('direct-updated');
     res.json({ blocked: true });
   } catch (error) { fail(res, error); }

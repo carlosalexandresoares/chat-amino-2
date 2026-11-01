@@ -1,5 +1,13 @@
 # Aplicativos Purp
 
+## Beta 15: assistir juntos na conversa privada (01/11/2026)
+
+Android beta 15 e Windows 0.1.8 adicionam o painel **Assistir juntos** em conversas privadas aceitas. As duas pessoas podem abrir um link do YouTube, reproduzir, pausar, mudar a posi??o e encerrar o v?deo. O estado atual ? enviado a quem abrir a conversa depois. No mesmo painel, **Compartilhar tela** transmite a tela e, quando a plataforma fornecer, seu ?udio. A captura pede consentimento do sistema; apenas uma pessoa compartilha por vez. O painel fecha ao sair da conversa, perder a conex?o ou bloquear a pessoa.
+
+Arquivos: `mobile/android/app/build/outputs/apk/debug/app-debug.apk` (58.270.338 bytes; SHA-256 `7ab0a5669f0743eae76199e66a5f23951de3bd99faa1f5bf9160aa6937eb95c6`) e `desktop/dist/Purp Setup 0.1.8.exe` (106.450.023 bytes; SHA-256 `8196b461f9a725eb7d953b85322afa1aec01603d59eab267be481c4b2272d7c7`). O APK mant?m a assinatura `8a42be1cbb59e3e4fbd1b3e5d87fd502790414d505ad6ffca99413737521fc65`. O instalador Windows n?o tem assinatura de c?digo. `npm test`: 46 aprovados, 0 falhas, 12 integra??es opcionais ignoradas. A captura Android e a reprodu??o conjunta ainda precisam de valida??o em dois dispositivos reais.
+
+Publica??o: [beta 15](https://github.com/carlosalexandresoares/chat-amino-2/releases/tag/v0.1.0-beta.15). Os manifestos de atualiza??o e os links da p?gina de downloads apontam para os dois arquivos desta vers?o.
+
 ## Beta 14: atualizações do perfil e chat privado (27/10/2026)
 
 Android beta 14 e Windows 0.1.7 incluem a edição do nome do perfil e o novo visual do chat privado. A lista de mensagens agora rola dentro da conversa, sem deslocar o campo de digitação. O Android consulta o manifesto da beta 14 e oferece a instalação dentro do app. A partir do Windows 0.1.7, o aplicativo consulta a versão publicada ao abrir e a cada seis horas; quando há uma versão nova, oferece o download do instalador. Quem usa uma versão Windows anterior precisa instalar a 0.1.7 manualmente uma vez para receber esses avisos.

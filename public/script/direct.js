@@ -1,8 +1,11 @@
+import { initDirectMedia } from './direct-media.js?v=1';
+
 const $ = id => document.getElementById(id);
 const token = localStorage.getItem('authToken');
 if (!token) location.replace('/login.html');
 const shell = document.querySelector('.dm-shell');
 const socket = io({ auth: { token } });
+const directMedia = initDirectMedia(socket, () => selected);
 window.ChatNotificationBadge?.attachSocket(socket);
 let conversations = [];
 let selected = null;
@@ -161,7 +164,7 @@ async function openConversation(conversation) {
   for (const [key, labels] of Object.entries({ muted: ['Silenciar', 'Ativar som'], pinned: ['Fixar', 'Desafixar'], archived: ['Arquivar', 'Desarquivar'] })) {
     document.querySelector(`[data-setting="${key}"]`).textContent = labels[Number(Boolean(conversation.settings[key]))];
   }
-  status(''); await loadMessages(true);
+  status(''); await directMedia.open(conversation); await loadMessages(true);
 }
 
 async function sendMessage(type, content = '', mediaId = null) {
@@ -195,7 +198,7 @@ document.querySelectorAll('[data-tab]').forEach(button => button.addEventListene
 }));
 $('dm-list-more').addEventListener('click', () => loadConversations(true));
 $('dm-search').addEventListener('input', () => { clearTimeout($('dm-search').timer); $('dm-search').timer = setTimeout(loadConversations, 250); });
-$('dm-back').addEventListener('click', () => shell.classList.remove('chat-open'));
+$('dm-back').addEventListener('click', () => { shell.classList.remove('chat-open'); void directMedia.leave(); });
 $('dm-more').addEventListener('click', () => { const open = $('dm-options').classList.toggle('hidden') === false; $('dm-more').setAttribute('aria-expanded', String(open)); });
 $('dm-more-messages').addEventListener('click', () => loadMessages());
 $('dm-search-messages').addEventListener('click', () => {
@@ -254,12 +257,12 @@ document.querySelectorAll('[data-setting]').forEach(button => button.addEventLis
   catch (error) { status(error.message); }
 }));
 async function blockSelected() { if (!selected || !confirm(`Bloquear ${selected.other.username}?`)) return;
-  try { await request(`/blocks/${selected.other.id}`, { method: 'PUT' }); shell.classList.remove('chat-open'); selected = null; loadConversations(); status('Usuário bloqueado.', 'dm-list-status'); }
+  try { await request(`/blocks/${selected.other.id}`, { method: 'PUT' }); void directMedia.leave(); shell.classList.remove('chat-open'); selected = null; loadConversations(); status('Usuário bloqueado.', 'dm-list-status'); }
   catch (error) { status(error.message); } }
 $('dm-block').addEventListener('click', blockSelected); $('dm-request-block').addEventListener('click', blockSelected);
 for (const [id, action] of [['dm-accept', 'accept'], ['dm-decline', 'decline']]) $(id).addEventListener('click', async () => {
   try { await request(`/conversations/${selected.id}/request`, { method: 'PATCH', body: JSON.stringify({ action }) });
-    if (action === 'decline') { shell.classList.remove('chat-open'); selected = null; }
+    if (action === 'decline') { void directMedia.leave(); shell.classList.remove('chat-open'); selected = null; }
     else { selected.incomingRequest = false; selected.status = 'ACTIVE'; openConversation(selected); }
     loadConversations(); } catch (error) { status(error.message); }
 });

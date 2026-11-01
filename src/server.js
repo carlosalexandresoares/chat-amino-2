@@ -32,7 +32,8 @@ const eventReminders = require('./services/eventReminders');
 const moderationRoutes = require('./routes/moderationRoutes');
 const moderation = require('./services/moderation');
 const antiSpam = require('./services/antiSpam');
-const { createVoiceService } = require('./services/voiceRooms');
+const { createVoiceService, iceServers } = require('./services/voiceRooms');
+const { createDirectMediaService } = require('./services/directMedia');
 const notifications = require('./services/notifications');
 const generalMessageNotifications = require('./services/generalMessageNotifications');
 
@@ -192,6 +193,8 @@ setInterval(() => {
 const liveStates = {};
 const voice = createVoiceService({ io, prisma, getActiveLive: roomId =>
   liveStates[roomId]?.active ? liveStates[roomId].liveId : null });
+const directMedia = createDirectMediaService({ io, prisma, iceServers: iceServers() });
+app.set('removeDirectMediaConversation', directMedia.removeConversation);
 app.set('removeVoiceUser', voice.removeUser);
 app.set('removeInvisibleVoiceUser', voice.removeInvisible);
 const closingRooms = new Map();
@@ -624,6 +627,7 @@ io.use(async (socket, next) => {
 
 io.on("connection", (socket) => {
   voice.attach(socket);
+  directMedia.attach(socket);
   socket.join(`user:${socket.user.id}`);
   socket.on('direct-typing', async ({ conversationId, typing } = {}) => {
     if (typeof conversationId !== 'string' || conversationId.length > 60 || typeof typing !== 'boolean') return;

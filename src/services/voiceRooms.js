@@ -267,4 +267,4 @@ function createVoiceService({ io, prisma, getActiveLive }) {
   return { attach, removeUser, removeInvisible, unlinkProjection, list };
 }
 
-module.exports = { MAX_PEERS, createVoiceService };
+module.exports = { MAX_PEERS, createVoiceService, iceServers };
